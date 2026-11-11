@@ -1,0 +1,141 @@
+.header,
+.footer {
+  box-sizing: border-box;
+  width: 100%;
+  background: #ed5aa0;
+  box-shadow: inset 0px -7px 70.8px 10px rgba(9, 9, 9, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+}
+
+.header {
+  height: clamp(70px, 8vw, 100px);
+  position: relative;
+  z-index: 101;
+}
+
+.footer {
+  display: none;
+}
+
+.donnie-logo {
+  width: clamp(160px, 20vw, 300px);
+  height: 80%;
+  background-image: url(/static/assets/img/donnie-logo.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: left center;
+  cursor: pointer;
+}
+
+.navigation-container {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2.5vw, 45px);
+}
+
+.nav-item-container {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.nav-item-container:hover {
+  opacity: 0.8;
+}
+
+.nav-home-icon,
+.nav-donuts-icon,
+.nav-contacts-icon,
+.nav-profile-icon {
+  width: clamp(30px, 4vw, 50px);
+  aspect-ratio: 1;
+  background-size: contain;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.nav-home-icon {
+  background-image: url(/static/assets/img/nav-home-icon.png);
+}
+.nav-donuts-icon {
+  background-image: url(/static/assets/img/nav-donuts-icon.png);
+}
+.nav-contacts-icon {
+  background-image: url(/static/assets/img/nav-contacts-icon.png);
+}
+.nav-profile-icon {
+  background-image: url(/static/assets/img/nav-profile-icon.png);
+}
+
+.nav-item-text {
+  font-family: "M PLUS 1p", sans-serif;
+  font-weight: 800;
+  font-size: clamp(16px, 2.2vw, 30px);
+  color: #ffd4e8;
+  margin-left: 10px;
+}
+
+.nav-menu-list-icon {
+  display: none;
+  width: 40px;
+  aspect-ratio: 1;
+  background-image: url(/static/assets/img/nav-menu-list-icon.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 600px) {
+  .header {
+    height: 60px;
+    padding: 0 15px;
+  }
+
+  .footer {
+    display: flex;
+    height: 65px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 5px 10px;
+    justify-content: space-around;
+  }
+
+  .nav-menu-list-icon {
+    display: block;
+  }
+
+  .donnie-logo {
+    width: 140px;
+    background-position: center;
+  }
+
+  .header .navigation-container .nav-item-container:not(:last-child) {
+    display: none;
+  }
+
+  .nav-item-container {
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .nav-item-text {
+    font-size: 12px;
+    margin-left: 0;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .nav-home-icon,
+  .nav-donuts-icon,
+  .nav-contacts-icon,
+  .nav-profile-icon {
+    width: 28px;
+    margin-right: 0;
+  }
+}

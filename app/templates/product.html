@@ -1,0 +1,52 @@
+
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/donut.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="donut-page-container">
+    <div class="donut-single-card" data-product-id="{{ product.id }}">
+        <div class="donut-image-section">
+            <img
+                id="product-img"
+                src="{{ product.image_url or '' }}"
+                alt="{{ product.name }}"
+            >
+        </div>
+
+        <div class="donut-details-section">
+            <h1 id="product-name" class="donut-title">
+                {{ product.name }}
+            </h1>
+
+            <p id="product-description" class="donut-desc">
+                {{ product.description or "" }}
+            </p>
+
+            <div class="price-tag">
+                $<span id="product-price">{{ "%.2f"|format(product.base_price) }}</span>
+            </div>
+
+            <div class="purchase-controls">
+                <div class="quantity-picker">
+                    <button id="minus-btn" class="qty-btn" type="button">—</button>
+                    <span id="qty-count">1</span>
+                    <button id="plus-btn" class="qty-btn" type="button">+</button>
+                </div>
+
+                <button id="add-to-cart-btn" class="add-btn" type="button">
+                    Add to Basket
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/product.js') }}" defer></script>
+{% endblock %}

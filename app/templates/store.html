@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Donnie - Donuts{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/store.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="store-wrapper">
+    <h2 class="store-heading">Choose your donut:</h2>
+
+    <div class="store-layout">
+        <div class="store-main">
+
+            <div class="store-header">
+
+                <div class="left-controls">
+                    <div class="control-btn-container" id="cart">
+                        <img src="{{ url_for('static', path='assets/img/store-controller-back.png') }}"
+                             class="btn-back" alt="">
+
+                        <img src="{{ url_for('static', path='assets/img/cart-controller.png') }}"
+                             class="btn-icon" alt="Cart">
+
+                        <span class="cart-badge">0</span>
+                    </div>
+                </div>
+
+                <div class="right-controls">
+
+                    <div class="control-btn-container" id="sort">
+                        <img src="{{ url_for('static', path='assets/img/store-controller-back.png') }}"
+                             class="btn-back" alt="">
+
+                        <img src="{{ url_for('static', path='assets/img/sort-controller.png') }}"
+                             class="btn-icon" alt="Sort">
+                    </div>
+
+                    <div class="search-bar">
+                        <input type="text" placeholder="Search for donut...">
+
+                        <div class="search-btn">
+                            <img src="{{ url_for('static', path='assets/img/search-controller.png') }}"
+                                 alt="Search">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <button class="m-go-constructor">Go to constructor</button>
+
+            <div class="donuts-grid">
+
+                {% for product in products %}
+
+                <div class="donut-card" data-id="{{ product.id }}"
+                     data-name="{{ product.name }}"
+                     data-price="{{ product.base_price }}">
+                            
+                    <div class="add-to-basket">
+                        <img
+                            src="{{ url_for('static', path='assets/img/basket-controller-back.png') }}"
+                            class="btn-back"
+                            alt=""
+                        >
+                        <img
+                            src="{{ url_for('static', path='assets/img/to-basket-controller.png') }}"
+                            class="btn-icon"
+                            alt="Add to basket"
+                        >
+                    </div>
+                
+                    <a href="/product/{{ product.id }}" class="donut-product-link">
+                        <div class="donut-img-container">
+                            <img src="{{ product.image_url or '' }}" alt="{{ product.name }}">
+                        </div>
+                    
+                        <div class="donut-info">
+                            <span class="donut-name">{{ product.name.upper() }}</span>
+                            <span class="donut-price">${{ "%.2f"|format(product.base_price) }}</span>
+                        </div>
+                    </a>
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/store.js') }}" defer></script>
+{% endblock %}

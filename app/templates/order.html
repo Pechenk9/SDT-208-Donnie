@@ -1,0 +1,105 @@
+
+{% extends "base.html" %}
+
+{% block title %}Your Order - Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/order.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="cart-container">
+    <div class="cart-content">
+        <section class="cart-items-section">
+            <h1 class="cart-title">Your Items:</h1>
+            <div id="cart-list" class="cart-list"></div>
+        </section>
+
+        <section class="cart-checkout-section">
+            <div class="checkout-card">
+                <h2>Order Details</h2>
+
+                <form id="order-form">
+                    <div class="input-group">
+                        <label for="customer-name">Your Name</label>
+                        <input
+                            type="text"
+                            id="customer-name"
+                            placeholder="Your name"
+                            required
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="phone">Phone Number</label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            placeholder="+380..."
+                            required
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="email">Email (optional)</label>
+                        <input
+                            type="email"
+                            id="email"
+                            placeholder="example@email.com"
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="branch">Branch</label>
+                        <select id="branch" required>
+                            <option value="">Select a branch</option>
+                            {% for branch in branches %}
+                            <option value="{{ branch.id }}">
+                                {{ branch.name }} — {{ branch.city }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="fulfillment-type">Fulfillment Type</label>
+                        <select id="fulfillment-type" required>
+                            <option value="">Select an option</option>
+                            <option value="pickup">Pickup</option>
+                            <option value="delivery">Delivery</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group" id="address-group" hidden>
+                        <label for="address">Delivery Address</label>
+                        <input
+                            type="text"
+                            id="address"
+                            placeholder="Street, house, apartment"
+                        >
+                    </div>
+
+                    <hr>
+
+                    <div class="total-price-block">
+                        <span>Total:</span>
+                        <span id="final-price">$0.00</span>
+                    </div>
+
+                    <button type="submit" class="place-order-btn">
+                        Place Order
+                    </button>
+                </form>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script id="products-data" type="application/json">
+    {{ products_data | tojson }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/order.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,83 @@
+.contacts-content {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 140px);
+  background: linear-gradient(180deg, #F9D6EC 0%, #B6C9E7 100%);
+  font-family: 'M PLUS 1p', sans-serif;
+  padding-bottom: 50px;
+} 
+
+.hero-image {
+  width: 100%;
+  line-height: 0;
+}
+
+.hero-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.locations-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 15px;
+  text-align: center;
+}
+
+.location-group {
+  margin-bottom: 40px;
+  width: 100%;
+}
+
+.address-title {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  border-bottom: 2px solid #FFFFFF;
+  display: inline-block;
+  padding-bottom: 5px;
+  margin-bottom: 15px;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 
+               0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+.phone-number {
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  font-weight: 700;
+  color: #FFFFFF;
+  margin: 5px 0;
+  text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 768px) {
+.locations-container {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .location-group {
+    flex: 0 1 300px; 
+    margin-bottom: 0;
+  }
+  .address-title {
+    font-size: 1.6rem;
+  }
+
+  .phone-number {
+    font-size: 1.4rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .locations-container {
+    max-width: 1400px;
+  }
+}

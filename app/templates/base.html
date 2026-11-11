@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block description %}Buy fresh donuts and coffee in Ukraine at Donnie.{% endblock %}">
+
+    <title>{% block title %}Donnie - Online Store{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/header-footer.css') }}">
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Modak">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=M+PLUS+1p">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Crimson+Text">
+
+    <link rel="icon" type="image/x-icon"
+          href="{{ url_for('static', path='assets/icons/donnie-donut-icon.png') }}">
+
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+    <header class="header">
+        <div class="nav-menu-list-icon"></div>
+        <div class="donnie-logo"></div>
+
+        <nav class="navigation-container">
+            <a class="nav-item-container" href="/">
+                <div class="nav-home-icon"></div>
+                <div class="nav-item-text">Home</div>
+            </a>
+
+            <a class="nav-item-container" href="/store">
+                <div class="nav-donuts-icon"></div>
+                <div class="nav-item-text">Donuts</div>
+            </a>
+
+            <a class="nav-item-container" href="/contacts">
+                <div class="nav-contacts-icon"></div>
+                <div class="nav-item-text">Contacts</div>
+            </a>
+
+            <a class="nav-item-container" href="#">
+                <div class="nav-profile-icon"></div>
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <a class="nav-item-container" href="/contacts">
+            <div class="nav-contacts-icon"></div>
+            <div class="nav-item-text">Contacts</div>
+        </a>
+
+        <a class="nav-item-container" href="/">
+            <div class="nav-home-icon"></div>
+            <div class="nav-item-text">Home</div>
+        </a>
+
+        <a class="nav-item-container" href="/store">
+            <div class="nav-donuts-icon"></div>
+            <div class="nav-item-text">Donuts</div>
+        </a>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
