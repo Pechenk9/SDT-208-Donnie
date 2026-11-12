@@ -1,0 +1,162 @@
+
+.receipt-page {
+    min-height: 85vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 50px 20px;
+    background: #f8f5f0;
+}
+
+.receipt {
+    width: 100%;
+    max-width: 600px;
+    padding: 45px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 35px rgba(0, 0, 0, 0.07);
+    color: #29231f;
+}
+
+.receipt-header {
+    text-align: center;
+}
+
+.receipt-logo {
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: 5px;
+}
+
+.receipt-subtitle {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: #a18b78;
+    margin-top: 4px;
+}
+
+.success-icon {
+    width: 55px;
+    height: 55px;
+    margin: 30px auto 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background: #e6f3e8;
+    color: #39834a;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.receipt-header h1 {
+    font-size: 25px;
+    margin-bottom: 8px;
+}
+
+.receipt-header p {
+    color: #8a817a;
+    font-size: 14px;
+}
+
+.receipt-divider {
+    border-top: 1px dashed #d9d0c8;
+    margin: 30px 0;
+}
+
+.receipt-info {
+    display: flex;
+    flex-direction: column;
+    gap: 17px;
+}
+
+.receipt-info div,
+.receipt-item,
+.receipt-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.receipt-info span,
+.item-description span {
+    color: #91867d;
+    font-size: 14px;
+}
+
+.receipt-info strong {
+    text-align: right;
+    font-size: 14px;
+}
+
+.status {
+    color: #b47b35;
+}
+
+.receipt h2 {
+    font-size: 19px;
+    margin-bottom: 22px;
+}
+
+.receipt-items {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.receipt-item {
+    font-size: 14px;
+}
+
+.item-description {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.receipt-total {
+    align-items: center;
+    font-size: 17px;
+}
+
+.receipt-total strong {
+    font-size: 22px;
+}
+
+.receipt-footer {
+    text-align: center;
+    margin-top: 35px;
+}
+
+.receipt-footer p {
+    color: #91867d;
+    font-size: 13px;
+    margin: 5px 0;
+}
+
+.back-button {
+    display: inline-block;
+    margin-top: 25px;
+    padding: 13px 28px;
+    background: #29231f;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.back-button:hover {
+    background: #514239;
+}
+
+@media (max-width: 500px) {
+    .receipt {
+        padding: 28px 20px;
+    }
+
+    .receipt-header h1 {
+        font-size: 21px;
+    }
+}

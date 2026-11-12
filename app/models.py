@@ -21,7 +21,6 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import (
-    DeclarativeBase,
     Mapped,
     mapped_column,
     relationship,

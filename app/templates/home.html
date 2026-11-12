@@ -1,0 +1,130 @@
+
+{% extends "base.html" %}
+
+{% block title %}Donuts Shop - Donnie{% endblock %}
+
+{% block description %}
+Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order from our store.
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/home-page.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="hero-title-cta-container">
+        <h1 class="hero-title-l1">
+            <span class="blue-font">Create</span>
+            <span class="pink-font">your</span>
+        </h1>
+
+        <h2 class="hero-title-l2">
+            <span class="pink-font">own</span>
+            <span class="blue-font">donut</span>
+        </h2>
+
+        <button
+            class="hero-cta-button"
+            title="Click the button to Create and Order Your Own Donut"
+        >
+            Go to constructor
+        </button>
+    </div>
+
+    <div class="hero-image-container">
+        <div class="image-wrapper">
+            <img
+                class="hero-donut-image"
+                src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}"
+                alt="Custom Donut Constructed by User"
+            >
+        </div>
+    </div>
+</section>
+
+<section class="testimonials-container">
+    <h2 class="testimonials-title">What customers say</h2>
+
+    <div class="testimonials-grid">
+        <div class="testimonial-card">
+            <p class="testimonial-text">
+                "Best donuts I've ever had in Ukraine. Fresh, soft, and the custom toppings are amazing."
+            </p>
+            <p class="testimonial-author">— Daniel</p>
+        </div>
+
+        <div class="testimonial-card">
+            <p class="testimonial-text">
+                "I love creating my own donuts here. Fun, easy, and incredibly nice coffee."
+            </p>
+            <p class="testimonial-author">— Sofia</p>
+        </div>
+
+        <div class="testimonial-card">
+            <p class="testimonial-text">
+                "Perfect place for late night sweets. Donnie never disappoints."
+            </p>
+            <p class="testimonial-author">— Marcus</p>
+        </div>
+    </div>
+</section>
+
+<div class="mobile-wrapper">
+    <section class="m-hero-section">
+        <div class="m-title-wrapper">
+            <div class="m-row-1">
+                <span class="m-text-blue">Create</span>
+                <span class="m-text-pink">your</span>
+            </div>
+
+            <div class="m-row-2">
+                <span class="m-text-pink">own</span>
+                <span class="m-text-blue">donut</span>
+            </div>
+        </div>
+
+        <div class="m-visual-container">
+            <img
+                src="{{ url_for('static', path='assets/img/constructor-donut-cta.png') }}"
+                class="m-main-img"
+                alt="Donut"
+            >
+
+            <img
+                src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}"
+                class="m-main-img-nohand"
+                alt="Donut"
+            >
+
+            <button class="m-btn m-btn-pink m-btn-overlap">
+                Go to constructor
+            </button>
+        </div>
+    </section>
+
+    <section class="m-store-section">
+        <h2 class="m-text-blue">More than</h2>
+        <div class="m-big-number">100+</div>
+        <h2 class="m-text-pink">variations</h2>
+
+        <a href="/store" class="m-btn m-btn-blue">
+            Go to Donnie Store
+        </a>
+
+        <img
+            src="{{ url_for('static', path='assets/img/store-donut-cta.png') }}"
+            class="m-store-img"
+            alt="Store"
+        >
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script
+    src="{{ url_for('static', path='js/home.js') }}"
+    type="module"
+    defer
+></script>
+{% endblock %}

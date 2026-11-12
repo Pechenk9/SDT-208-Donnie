@@ -1,11 +1,15 @@
 from decimal import ROUND_HALF_UP, Decimal
+import json
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, Form, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models import Branch, BranchProduct, FulfillmentType, Order, OrderItem, OrderStatus, Product
 from app.config import get_session
@@ -25,6 +29,13 @@ app.mount(
 templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
+
+@app.get("/")
+def home(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+    )
 
 @app.get("/store")
 def store(
@@ -100,32 +111,52 @@ def order_page(
         },
     )
 
+@app.get("/orders/{order_id}/receipt")
+def order_receipt(
+    request: Request,
+    order_id: int,
+    session: Session = Depends(get_session),
+):
+    order = session.scalar(
+        select(Order)
+        .options(
+            joinedload(Order.branch),
+            selectinload(Order.items),
+        )
+        .where(Order.id == order_id)
+    )
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found",
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "receipt.html",
+        {"order": order},
+    )
+
 
 @app.post("/orders")
 async def create_order(
-    request: Request,
+    customer_name: Annotated[str, Form(min_length=1)],
+    customer_phone: Annotated[str, Form(min_length=1)],
+    customer_email: Annotated[str | None, Form()] = None,
+    branch_id: Annotated[int, Form(gt=0)] = ...,
+    fulfillment_type: Annotated[FulfillmentType, Form()] = ...,
+    delivery_address: Annotated[str | None, Form()] = None,
+    items_json: Annotated[str, Form()] = ...,
     session: Session = Depends(get_session),
 ):
-    try:
-        data = await request.json()
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid JSON",
-        )
+    customer_name = customer_name.strip()
+    customer_phone = customer_phone.strip()
 
-    customer_name = data.get("customer_name")
-    customer_phone = data.get("customer_phone")
-    customer_email = data.get("customer_email")
-    branch_id = data.get("branch_id")
-    fulfillment_type = data.get("fulfillment_type")
-    delivery_address = data.get("delivery_address")
-    items = data.get("items")
-
-    if not isinstance(customer_name, str) or not customer_name.strip():
+    if not customer_name:
         raise HTTPException(400, "Customer name is required")
 
-    if not isinstance(customer_phone, str) or not customer_phone.strip():
+    if not customer_phone:
         raise HTTPException(400, "Customer phone is required")
 
     phone_digits = "".join(
@@ -139,9 +170,6 @@ async def create_order(
         raise HTTPException(400, "Invalid Ukrainian phone number")
 
     if customer_email is not None:
-        if not isinstance(customer_email, str):
-            raise HTTPException(400, "Invalid email")
-
         customer_email = customer_email.strip() or None
 
         if customer_email and (
@@ -150,20 +178,18 @@ async def create_order(
         ):
             raise HTTPException(400, "Invalid email")
 
-    if isinstance(branch_id, bool) or not isinstance(branch_id, int):
-        raise HTTPException(400, "Invalid branch")
-
-    try:
-        fulfillment_type = FulfillmentType(fulfillment_type)
-    except (ValueError, TypeError):
-        raise HTTPException(400, "Invalid fulfillment type")
-
     if fulfillment_type == FulfillmentType.DELIVERY:
         if not isinstance(delivery_address, str) or not delivery_address.strip():
             raise HTTPException(400, "Delivery address is required")
+
         delivery_address = delivery_address.strip()
     else:
         delivery_address = None
+
+    try:
+        items = json.loads(items_json)
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Invalid order items")
 
     if not isinstance(items, list) or not items:
         raise HTTPException(400, "Order must contain at least one item")
@@ -276,8 +302,8 @@ async def create_order(
         branch_id=branch_id,
         status=OrderStatus.PENDING,
         fulfillment_type=fulfillment_type,
-        customer_name=customer_name.strip(),
-        customer_phone=customer_phone.strip(),
+        customer_name=customer_name,
+        customer_phone=customer_phone,
         customer_email=customer_email,
         delivery_address=delivery_address,
         total_price=total_price,
@@ -288,6 +314,7 @@ async def create_order(
         session.add(order)
         session.commit()
         session.refresh(order)
+
     except SQLAlchemyError:
         session.rollback()
         raise HTTPException(
@@ -295,9 +322,7 @@ async def create_order(
             detail="Could not create order",
         )
 
-    return {
-        "message": "Order created successfully",
-        "order_id": order.id,
-        "status": order.status.value,
-        "total_price": str(order.total_price),
-    }
+    return RedirectResponse(
+        url=f"/orders/{order.id}/receipt",
+        status_code=303,
+    )

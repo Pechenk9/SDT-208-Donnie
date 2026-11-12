@@ -239,12 +239,12 @@ function showToast(message, type = 'success') {
 }
 
 
-orderForm.addEventListener('submit', async event => {
-    event.preventDefault();
 
+orderForm.addEventListener('submit', event => {
     const cart = getCart();
 
     if (cart.length === 0) {
+        event.preventDefault();
         showToast('Your basket is empty!', 'error');
         return;
     }
@@ -253,6 +253,7 @@ orderForm.addEventListener('submit', async event => {
     const phoneDigits = phone.replace(/\D/g, '');
 
     if (!/^(0\d{9}|380\d{9})$/.test(phoneDigits)) {
+        event.preventDefault();
         showToast('Please enter a valid Ukrainian phone number.', 'error');
         return;
     }
@@ -260,6 +261,7 @@ orderForm.addEventListener('submit', async event => {
     const branchId = Number(document.getElementById('branch').value);
 
     if (!branchId) {
+        event.preventDefault();
         showToast('Please select a branch.', 'error');
         return;
     }
@@ -268,60 +270,27 @@ orderForm.addEventListener('submit', async event => {
         fulfillmentSelect.value === 'delivery' &&
         !addressInput.value.trim()
     ) {
+        event.preventDefault();
         showToast('Please enter your delivery address.', 'error');
         return;
     }
 
-    const orderData = {
-        customer_name: document.getElementById('customer-name').value.trim(),
-        customer_phone: phone,
-        customer_email: document.getElementById('email').value.trim() || null,
-        branch_id: branchId,
-        fulfillment_type: fulfillmentSelect.value,
-        delivery_address: fulfillmentSelect.value === 'delivery'
-            ? addressInput.value.trim()
-            : null,
-        items: cart.map(item => ({
+    const cartItemsInput = document.getElementById('cart-items');
+
+    cartItemsInput.value = JSON.stringify(
+        cart.map(item => ({
             product_id: Number(item.product_id),
             quantity: Number(item.quantity)
         }))
-    };
+    );
 
-    console.log('Sending order:', orderData);
-
-    try {
-        const response = await fetch('/orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orderData)
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.detail || 'Could not create order');
-        }
-
-        console.log('Order created:', result);
-
-        localStorage.removeItem('cart');
-        renderCart();
-
-        orderForm.reset();
-        addressGroup.hidden = true;
-        addressInput.required = false;
-
-        showToast(
-            `Order #${result.order_id} created successfully!`
-        );
-
-    } catch (error) {
-        console.error('Order submission failed:', error);
-        showToast(error.message, 'error');
-    }
+    console.log('Submitting order:', {
+        customer_name: document.getElementById('customer-name').value,
+        customer_phone: phone,
+        branch_id: branchId,
+        fulfillment_type: fulfillmentSelect.value,
+        items: cart
+    });
 });
-
 
 renderCart();

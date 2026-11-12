@@ -1,0 +1,106 @@
+
+{% extends "base.html" %}
+
+{% block title %}Order Receipt | Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/receipt.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="receipt-page">
+    <div class="receipt">
+
+        <div class="receipt-header">
+            <div class="receipt-logo">DONNIE</div>
+            <div class="receipt-subtitle">DONUT MARKET</div>
+
+            <div class="success-icon">✓</div>
+            <h1>Thank you for your order!</h1>
+            <p>Your order has been successfully placed.</p>
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <div class="receipt-info">
+            <div>
+                <span>Order number</span>
+                <strong>#{{ order.id }}</strong>
+            </div>
+
+            <div>
+                <span>Status</span>
+                <strong class="status">{{ order.status.value | title }}</strong>
+            </div>
+
+            <div>
+                <span>Customer</span>
+                <strong>{{ order.customer_name }}</strong>
+            </div>
+
+            <div>
+                <span>Phone</span>
+                <strong>{{ order.customer_phone }}</strong>
+            </div>
+
+            <div>
+                <span>Branch</span>
+                <strong>{{ order.branch.name }}, {{ order.branch.city }}</strong>
+            </div>
+
+            <div>
+                <span>Fulfillment</span>
+                <strong>{{ order.fulfillment_type.value | title }}</strong>
+            </div>
+
+            {% if order.delivery_address %}
+            <div>
+                <span>Delivery address</span>
+                <strong>{{ order.delivery_address }}</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <h2>Order details</h2>
+
+        <div class="receipt-items">
+            {% for item in order.items %}
+            <div class="receipt-item">
+                <div class="item-description">
+                    <strong>{{ item.name_snapshot }}</strong>
+                    <span>× {{ item.quantity }}</span>
+                </div>
+
+                <strong>
+                    {{ "%.2f"|format(item.unit_price * item.quantity) }} UAH
+                </strong>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <div class="receipt-total">
+            <span>Total</span>
+            <strong>{{ "%.2f"|format(order.total_price) }} UAH</strong>
+        </div>
+
+        <div class="receipt-footer">
+            <p>Thank you for choosing Donnie!</p>
+            <p>Fresh donuts, made with love.</p>
+
+            <a href="/store" class="back-button">
+                Back to store
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    localStorage.removeItem('cart');
+</script>
+{% endblock %}

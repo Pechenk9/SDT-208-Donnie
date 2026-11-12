@@ -19,12 +19,20 @@
             <div class="checkout-card">
                 <h2>Order Details</h2>
 
-                <form id="order-form">
+                <form id="order-form" method="POST" action="/orders">
+
+                    <input
+                        type="hidden"
+                        name="items_json"
+                        id="cart-items"
+                    >
+
                     <div class="input-group">
                         <label for="customer-name">Your Name</label>
                         <input
                             type="text"
                             id="customer-name"
+                            name="customer_name"
                             placeholder="Your name"
                             required
                         >
@@ -35,6 +43,7 @@
                         <input
                             type="tel"
                             id="phone"
+                            name="customer_phone"
                             placeholder="+380..."
                             required
                         >
@@ -45,13 +54,14 @@
                         <input
                             type="email"
                             id="email"
+                            name="customer_email"
                             placeholder="example@email.com"
                         >
                     </div>
 
                     <div class="input-group">
                         <label for="branch">Branch</label>
-                        <select id="branch" required>
+                        <select id="branch" name="branch_id" required>
                             <option value="">Select a branch</option>
                             {% for branch in branches %}
                             <option value="{{ branch.id }}">
@@ -63,7 +73,11 @@
 
                     <div class="input-group">
                         <label for="fulfillment-type">Fulfillment Type</label>
-                        <select id="fulfillment-type" required>
+                        <select
+                            id="fulfillment-type"
+                            name="fulfillment_type"
+                            required
+                        >
                             <option value="">Select an option</option>
                             <option value="pickup">Pickup</option>
                             <option value="delivery">Delivery</option>
@@ -75,6 +89,7 @@
                         <input
                             type="text"
                             id="address"
+                            name="delivery_address"
                             placeholder="Street, house, apartment"
                         >
                     </div>
@@ -102,4 +117,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', path='js/order.js') }}" defer></script>
+
 {% endblock %}
