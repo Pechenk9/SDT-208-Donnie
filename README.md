@@ -129,6 +129,8 @@ Configure cookie behavior with `SESSION_LIFETIME_SECONDS` and `SESSION_COOKIE_SE
 - Calculate order totals using prices stored in the database.
 - Save orders and their items in PostgreSQL.
 - Register customer accounts, sign in, and view a personal profile.
+- Network owners can assign branch managers and manage the shared product and ingredient catalogues from the Owner Panel.
+- Branch managers can manage product and ingredient availability only for their assigned branches; globally deactivated items are clearly flagged but remain manageable at branch level.
 
 ## Project Goal
 

@@ -3,12 +3,13 @@ import json
 from pathlib import Path
 import re
 from typing import Annotated
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.deps import (
@@ -30,10 +31,18 @@ from app.models import (
     OrderItem,
     OrderItemIngredient,
     OrderStatus,
+    IngredientGroup,
     Product,
     ProductIngredient,
     User,
     UserRole,
+    branch_managers,
+)
+from app.permissions import (
+    Permission,
+    get_managed_branches,
+    has_permission,
+    is_owner,
 )
 from app.config import get_session
 from app.security import hash_password, verify_password
@@ -236,8 +245,771 @@ def profile_page(
     return templates.TemplateResponse(
         request,
         "profile.html",
-        {"user": user},
+        {
+            "user": user,
+            "can_access_manager_panel": has_permission(
+                user,
+                Permission.MANAGER_PANEL,
+            ),
+            "can_access_owner_panel": has_permission(
+                user,
+                Permission.OWNER_PANEL,
+            ),
+        },
     )
+
+
+_MANAGER_NOTICES = {
+    "product-added": "Product added to this branch.",
+    "product-updated": "Product availability updated.",
+    "product-removed": "Product removed from this branch.",
+    "ingredient-added": "Ingredient added to this branch.",
+    "ingredient-updated": "Ingredient availability updated.",
+    "ingredient-removed": "Ingredient removed from this branch.",
+}
+
+
+def _require_manager_branch(
+    user: User,
+    branch_id: int,
+    permission: Permission,
+) -> Branch:
+    if not has_permission(user, permission):
+        raise HTTPException(403, "Manager permission required")
+
+    branch = next(
+        (
+            branch
+            for branch in get_managed_branches(user)
+            if branch.id == branch_id
+        ),
+        None,
+    )
+    if branch is None:
+        raise HTTPException(
+            403,
+            "You are not assigned to this branch",
+        )
+    return branch
+
+
+def _commit_manager_change(session: Session) -> None:
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            409,
+            "The branch association conflicts with existing data",
+        )
+    except SQLAlchemyError:
+        session.rollback()
+        raise HTTPException(
+            500,
+            "Could not save branch changes",
+        )
+
+
+def _manager_redirect(branch_id: int, notice_code: str) -> RedirectResponse:
+    query = urlencode(
+        {
+            "branch_id": branch_id,
+            "notice": notice_code,
+        }
+    )
+    return RedirectResponse(
+        url=f"/manager?{query}",
+        status_code=303,
+    )
+
+
+@app.get("/manager")
+def manager_panel(
+    request: Request,
+    branch_id: int | None = None,
+    notice: str | None = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    if not has_permission(user, Permission.MANAGER_PANEL):
+        raise HTTPException(403, "Manager panel access required")
+
+    managed_branches = get_managed_branches(user)
+    if not managed_branches:
+        raise HTTPException(403, "No branches are assigned to this manager")
+
+    if branch_id is None:
+        selected_branch = managed_branches[0]
+    else:
+        selected_branch = _require_manager_branch(
+            user,
+            branch_id,
+            Permission.MANAGER_PANEL,
+        )
+
+    product_rows = session.execute(
+        select(BranchProduct, Product)
+        .join(Product, Product.id == BranchProduct.product_id)
+        .where(BranchProduct.branch_id == selected_branch.id)
+        .order_by(Product.name)
+    ).all()
+    branch_products = [
+        {"association": association, "product": product}
+        for association, product in product_rows
+    ]
+    associated_product_ids = {
+        association.product_id
+        for association, _ in product_rows
+    }
+    catalogue_products = session.scalars(
+        select(Product)
+        .where(~Product.id.in_(associated_product_ids))
+        .order_by(Product.name)
+    ).all()
+
+    ingredient_rows = session.execute(
+        select(BranchIngredient, Ingredient)
+        .join(Ingredient, Ingredient.id == BranchIngredient.ingredient_id)
+        .where(BranchIngredient.branch_id == selected_branch.id)
+        .order_by(Ingredient.name)
+    ).all()
+    branch_ingredients = [
+        {"association": association, "ingredient": ingredient}
+        for association, ingredient in ingredient_rows
+    ]
+    associated_ingredient_ids = {
+        association.ingredient_id
+        for association, _ in ingredient_rows
+    }
+    catalogue_ingredients = session.scalars(
+        select(Ingredient)
+        .where(~Ingredient.id.in_(associated_ingredient_ids))
+        .order_by(Ingredient.name)
+    ).all()
+
+    return templates.TemplateResponse(
+        request,
+        "manager_dashboard.html",
+        {
+            "managed_branches": managed_branches,
+            "selected_branch": selected_branch,
+            "branch_products": branch_products,
+            "catalogue_products": catalogue_products,
+            "branch_ingredients": branch_ingredients,
+            "catalogue_ingredients": catalogue_ingredients,
+            "notice": _MANAGER_NOTICES.get(notice),
+        },
+    )
+
+
+@app.post("/manager/products/add")
+def add_branch_product(
+    branch_id: Annotated[int, Form(gt=0)],
+    product_id: Annotated[int, Form(gt=0)],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(
+        user,
+        branch_id,
+        Permission.UPDATE_PRODUCT_AVAILABILITY,
+    )
+    product = session.get(Product, product_id)
+    if product is None:
+        raise HTTPException(404, "Product not found")
+
+    association = session.get(BranchProduct, (branch.id, product.id))
+    if association is not None:
+        raise HTTPException(409, "Product is already associated with this branch")
+
+    session.add(
+        BranchProduct(
+            branch_id=branch.id,
+            product_id=product.id,
+            is_available=True,
+            price=None,
+        )
+    )
+    _commit_manager_change(session)
+    return _manager_redirect(branch.id, "product-added")
+
+
+@app.post("/manager/products/{product_id}/availability")
+def update_branch_product_availability(
+    product_id: int,
+    branch_id: Annotated[int, Form(gt=0)],
+    is_available: Annotated[bool, Form()],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(
+        user,
+        branch_id,
+        Permission.UPDATE_PRODUCT_AVAILABILITY,
+    )
+    association = session.scalar(
+        select(BranchProduct).where(
+            BranchProduct.branch_id == branch.id,
+            BranchProduct.product_id == product_id,
+        )
+    )
+    if association is None:
+        raise HTTPException(404, "Product association not found")
+
+    association.is_available = is_available
+    _commit_manager_change(session)
+    return _manager_redirect(branch.id, "product-updated")
+
+
+@app.post("/manager/products/{product_id}/remove")
+def remove_branch_product(
+    product_id: int,
+    branch_id: Annotated[int, Form(gt=0)],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(
+        user,
+        branch_id,
+        Permission.UPDATE_PRODUCT_AVAILABILITY,
+    )
+    association = session.scalar(
+        select(BranchProduct).where(
+            BranchProduct.branch_id == branch.id,
+            BranchProduct.product_id == product_id,
+        )
+    )
+    if association is None:
+        raise HTTPException(404, "Product association not found")
+
+    session.delete(association)
+    _commit_manager_change(session)
+    return _manager_redirect(branch.id, "product-removed")
+
+
+@app.post("/manager/ingredients/add")
+def add_branch_ingredient(
+    branch_id: Annotated[int, Form(gt=0)],
+    ingredient_id: Annotated[int, Form(gt=0)],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(
+        user,
+        branch_id,
+        Permission.UPDATE_INGREDIENT_AVAILABILITY,
+    )
+    ingredient = session.get(Ingredient, ingredient_id)
+    if ingredient is None:
+        raise HTTPException(404, "Ingredient not found")
+
+    association = session.get(
+        BranchIngredient,
+        (branch.id, ingredient.id),
+    )
+    if association is not None:
+        raise HTTPException(
+            409,
+            "Ingredient is already associated with this branch",
+        )
+
+    session.add(
+        BranchIngredient(
+            branch_id=branch.id,
+            ingredient_id=ingredient.id,
+            is_available=True,
+        )
+    )
+    _commit_manager_change(session)
+    return _manager_redirect(branch.id, "ingredient-added")
+
+
+@app.post("/manager/ingredients/{ingredient_id}/availability")
+def update_branch_ingredient_availability(
+    ingredient_id: int,
+    branch_id: Annotated[int, Form(gt=0)],
+    is_available: Annotated[bool, Form()],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(
+        user,
+        branch_id,
+        Permission.UPDATE_INGREDIENT_AVAILABILITY,
+    )
+    association = session.scalar(
+        select(BranchIngredient).where(
+            BranchIngredient.branch_id == branch.id,
+            BranchIngredient.ingredient_id == ingredient_id,
+        )
+    )
+    if association is None:
+        raise HTTPException(404, "Ingredient association not found")
+
+    association.is_available = is_available
+    _commit_manager_change(session)
+    return _manager_redirect(branch.id, "ingredient-updated")
+
+
+@app.post("/manager/ingredients/{ingredient_id}/remove")
+def remove_branch_ingredient(
+    ingredient_id: int,
+    branch_id: Annotated[int, Form(gt=0)],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(
+        user,
+        branch_id,
+        Permission.UPDATE_INGREDIENT_AVAILABILITY,
+    )
+    association = session.scalar(
+        select(BranchIngredient).where(
+            BranchIngredient.branch_id == branch.id,
+            BranchIngredient.ingredient_id == ingredient_id,
+        )
+    )
+    if association is None:
+        raise HTTPException(404, "Ingredient association not found")
+
+    session.delete(association)
+    _commit_manager_change(session)
+    return _manager_redirect(branch.id, "ingredient-removed")
+
+
+_OWNER_NOTICES = {
+    "manager-assigned": "Manager assigned to the branch.",
+    "manager-removed": "Manager assignment removed.",
+    "product-created": "Product added to the global catalogue.",
+    "product-updated": "Global product details updated.",
+    "ingredient-created": "Ingredient added to the global catalogue.",
+    "ingredient-updated": "Global ingredient details updated.",
+}
+
+_OWNER_ERRORS = {
+    "invalid-form": "Check the form values and try again.",
+    "duplicate": "A catalogue item with that name already exists.",
+    "not-found": "The requested record was not found.",
+    "invalid-assignment": "Select an existing customer or manager and branch.",
+    "already-assigned": "This user is already assigned to that branch.",
+    "assignment-not-found": "That manager is not assigned to this branch.",
+    "group-not-found": "Select an existing ingredient group.",
+    "conflict": "The change conflicts with existing data and was not saved.",
+    "save-failed": "The change could not be saved. Please try again.",
+}
+
+
+def _require_owner(user: User) -> None:
+    if not is_owner(user) or not has_permission(user, Permission.OWNER_PANEL):
+        raise HTTPException(403, "Owner panel access required")
+
+
+def _owner_redirect(
+    section: str,
+    *,
+    notice: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    query = {}
+    if notice is not None:
+        query["notice"] = notice
+    if error is not None:
+        query["error"] = error
+    url = "/owner"
+    if query:
+        url += f"?{urlencode(query)}"
+    return RedirectResponse(
+        url=f"{url}#{section}",
+        status_code=303,
+    )
+
+
+def _commit_owner_change(
+    session: Session,
+    section: str,
+    notice: str,
+) -> RedirectResponse:
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        return _owner_redirect(section, error="conflict")
+    except SQLAlchemyError:
+        session.rollback()
+        return _owner_redirect(section, error="save-failed")
+    return _owner_redirect(section, notice=notice)
+
+
+def _parse_owner_id(value: str) -> int | None:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _parse_owner_money(value: str) -> Decimal | None:
+    try:
+        amount = Decimal(value.strip())
+    except (AttributeError, InvalidOperation, ValueError):
+        return None
+    if not amount.is_finite() or amount < 0 or amount > Decimal("99999999.99"):
+        return None
+    try:
+        rounded_amount = amount.quantize(Decimal("0.01"))
+    except InvalidOperation:
+        return None
+    if amount != rounded_amount:
+        return None
+    return amount
+
+
+def _product_form_values(
+    name: str,
+    description: str,
+    base_price: str,
+    calories: str,
+    image_url: str,
+    is_active: bool,
+) -> dict | None:
+    name = name.strip()
+    price = _parse_owner_money(base_price)
+    calories_text = calories.strip()
+    parsed_calories = None
+    if calories_text:
+        try:
+            parsed_calories = int(calories_text)
+        except ValueError:
+            return None
+        if not 0 <= parsed_calories <= 2147483647:
+            return None
+
+    if not name or len(name) > 150 or price is None:
+        return None
+
+    return {
+        "name": name,
+        "description": description.strip() or None,
+        "base_price": price,
+        "calories": parsed_calories,
+        "image_url": image_url.strip() or None,
+        "is_active": is_active,
+    }
+
+
+def _ingredient_form_values(
+    name: str,
+    description: str,
+    extra_price: str,
+    group_id: str,
+    is_active: bool,
+) -> tuple[dict | None, int | None]:
+    name = name.strip()
+    price = _parse_owner_money(extra_price)
+    parsed_group_id = _parse_owner_id(group_id)
+    if not name or len(name) > 150 or price is None or parsed_group_id is None:
+        return None, None
+
+    return (
+        {
+            "name": name,
+            "description": description.strip() or None,
+            "extra_price": price,
+            "group_id": parsed_group_id,
+            "is_active": is_active,
+        },
+        parsed_group_id,
+    )
+
+
+@app.get("/owner")
+def owner_panel(
+    request: Request,
+    notice: str | None = None,
+    error: str | None = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+
+    branches = session.scalars(
+        select(Branch)
+        .options(selectinload(Branch.managers))
+        .order_by(Branch.city, Branch.name, Branch.id)
+    ).all()
+    owner_users = session.scalars(
+        select(User)
+        .where(User.role.in_((UserRole.CUSTOMER, UserRole.MANAGER)))
+        .options(selectinload(User.managed_branches))
+        .order_by(User.last_name, User.first_name, User.id)
+    ).all()
+    managers = [
+        account for account in owner_users
+        if account.role == UserRole.MANAGER
+    ]
+    staff_branches = []
+    for branch in branches:
+        branch_managers_list = [
+            manager
+            for manager in branch.managers
+            if manager.role == UserRole.MANAGER
+        ]
+        assigned_ids = {manager.id for manager in branch_managers_list}
+        staff_branches.append(
+            {
+                "branch": branch,
+                "managers": branch_managers_list,
+                "available_users": [
+                    account
+                    for account in owner_users
+                    if account.id not in assigned_ids
+                ],
+            }
+        )
+    products = session.scalars(
+        select(Product).order_by(Product.name, Product.id)
+    ).all()
+    ingredient_groups = session.scalars(
+        select(IngredientGroup).order_by(IngredientGroup.name)
+    ).all()
+    ingredients = session.scalars(
+        select(Ingredient)
+        .options(joinedload(Ingredient.group))
+        .order_by(Ingredient.name, Ingredient.id)
+    ).all()
+
+    return templates.TemplateResponse(
+        request,
+        "management_panel.html",
+        {
+            "user": user,
+            "staff_branches": staff_branches,
+            "owner_users": owner_users,
+            "managers": managers,
+            "products": products,
+            "ingredients": ingredients,
+            "ingredient_groups": ingredient_groups,
+            "notice": _OWNER_NOTICES.get(notice),
+            "error": _OWNER_ERRORS.get(error),
+        },
+    )
+
+
+@app.post("/owner/staff/assign")
+def owner_assign_manager(
+    branch_id: str = Form(default=""),
+    user_id: str = Form(default=""),
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+    parsed_branch_id = _parse_owner_id(branch_id)
+    parsed_user_id = _parse_owner_id(user_id)
+    if parsed_branch_id is None or parsed_user_id is None:
+        return _owner_redirect("staff", error="invalid-assignment")
+
+    branch = session.get(Branch, parsed_branch_id)
+    account = session.get(User, parsed_user_id)
+    if (
+        branch is None
+        or account is None
+        or account.role not in (UserRole.CUSTOMER, UserRole.MANAGER)
+    ):
+        return _owner_redirect("staff", error="invalid-assignment")
+
+    assignment = session.execute(
+        select(branch_managers.c.user_id).where(
+            branch_managers.c.user_id == account.id,
+            branch_managers.c.branch_id == branch.id,
+        )
+    ).first()
+    if assignment is not None:
+        return _owner_redirect("staff", error="already-assigned")
+
+    account.role = UserRole.MANAGER
+    branch.managers.append(account)
+    return _commit_owner_change(session, "staff", "manager-assigned")
+
+
+@app.post("/owner/staff/remove")
+def owner_remove_manager(
+    branch_id: str = Form(default=""),
+    user_id: str = Form(default=""),
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+    parsed_branch_id = _parse_owner_id(branch_id)
+    parsed_user_id = _parse_owner_id(user_id)
+    if parsed_branch_id is None or parsed_user_id is None:
+        return _owner_redirect("staff", error="invalid-assignment")
+
+    branch = session.get(Branch, parsed_branch_id)
+    account = session.get(User, parsed_user_id)
+    if (
+        branch is None
+        or account is None
+        or account.role != UserRole.MANAGER
+    ):
+        return _owner_redirect("staff", error="assignment-not-found")
+
+    result = session.execute(
+        delete(branch_managers).where(
+            branch_managers.c.user_id == account.id,
+            branch_managers.c.branch_id == branch.id,
+        )
+    )
+    if result.rowcount != 1:
+        session.rollback()
+        return _owner_redirect("staff", error="assignment-not-found")
+
+    remaining_assignments = session.scalar(
+        select(func.count())
+        .select_from(branch_managers)
+        .where(branch_managers.c.user_id == account.id)
+    )
+    if remaining_assignments == 0:
+        account.role = UserRole.CUSTOMER
+
+    return _commit_owner_change(session, "staff", "manager-removed")
+
+
+@app.post("/owner/products/create")
+def owner_create_product(
+    name: str = Form(default=""),
+    description: str = Form(default=""),
+    base_price: str = Form(default=""),
+    calories: str = Form(default=""),
+    image_url: str = Form(default=""),
+    is_active: bool = Form(default=False),
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+    values = _product_form_values(
+        name, description, base_price, calories, image_url, is_active
+    )
+    if values is None:
+        return _owner_redirect("products", error="invalid-form")
+
+    duplicate = session.scalar(
+        select(Product.id).where(func.lower(Product.name) == values["name"].lower())
+    )
+    if duplicate is not None:
+        return _owner_redirect("products", error="duplicate")
+
+    session.add(Product(**values))
+    return _commit_owner_change(session, "products", "product-created")
+
+
+@app.post("/owner/products/{product_id}/edit")
+def owner_edit_product(
+    product_id: int,
+    name: str = Form(default=""),
+    description: str = Form(default=""),
+    base_price: str = Form(default=""),
+    calories: str = Form(default=""),
+    image_url: str = Form(default=""),
+    is_active: bool = Form(default=False),
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+    product = session.get(Product, product_id)
+    if product is None:
+        return _owner_redirect("products", error="not-found")
+
+    values = _product_form_values(
+        name, description, base_price, calories, image_url, is_active
+    )
+    if values is None:
+        return _owner_redirect("products", error="invalid-form")
+
+    duplicate = session.scalar(
+        select(Product.id).where(
+            func.lower(Product.name) == values["name"].lower(),
+            Product.id != product.id,
+        )
+    )
+    if duplicate is not None:
+        return _owner_redirect("products", error="duplicate")
+
+    for field, value in values.items():
+        setattr(product, field, value)
+    return _commit_owner_change(session, "products", "product-updated")
+
+
+@app.post("/owner/ingredients/create")
+def owner_create_ingredient(
+    name: str = Form(default=""),
+    description: str = Form(default=""),
+    extra_price: str = Form(default=""),
+    group_id: str = Form(default=""),
+    is_active: bool = Form(default=False),
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+    values, parsed_group_id = _ingredient_form_values(
+        name, description, extra_price, group_id, is_active
+    )
+    if values is None or parsed_group_id is None:
+        return _owner_redirect("ingredients", error="invalid-form")
+
+    group = session.get(IngredientGroup, parsed_group_id)
+    if group is None:
+        return _owner_redirect("ingredients", error="group-not-found")
+
+    duplicate = session.scalar(
+        select(Ingredient.id).where(
+            func.lower(Ingredient.name) == values["name"].lower()
+        )
+    )
+    if duplicate is not None:
+        return _owner_redirect("ingredients", error="duplicate")
+
+    session.add(Ingredient(**values))
+    return _commit_owner_change(session, "ingredients", "ingredient-created")
+
+
+@app.post("/owner/ingredients/{ingredient_id}/edit")
+def owner_edit_ingredient(
+    ingredient_id: int,
+    name: str = Form(default=""),
+    description: str = Form(default=""),
+    extra_price: str = Form(default=""),
+    group_id: str = Form(default=""),
+    is_active: bool = Form(default=False),
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    _require_owner(user)
+    ingredient = session.get(Ingredient, ingredient_id)
+    if ingredient is None:
+        return _owner_redirect("ingredients", error="not-found")
+
+    values, parsed_group_id = _ingredient_form_values(
+        name, description, extra_price, group_id, is_active
+    )
+    if values is None or parsed_group_id is None:
+        return _owner_redirect("ingredients", error="invalid-form")
+
+    group = session.get(IngredientGroup, parsed_group_id)
+    if group is None:
+        return _owner_redirect("ingredients", error="group-not-found")
+
+    duplicate = session.scalar(
+        select(Ingredient.id).where(
+            func.lower(Ingredient.name) == values["name"].lower(),
+            Ingredient.id != ingredient.id,
+        )
+    )
+    if duplicate is not None:
+        return _owner_redirect("ingredients", error="duplicate")
+
+    for field, value in values.items():
+        setattr(ingredient, field, value)
+    return _commit_owner_change(session, "ingredients", "ingredient-updated")
 
 
 @app.post("/logout")
@@ -462,7 +1234,7 @@ def product_detail(
         "is_available": (
             None
             if branch is None
-            else branch_product is None or branch_product.is_available
+            else branch_product is not None and branch_product.is_available
         ),
         "ingredients": ingredients,
     }

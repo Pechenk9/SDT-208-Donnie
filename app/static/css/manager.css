@@ -1,0 +1,210 @@
+.manager-page {
+  box-sizing: border-box;
+  width: min(100%, 1240px);
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px) 20px 80px;
+}
+
+.manager-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.manager-header {
+  padding: clamp(24px, 5vw, 42px);
+  color: #404040;
+  background: linear-gradient(160deg, #fff 0%, #ffe8f2 100%);
+  border: 2px solid rgba(237, 90, 160, 0.22);
+  border-radius: 20px;
+}
+
+.manager-eyebrow,
+.manager-card-eyebrow {
+  color: #007ec2;
+  font-family: "M PLUS 1p", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.manager-header h1 {
+  margin-top: 8px;
+  color: #ed5aa0;
+  font-family: "Modak", cursive;
+  font-size: clamp(38px, 7vw, 56px);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.manager-current-branch {
+  margin-top: 12px;
+  font-size: 17px;
+}
+
+.manager-branch-notice {
+  margin-top: 16px;
+  padding: 12px 16px;
+  color: #005f91;
+  background: #e7f5fc;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.manager-branch-picker,
+.manager-add-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.manager-branch-picker {
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid rgba(0, 126, 194, 0.2);
+  border-radius: 14px;
+}
+
+.manager-branch-picker label {
+  font-weight: 700;
+}
+
+.manager-branch-picker select,
+.manager-add-form select {
+  flex: 1 1 180px;
+  min-height: 42px;
+  padding: 8px 12px;
+  color: #404040;
+  background: #fff;
+  border: 1px solid #c8dce7;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.manager-success {
+  padding: 12px 16px;
+  color: #22623c;
+  background: #e8f5eb;
+  border: 1px solid #b7dfc2;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.manager-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.manager-card {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 28px);
+  background: #fff;
+  border: 2px solid rgba(237, 90, 160, 0.22);
+  border-radius: 18px;
+}
+
+.manager-card-header {
+  margin-bottom: 16px;
+}
+
+.manager-card h2 {
+  margin-top: 4px;
+  color: #007ec2;
+  font-family: "M PLUS 1p", sans-serif;
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.manager-item-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manager-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(0, 126, 194, 0.15);
+}
+
+.manager-item-details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.manager-item-details h3,
+.manager-add h3 {
+  color: #404040;
+  font-family: "M PLUS 1p", sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.manager-owner-warning {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  color: #765400;
+  background: #fff4d6;
+  border: 1px solid #e8cc78;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.manager-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manager-item-actions form {
+  margin: 0;
+}
+
+.manager-add {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 2px solid rgba(237, 90, 160, 0.2);
+}
+
+.manager-add-form {
+  margin-top: 10px;
+}
+
+.manager-empty {
+  padding: 14px 0;
+  color: #666;
+}
+
+@media (max-width: 800px) {
+  .manager-sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .manager-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .manager-item-actions,
+  .manager-item-actions form,
+  .manager-item-actions button {
+    width: 100%;
+  }
+
+  .manager-add-form select {
+    flex-basis: 100%;
+  }
+}

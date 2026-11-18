@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from app.models import (
     Branch,
+    BranchIngredient,
     BranchProduct,
     IngredientGroup,
     Ingredient,
@@ -26,6 +27,7 @@ def seed_database(session):
     seed_catalog(session)
     seed_branches(session)
     session.flush()
+    seed_branch_ingredients(session)
     seed_branch_products(session)
 
 
@@ -204,6 +206,38 @@ def seed_branch_products(session):
                     product_id=product.id,
                     is_available=is_available,
                     price=Decimal(price) if price is not None else None,
+                )
+            )
+            existing_links.add(link_key)
+
+
+def seed_branch_ingredients(session):
+    branches = session.scalars(
+        select(Branch).order_by(Branch.id)
+    ).all()
+    ingredients = session.scalars(
+        select(Ingredient).order_by(Ingredient.id)
+    ).all()
+    existing_links = set(
+        session.execute(
+            select(
+                BranchIngredient.branch_id,
+                BranchIngredient.ingredient_id,
+            )
+        ).all()
+    )
+
+    for branch in branches:
+        for ingredient in ingredients:
+            link_key = (branch.id, ingredient.id)
+            if link_key in existing_links:
+                continue
+
+            session.add(
+                BranchIngredient(
+                    branch_id=branch.id,
+                    ingredient_id=ingredient.id,
+                    is_available=True,
                 )
             )
             existing_links.add(link_key)

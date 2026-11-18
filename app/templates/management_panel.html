@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Network Owner Panel - Donnie{% endblock %}
+
+{% block description %}Manage Donnie network staff and shared catalogue.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/owner.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="owner-page">
+    <div class="owner-dashboard">
+        <header class="owner-header">
+            <p class="owner-eyebrow">DONNIE NETWORK MANAGEMENT</p>
+            <h1>Network Owner Panel</h1>
+            <p>Manage shared catalogue records and staff assignments across the network.</p>
+            <p class="owner-boundary-notice" role="status">
+                Product and ingredient availability at each branch remains under Branch Manager control.
+            </p>
+        </header>
+
+        <nav class="owner-navigation" aria-label="Owner panel sections">
+            <a href="#overview">Overview</a>
+            <a href="#staff">Staff Management</a>
+            <a href="#products">Products</a>
+            <a href="#ingredients">Ingredients</a>
+        </nav>
+
+        {% if notice %}
+        <p class="owner-message owner-message--success" role="status">{{ notice }}</p>
+        {% endif %}
+        {% if error %}
+        <p class="owner-message owner-message--error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        <section class="owner-section" id="overview" aria-labelledby="overview-title">
+            <div class="owner-section-heading">
+                <p class="owner-eyebrow">NETWORK AT A GLANCE</p>
+                <h2 id="overview-title">Overview</h2>
+            </div>
+            <div class="owner-stats">
+                <div class="owner-stat"><strong>{{ staff_branches|length }}</strong><span>Branches</span></div>
+                <div class="owner-stat"><strong>{{ managers|length }}</strong><span>Managers</span></div>
+                <div class="owner-stat"><strong>{{ products|length }}</strong><span>Products</span></div>
+                <div class="owner-stat"><strong>{{ ingredients|length }}</strong><span>Ingredients</span></div>
+            </div>
+            <p class="owner-help">
+                Owners manage shared catalogue details. Branch managers control whether catalogue items are used at their assigned branches.
+            </p>
+        </section>
+
+        <section class="owner-section" id="staff" aria-labelledby="staff-title">
+            <div class="owner-section-heading">
+                <p class="owner-eyebrow">BRANCH ACCESS</p>
+                <h2 id="staff-title">Staff Management</h2>
+                <p>Assign existing customer or manager accounts to branches. Assignments never delete user accounts.</p>
+            </div>
+
+            {% if staff_branches %}
+            <div class="owner-branch-grid">
+                {% for item in staff_branches %}
+                <article class="owner-card">
+                    <header class="owner-card-header">
+                        <div>
+                            <h3>{{ item.branch.name }}</h3>
+                            <p>{{ item.branch.city }}</p>
+                        </div>
+                    </header>
+
+                    {% if item.managers %}
+                    <ul class="owner-staff-list">
+                        {% for manager in item.managers %}
+                        <li>
+                            <div>
+                                <strong>{{ manager.first_name }} {{ manager.last_name }}</strong>
+                                <span>{{ manager.email }}</span>
+                            </div>
+                            <form method="post" action="/owner/staff/remove"
+                                  onsubmit="return confirm('Remove this manager assignment?')">
+                                <input type="hidden" name="branch_id" value="{{ item.branch.id }}">
+                                <input type="hidden" name="user_id" value="{{ manager.id }}">
+                                <button class="btn btn--danger btn--small" type="submit">Remove assignment</button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="owner-empty">No managers are assigned to this branch.</p>
+                    {% endif %}
+
+                    {% if item.available_users %}
+                    <form class="owner-inline-form" method="post" action="/owner/staff/assign">
+                        <input type="hidden" name="branch_id" value="{{ item.branch.id }}">
+                        <label for="assign-user-{{ item.branch.id }}">Assign an existing user</label>
+                        <select id="assign-user-{{ item.branch.id }}" name="user_id" required>
+                            {% for account in item.available_users %}
+                            <option value="{{ account.id }}">
+                                {{ account.first_name }} {{ account.last_name }} — {{ account.email }}
+                                {% if account.role.value == "manager" %}(manager){% else %}(customer){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--blue btn--small" type="submit">Assign manager</button>
+                    </form>
+                    {% else %}
+                    <p class="owner-empty">There are no eligible users to assign.</p>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="owner-empty">No branches are available.</p>
+            {% endif %}
+
+            <div class="owner-subsection">
+                <h3>Managers across branches</h3>
+                {% if managers %}
+                <ul class="owner-roster">
+                    {% for manager in managers %}
+                    <li>
+                        <strong>{{ manager.first_name }} {{ manager.last_name }}</strong>
+                        <span>{{ manager.email }}</span>
+                        <span>
+                            {% if manager.managed_branches %}
+                            {% for branch in manager.managed_branches %}
+                            {{ branch.name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                            {% else %}
+                            No branch assignments
+                            {% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="owner-empty">No managers have been assigned yet.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="owner-section" id="products" aria-labelledby="products-title">
+            <div class="owner-section-heading">
+                <p class="owner-eyebrow">SHARED CATALOGUE</p>
+                <h2 id="products-title">Products</h2>
+                <p>These details are shared across branches. Creating a product does not add it to any branch.</p>
+            </div>
+
+            <details class="owner-card owner-create" open>
+                <summary>Create a product</summary>
+                <form class="owner-form" method="post" action="/owner/products/create">
+                    <label>Name <input name="name" maxlength="150" required></label>
+                    <label>Description <textarea name="description" rows="2"></textarea></label>
+                    <div class="owner-form-row">
+                        <label>Base price <input name="base_price" type="number" min="0" step="0.01" required></label>
+                        <label>Calories <input name="calories" type="number" min="0" step="1"></label>
+                    </div>
+                    <label>Image URL or path <input name="image_url" type="text"></label>
+                    <label class="owner-checkbox"><input name="is_active" type="checkbox" value="true" checked> Active</label>
+                    <button class="btn btn--blue" type="submit">Create product</button>
+                </form>
+            </details>
+
+            {% if products %}
+            <div class="owner-catalogue-list">
+                {% for product in products %}
+                <details class="owner-card owner-record">
+                    <summary>
+                        <span>{{ product.name }}</span>
+                        <span class="owner-record-meta">
+                            {{ "$%.2f"|format(product.base_price) }} · {{ "Active" if product.is_active else "Inactive" }}
+                        </span>
+                    </summary>
+                    <form class="owner-form" method="post" action="/owner/products/{{ product.id }}/edit">
+                        <label>Name <input name="name" value="{{ product.name }}" maxlength="150" required></label>
+                        <label>Description <textarea name="description" rows="2">{{ product.description or "" }}</textarea></label>
+                        <div class="owner-form-row">
+                            <label>Base price <input name="base_price" type="number" min="0" step="0.01" value="{{ product.base_price }}" required></label>
+                            <label>Calories <input name="calories" type="number" min="0" step="1" value="{{ product.calories if product.calories is not none else "" }}"></label>
+                        </div>
+                        <label>Image URL or path <input name="image_url" type="text" value="{{ product.image_url or "" }}"></label>
+                        <label class="owner-checkbox">
+                            <input name="is_active" type="checkbox" value="true"{% if product.is_active %} checked{% endif %}> Active
+                        </label>
+                        <button class="btn btn--blue btn--small" type="submit">Save product</button>
+                    </form>
+                </details>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="owner-empty">No products are in the catalogue yet.</p>
+            {% endif %}
+        </section>
+
+        <section class="owner-section" id="ingredients" aria-labelledby="ingredients-title">
+            <div class="owner-section-heading">
+                <p class="owner-eyebrow">SHARED CATALOGUE</p>
+                <h2 id="ingredients-title">Ingredients</h2>
+                <p>Ingredient edits preserve existing recipes and branch availability. New ingredients are not distributed to branches.</p>
+            </div>
+
+            <div class="owner-groups">
+                <h3>Ingredient groups</h3>
+                {% if ingredient_groups %}
+                <ul>
+                    {% for group in ingredient_groups %}
+                    <li>{{ group.name }} <span>(up to {{ group.max_selections }} selections)</span></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="owner-empty">Create ingredient groups through the existing seed data before adding ingredients.</p>
+                {% endif %}
+            </div>
+
+            <details class="owner-card owner-create" open>
+                <summary>Create an ingredient</summary>
+                {% if ingredient_groups %}
+                <form class="owner-form" method="post" action="/owner/ingredients/create">
+                    <label>Name <input name="name" maxlength="150" required></label>
+                    <label>Description <textarea name="description" rows="2"></textarea></label>
+                    <div class="owner-form-row">
+                        <label>Extra price <input name="extra_price" type="number" min="0" step="0.01" value="0.00" required></label>
+                        <label>Ingredient group
+                            <select name="group_id" required>
+                                {% for group in ingredient_groups %}
+                                <option value="{{ group.id }}">{{ group.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <label class="owner-checkbox"><input name="is_active" type="checkbox" value="true" checked> Active</label>
+                    <button class="btn btn--blue" type="submit">Create ingredient</button>
+                </form>
+                {% endif %}
+            </details>
+
+            {% if ingredients %}
+            <div class="owner-catalogue-list">
+                {% for ingredient in ingredients %}
+                <details class="owner-card owner-record">
+                    <summary>
+                        <span>{{ ingredient.name }}</span>
+                        <span class="owner-record-meta">
+                            {{ "$%.2f"|format(ingredient.extra_price) }} · {{ ingredient.group.name }} ·
+                            {{ "Active" if ingredient.is_active else "Inactive" }}
+                        </span>
+                    </summary>
+                    <form class="owner-form" method="post" action="/owner/ingredients/{{ ingredient.id }}/edit">
+                        <label>Name <input name="name" value="{{ ingredient.name }}" maxlength="150" required></label>
+                        <label>Description <textarea name="description" rows="2">{{ ingredient.description or "" }}</textarea></label>
+                        <div class="owner-form-row">
+                            <label>Extra price <input name="extra_price" type="number" min="0" step="0.01" value="{{ ingredient.extra_price }}" required></label>
+                            <label>Ingredient group
+                                <select name="group_id" required>
+                                    {% for group in ingredient_groups %}
+                                    <option value="{{ group.id }}"{% if group.id == ingredient.group_id %} selected{% endif %}>
+                                        {{ group.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        </div>
+                        <label class="owner-checkbox">
+                            <input name="is_active" type="checkbox" value="true"{% if ingredient.is_active %} checked{% endif %}> Active
+                        </label>
+                        <button class="btn btn--blue btn--small" type="submit">Save ingredient</button>
+                    </form>
+                </details>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="owner-empty">No ingredients are in the catalogue yet.</p>
+            {% endif %}
+        </section>
+    </div>
+</section>
+{% endblock %}

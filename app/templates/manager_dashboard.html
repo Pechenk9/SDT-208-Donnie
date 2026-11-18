@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Manager Dashboard - Donnie{% endblock %}
+
+{% block description %}Manage product and ingredient availability for your assigned branch.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/manager.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="manager-page">
+    <div class="manager-dashboard">
+        <header class="manager-header">
+            <p class="manager-eyebrow">DONNIE MANAGEMENT</p>
+            <h1>Manager Dashboard</h1>
+            <p class="manager-current-branch">
+                Currently managing <strong>{{ selected_branch.name }} - {{ selected_branch.city }}</strong>
+            </p>
+            <p class="manager-branch-notice" role="status">
+                You are managing {{ selected_branch.name }}. Changes will apply to this branch.
+            </p>
+        </header>
+
+        {% if managed_branches|length > 1 %}
+        <form class="manager-branch-picker" method="get" action="/manager">
+            <input type="hidden" name="notice" value="">
+            <label for="managed-branch">Switch assigned branch</label>
+            <select id="managed-branch" name="branch_id">
+                {% for branch in managed_branches %}
+                <option value="{{ branch.id }}"{% if branch.id == selected_branch.id %} selected{% endif %}>
+                {{ branch.name }} - {{ branch.city }}
+                </option>
+                {% endfor %}
+            </select>
+            <button class="btn btn--blue btn--small" type="submit">View branch</button>
+        </form>
+        {% endif %}
+
+        {% if notice %}
+        <p class="manager-success" role="status">{{ notice }}</p>
+        {% endif %}
+
+        <div class="manager-sections">
+            <section class="manager-card" aria-labelledby="products-title">
+                <header class="manager-card-header">
+                    <div>
+                        <p class="manager-card-eyebrow">BRANCH CATALOGUE</p>
+                        <h2 id="products-title">Products</h2>
+                    </div>
+                </header>
+
+                {% if branch_products %}
+                <ul class="manager-item-list">
+                    {% for item in branch_products %}
+                    <li class="manager-item">
+                        <div class="manager-item-details">
+                            <h3>{{ item.product.name }}</h3>
+                            {% if not item.product.is_active %}
+                            <span class="manager-owner-warning">
+                                Owner has deactivated this product globally.
+                            </span>
+                            {% endif %}
+                            <span class="pill {{ 'pill--ok' if item.association.is_available else 'pill--no' }}">
+                                {{ 'Available' if item.association.is_available else 'Unavailable' }}
+                            </span>
+                        </div>
+                        <div class="manager-item-actions">
+                            <form method="post" action="/manager/products/{{ item.product.id }}/availability">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button
+                                    class="btn btn--blue btn--small"
+                                    type="submit"
+                                    name="is_available"
+                                    value="{{ 'false' if item.association.is_available else 'true' }}"
+                                >
+                                    {{ 'Mark unavailable' if item.association.is_available else 'Make available' }}
+                                </button>
+                            </form>
+                            <form method="post" action="/manager/products/{{ item.product.id }}/remove">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button class="btn btn--danger btn--small" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="manager-empty">No products are associated with this branch yet.</p>
+                {% endif %}
+
+                <div class="manager-add">
+                    <h3>Add a catalogue product</h3>
+                    {% if catalogue_products %}
+                    <form class="manager-add-form" method="post" action="/manager/products/add">
+                        <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                        <label class="visually-hidden" for="catalogue-product">Product</label>
+                        <select id="catalogue-product" name="product_id" required>
+                            {% for product in catalogue_products %}
+                            <option value="{{ product.id }}">{{ product.name }}{% if not product.is_active %} - Owner has deactivated this product globally.{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--small" type="submit">Add product</button>
+                    </form>
+                    {% else %}
+                    <p class="manager-empty">All catalogue products are already associated with this branch.</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="manager-card" aria-labelledby="ingredients-title">
+                <header class="manager-card-header">
+                    <div>
+                        <p class="manager-card-eyebrow">BRANCH CATALOGUE</p>
+                        <h2 id="ingredients-title">Ingredients</h2>
+                    </div>
+                </header>
+
+                {% if branch_ingredients %}
+                <ul class="manager-item-list">
+                    {% for item in branch_ingredients %}
+                    <li class="manager-item">
+                        <div class="manager-item-details">
+                            <h3>{{ item.ingredient.name }}</h3>
+                            {% if not item.ingredient.is_active %}
+                            <span class="manager-owner-warning">
+                                Owner has deactivated this ingredient globally.
+                            </span>
+                            {% endif %}
+                            <span class="pill {{ 'pill--ok' if item.association.is_available else 'pill--no' }}">
+                                {{ 'Available' if item.association.is_available else 'Unavailable' }}
+                            </span>
+                        </div>
+                        <div class="manager-item-actions">
+                            <form method="post" action="/manager/ingredients/{{ item.ingredient.id }}/availability">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button
+                                    class="btn btn--blue btn--small"
+                                    type="submit"
+                                    name="is_available"
+                                    value="{{ 'false' if item.association.is_available else 'true' }}"
+                                >
+                                    {{ 'Mark unavailable' if item.association.is_available else 'Make available' }}
+                                </button>
+                            </form>
+                            <form method="post" action="/manager/ingredients/{{ item.ingredient.id }}/remove">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button class="btn btn--danger btn--small" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="manager-empty">No ingredients are associated with this branch yet.</p>
+                {% endif %}
+
+                <div class="manager-add">
+                    <h3>Add a catalogue ingredient</h3>
+                    {% if catalogue_ingredients %}
+                    <form class="manager-add-form" method="post" action="/manager/ingredients/add">
+                        <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                        <label class="visually-hidden" for="catalogue-ingredient">Ingredient</label>
+                        <select id="catalogue-ingredient" name="ingredient_id" required>
+                            {% for ingredient in catalogue_ingredients %}
+                            <option value="{{ ingredient.id }}">{{ ingredient.name }}{% if not ingredient.is_active %} - Owner has deactivated this ingredient globally.{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--small" type="submit">Add ingredient</button>
+                    </form>
+                    {% else %}
+                    <p class="manager-empty">All catalogue ingredients are already associated with this branch.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+</section>
+{% endblock %}
