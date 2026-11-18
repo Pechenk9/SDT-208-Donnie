@@ -194,16 +194,41 @@
     }
 
     /**
-     * Estimated price of one donut.
-     *
-     * POST /orders currently charges the branch price of the product (or its base
-     * price) and does not use ingredient changes or Ingredient.extra_price.
-     * The estimate mirrors that, so ingredient changes do not move the price.
-     * When the backend defines ingredient pricing, update this one function.
+     * Estimated price of one donut, mirroring POST /orders:
+     * branch price (or base price) plus, for every changeable ingredient whose
+     * amount is above the recipe default, its extra_price once, no matter how
+     * much above. Removing or reducing an ingredient never lowers the price.
+     * The backend repeats this calculation and decides the final price.
      */
-    function estimateUnitPrice(product /* , ingredientSelections */) {
+    function estimateUnitPrice(product, ingredientSelections) {
         const price = Number(product && product.price);
-        return Number.isFinite(price) ? price : 0;
+        let cents = Number.isFinite(price) ? Math.round(price * 100) : 0;
+
+        const recipe = (product && product.ingredients) || [];
+        if (recipe.length && Array.isArray(ingredientSelections)) {
+            const chosen = new Map(ingredientSelections.map(entry => [entry.ingredient_id, Number(entry.quantity)]));
+            recipe.forEach(ingredient => {
+                const quantity = chosen.get(ingredient.id);
+                const extra = Number(ingredient.extra_price);
+                if (
+                    ingredient.is_changeable
+                    && Number.isFinite(quantity)
+                    && quantity > Number(ingredient.default_quantity)
+                    && Number.isFinite(extra)
+                ) {
+                    cents += Math.round(extra * 100);
+                }
+            });
+        }
+        return cents / 100;
+    }
+
+    /** extra_price of an ingredient if it is charged at this amount, else 0. */
+    function ingredientSurcharge(ingredient, quantity) {
+        const extra = Number(ingredient.extra_price);
+        return ingredient.is_changeable && quantity > Number(ingredient.default_quantity) && Number.isFinite(extra)
+            ? extra
+            : 0;
     }
 
     /* ---------- product details for display ---------- */
@@ -238,11 +263,27 @@
         return productCache.get(id);
     }
 
+    /**
+     * Starting amounts for a new line. A changeable ingredient that the branch
+     * does not have starts at 0, because the backend rejects any amount of an
+     * unavailable ingredient.
+     */
     function defaultIngredients(product) {
         return (product.ingredients || []).map(ingredient => ({
             ingredient_id: ingredient.id,
-            quantity: Number(ingredient.default_quantity),
+            quantity: ingredient.is_changeable && ingredient.is_available === false
+                ? 0
+                : Number(ingredient.default_quantity),
         }));
+    }
+
+    /** Ingredients the recipe cannot do without but the branch does not have. */
+    function missingRequiredIngredients(product) {
+        return (product.ingredients || []).filter(ingredient =>
+            ingredient.is_available === false
+            && !ingredient.is_changeable
+            && Number(ingredient.default_quantity) > 0
+        );
     }
 
     /* ---------- small shared UI helpers ---------- */
@@ -323,6 +364,8 @@
         setBranch,
         totals,
         estimateUnitPrice,
+        ingredientSurcharge,
+        missingRequiredIngredients,
         loadProduct,
         defaultIngredients,
         formatPrice,

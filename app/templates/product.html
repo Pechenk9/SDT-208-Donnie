@@ -76,12 +76,16 @@
                             {% if ingredient.description %}
                             <p class="recipe-desc">{{ ingredient.description }}</p>
                             {% endif %}
-                            {% if not ingredient.is_active %}
-                            <p class="recipe-note recipe-note--warn">Not currently available — kept as in the recipe.</p>
-                            {% elif ingredient.branch_is_available is sameas false %}
-                            <p class="recipe-note recipe-note--warn">Not available at this branch — can't be changed.</p>
+                            {% if ingredient.is_available is sameas false %}
+                            {% if ingredient.is_changeable %}
+                            <p class="recipe-note recipe-note--warn">Not available {% if ingredient.is_active %}at this branch{% else %}right now{% endif %}, so it is left out.</p>
+                            {% else %}
+                            <p class="recipe-note recipe-note--warn">Not available {% if ingredient.is_active %}at this branch{% else %}right now{% endif %}. This donut can't be ordered without it.</p>
+                            {% endif %}
                             {% elif not ingredient.is_changeable %}
                             <p class="recipe-note">Part of the base recipe.</p>
+                            {% elif ingredient.extra_price > 0 and ingredient.max_quantity > ingredient.default_quantity %}
+                            <p class="recipe-note">Adding more than the recipe amount costs +{{ "$%.2f"|format(ingredient.extra_price) }}.</p>
                             {% endif %}
                         </div>
 
@@ -108,7 +112,11 @@
                             {% else %}
                             <span class="recipe-fixed">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-7-2a2 2 0 0 1 4 0v2h-4Z"/></svg>
+                                {% if ingredient.is_available is sameas false and ingredient.is_changeable %}
+                                Left out
+                                {% else %}
                                 {{ '%g'|format(ingredient.default_quantity) }} {{ ingredient.unit }}
+                                {% endif %}
                                 <span class="visually-hidden">(fixed)</span>
                             </span>
                             {% endif %}
@@ -142,7 +150,7 @@
                 </div>
 
                 <p class="purchase-note">
-                    Estimated price. Ingredient changes don't affect the price right now; the final price is calculated when you place your order.
+                    Estimated price. Adding more of an ingredient than the recipe has costs extra (once per ingredient); taking some away doesn't change the price. Donnie confirms the final price when you place the order.
                 </p>
                 <p class="purchase-feedback" id="add-feedback" hidden>
                     Added to your cart. <a href="/order">Go to checkout</a> or <a href="/store">keep shopping</a>.

@@ -195,11 +195,28 @@
 
     /* ---------- cart summary ---------- */
 
+    // Recipes (with extra_price) of products in the cart, so customised lines are priced right.
+    const cartDetails = new Map();
+
+    function loadCartDetails(cart) {
+        const wanted = new Set(cart.items.map(item => item.product_id));
+        wanted.forEach(id => {
+            if (cartDetails.has(id)) return;
+            cartDetails.set(id, null);
+            Cart.loadProduct(id)
+                .then(details => {
+                    cartDetails.set(id, details);
+                    renderSummary(Cart.read());
+                })
+                .catch(() => cartDetails.delete(id));
+        });
+    }
+
     function estimatedTotal(cart) {
         let total = 0;
         let known = true;
         cart.items.forEach(item => {
-            const product = productsById.get(item.product_id);
+            const product = cartDetails.get(item.product_id) || productsById.get(item.product_id);
             if (!product) {
                 known = false;
                 return;
@@ -210,6 +227,7 @@
     }
 
     function renderSummary(cart) {
+        loadCartDetails(cart);
         const { donuts, lines } = Cart.totals(cart);
         const { total, known } = estimatedTotal(cart);
         const missing = Math.max(0, Cart.MIN_ORDER_DONUTS - donuts);

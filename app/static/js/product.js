@@ -31,10 +31,15 @@
     }
 
     const selections = new Map(); // ingredient id -> quantity per donut
+    const startingAmounts = new Map(
+        Cart.defaultIngredients(product).map(entry => [entry.ingredient_id, entry.quantity])
+    );
+    const missingRequired = Cart.missingRequiredIngredients(product);
 
-    ingredients.forEach(ingredient => {
-        selections.set(ingredient.id, Number(ingredient.default_quantity));
-    });
+    function resetSelections() {
+        startingAmounts.forEach((quantity, id) => selections.set(id, quantity));
+    }
+    resetSelections();
 
     function isEditable(ingredient) {
         return ingredient.is_changeable && ingredient.is_available;
@@ -76,14 +81,17 @@
         row.classList.toggle('is-changed', value !== Number(ingredient.default_quantity));
 
         const unit = ingredient.unit;
+        const surcharge = Cart.ingredientSurcharge(ingredient, value);
         range.textContent = value === 0
             ? 'Removed'
-            : `Recipe ${Cart.formatQuantity(ingredient.default_quantity)} ${unit} · max ${Cart.formatQuantity(max)} ${unit}`;
+            : `Recipe ${Cart.formatQuantity(ingredient.default_quantity)} ${unit} · max ${Cart.formatQuantity(max)} ${unit}`
+                + (surcharge > 0 ? ` · +${Cart.formatPrice(surcharge)}` : '');
+        row.classList.toggle('is-extra', surcharge > 0);
     }
 
     function renderReset() {
         const changed = ingredients.some(ingredient =>
-            selections.get(ingredient.id) !== Number(ingredient.default_quantity)
+            selections.get(ingredient.id) !== startingAmounts.get(ingredient.id)
         );
         resetBtn.hidden = !changed;
     }
@@ -143,10 +151,8 @@
     });
 
     resetBtn.addEventListener('click', () => {
-        ingredients.forEach(ingredient => {
-            selections.set(ingredient.id, Number(ingredient.default_quantity));
-            renderIngredient(ingredient);
-        });
+        resetSelections();
+        ingredients.forEach(renderIngredient);
         renderPrice();
         renderReset();
     });
@@ -154,7 +160,7 @@
     /* ---------- add to cart ---------- */
 
     addBtn.addEventListener('click', () => {
-        if (product.is_available === false) return;
+        if (product.is_available === false || missingRequired.length) return;
 
         if (!product.branch) {
             window.DonnieBranch.open('Choose a branch first — the menu and prices depend on it.');
@@ -194,6 +200,11 @@
             node.classList.add('is-bumped');
         });
     });
+
+    if (missingRequired.length && product.is_available !== false) {
+        addBtn.disabled = true;
+        addBtn.textContent = 'Unavailable here';
+    }
 
     setDonuts(1);
     renderReset();

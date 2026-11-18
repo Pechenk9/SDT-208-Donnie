@@ -60,7 +60,13 @@
             if (!ingredient.is_changeable && quantity !== Number(ingredient.default_quantity)) return false;
             return true;
         });
-        return valid ? null : 'The recipe of this donut changed since you added it. Remove it and add it again.';
+        if (!valid) return 'The recipe of this donut changed since you added it. Remove it and add it again.';
+
+        const missing = recipe.find(ingredient => ingredient.is_available === false && chosen.get(ingredient.id) > 0);
+        if (missing) {
+            return `${missing.name} is not available at this branch right now. Remove this donut and add it again without it.`;
+        }
+        return null;
     }
 
     /* ---------- rendering ---------- */
@@ -366,9 +372,7 @@
     function serverMessage(status, payload) {
         const detail = payload && payload.detail;
         if (typeof detail === 'string') {
-            if (detail === 'Duplicate product in order') {
-                return 'Your cart has the same donut in more than one customization. Our ordering system can only accept one version of each donut at the moment — please remove the extra versions and try again.';
-            }
+            if (detail === 'Order must contain at least six donuts') return `Add at least ${Cart.MIN_ORDER_DONUTS} donuts in total to place an order.`;
             if (detail === 'Invalid Ukrainian phone number') return 'Please check your phone number — it must be a Ukrainian number.';
             if (detail === 'Branch not found') return 'The selected branch is no longer available. Please choose another branch.';
             return detail.endsWith('.') ? detail : `${detail}.`;
