@@ -1,121 +1,162 @@
-
 {% extends "base.html" %}
 
-{% block title %}Your Order - Donnie{% endblock %}
+{% block title %}Checkout - Donnie{% endblock %}
+
+{% block description %}Review your cart and place your Donnie order.{% endblock %}
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/order.css') }}">
 {% endblock %}
 
 {% block content %}
-<main class="cart-container">
-    <div class="cart-content">
-        <section class="cart-items-section">
-            <h1 class="cart-title">Your Items:</h1>
-            <div id="cart-list" class="cart-list"></div>
-        </section>
-
-        <section class="cart-checkout-section">
-            <div class="checkout-card">
-                <h2>Order Details</h2>
-
-                <form id="order-form" method="POST" action="/orders">
-
-                    <input
-                        type="hidden"
-                        name="items_json"
-                        id="cart-items"
-                    >
-
-                    <div class="input-group">
-                        <label for="customer-name">Your Name</label>
-                        <input
-                            type="text"
-                            id="customer-name"
-                            name="customer_name"
-                            placeholder="Your name"
-                            required
-                        >
-                    </div>
-
-                    <div class="input-group">
-                        <label for="phone">Phone Number</label>
-                        <input
-                            type="tel"
-                            id="phone"
-                            name="customer_phone"
-                            placeholder="+380..."
-                            required
-                        >
-                    </div>
-
-                    <div class="input-group">
-                        <label for="email">Email (optional)</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="customer_email"
-                            placeholder="example@email.com"
-                        >
-                    </div>
-
-                    <div class="input-group">
-                        <label for="branch">Branch</label>
-                        <select id="branch" name="branch_id" required>
-                            <option value="">Select a branch</option>
-                            {% for branch in branches %}
-                            <option value="{{ branch.id }}">
-                                {{ branch.name }} — {{ branch.city }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="fulfillment-type">Fulfillment Type</label>
-                        <select
-                            id="fulfillment-type"
-                            name="fulfillment_type"
-                            required
-                        >
-                            <option value="">Select an option</option>
-                            <option value="pickup">Pickup</option>
-                            <option value="delivery">Delivery</option>
-                        </select>
-                    </div>
-
-                    <div class="input-group" id="address-group" hidden>
-                        <label for="address">Delivery Address</label>
-                        <input
-                            type="text"
-                            id="address"
-                            name="delivery_address"
-                            placeholder="Street, house, apartment"
-                        >
-                    </div>
-
-                    <hr>
-
-                    <div class="total-price-block">
-                        <span>Total:</span>
-                        <span id="final-price">$0.00</span>
-                    </div>
-
-                    <button type="submit" class="place-order-btn">
-                        Place Order
-                    </button>
-                </form>
-            </div>
-        </section>
+<div class="checkout-page">
+    <div class="checkout-heading">
+        <h1 class="page-title">Checkout</h1>
+        <a class="link-btn" href="/store">&larr; Continue shopping</a>
     </div>
-</main>
 
-<script id="products-data" type="application/json">
-    {{ products_data | tojson }}
-</script>
+    <div id="checkout-loading" class="checkout-layout" aria-busy="true">
+        <div class="checkout-lines">
+            <div class="skeleton line-skeleton"></div>
+            <div class="skeleton line-skeleton"></div>
+        </div>
+        <div class="skeleton aside-skeleton"></div>
+    </div>
+
+    <div id="checkout-empty" class="state-message checkout-empty" hidden>
+        <img src="{{ url_for('static', path='assets/img/constructor-donut-store.png') }}" alt="" width="160" height="160">
+        <p class="state-message__title">Your cart is empty</p>
+        <p>Pick at least {{ 6 }} donuts to place an order.</p>
+        <a class="btn" href="/store">Browse donuts</a>
+    </div>
+
+    <div id="checkout-success" class="state-message checkout-success" hidden tabindex="-1">
+        <p class="state-message__title" id="checkout-success-title">Order placed!</p>
+        <p id="checkout-success-text">Thank you! Taking you to your receipt…</p>
+        <a class="btn" id="checkout-success-link" href="/store">View receipt</a>
+    </div>
+
+    <div id="checkout-content" class="checkout-layout" hidden>
+        <section class="checkout-lines" aria-labelledby="cart-title">
+            <div class="section-head">
+                <h2 id="cart-title" class="section-title">Your cart</h2>
+                <button type="button" class="link-btn link-btn--danger" id="clear-cart-btn">Remove all</button>
+            </div>
+            <ul class="cart-lines" id="cart-lines"></ul>
+        </section>
+
+        <aside class="checkout-aside">
+            <section class="cart-summary" aria-labelledby="order-summary-title">
+                <h2 class="cart-summary__title" id="order-summary-title">Order summary</h2>
+
+                <div class="checkout-branch">
+                    <span class="checkout-branch__label">Branch</span>
+                    <strong id="checkout-branch-name">—</strong>
+                    <span id="checkout-branch-address"></span>
+                    <span class="checkout-branch__hint">Your order is prepared at this branch. Changing the branch empties the cart.</span>
+                </div>
+
+                <dl class="cart-summary__rows">
+                    <div class="cart-summary__row"><dt>Donuts</dt><dd id="summary-donuts">0</dd></div>
+                    <div class="cart-summary__row"><dt>Cart lines</dt><dd id="summary-lines">0</dd></div>
+                    <div class="cart-summary__row cart-summary__row--total"><dt>Estimated total</dt><dd id="summary-total">$0.00</dd></div>
+                </dl>
+
+                <div class="min-order" id="min-order">
+                    <span id="min-order-text"></span>
+                    <span class="min-order__bar" aria-hidden="true"><span class="min-order__fill" id="min-order-fill"></span></span>
+                </div>
+
+                <p class="cart-summary__note">Prices are estimates. Donnie confirms the final price when the order is placed.</p>
+            </section>
+
+            <form id="order-form" class="checkout-form" method="post" action="/orders" novalidate aria-labelledby="details-title">
+                <h2 class="section-title" id="details-title">Your details</h2>
+
+                <div class="field">
+                    <label class="field__label" for="customer-name">Name</label>
+                    <input class="field__input" type="text" id="customer-name" name="customer_name"
+                           autocomplete="name" maxlength="200" required
+                           value="{{ customer.name if customer else '' }}"
+                           data-error="customer-name-error" aria-invalid="false">
+                    <span class="field__error" id="customer-name-error"></span>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="customer-phone">Phone</label>
+                    <input class="field__input" type="tel" id="customer-phone" name="customer_phone"
+                           autocomplete="tel" inputmode="tel" maxlength="30" required
+                           placeholder="+380 XX XXX XX XX"
+                           value="{{ customer.phone if customer else '' }}"
+                           data-error="customer-phone-error" aria-invalid="false"
+                           aria-describedby="customer-phone-hint">
+                    <span class="field__hint" id="customer-phone-hint">Ukrainian number, e.g. 0671234567 or +380671234567.</span>
+                    <span class="field__error" id="customer-phone-error"></span>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="customer-email">Email <span class="field__optional">(optional)</span></label>
+                    <input class="field__input" type="email" id="customer-email" name="customer_email"
+                           autocomplete="email" maxlength="255"
+                           placeholder="you@example.com"
+                           value="{{ customer.email if customer else '' }}"
+                           data-error="customer-email-error" aria-invalid="false">
+                    <span class="field__error" id="customer-email-error"></span>
+                </div>
+
+                <fieldset class="field fulfillment">
+                    <legend class="field__label">How do you want to get it?</legend>
+                    <div class="segmented">
+                        <label class="segmented__option">
+                            <input type="radio" name="fulfillment_type" value="pickup" checked>
+                            <span>Pickup</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="fulfillment_type" value="delivery">
+                            <span>Delivery</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <div class="field" id="address-group" hidden>
+                    <label class="field__label" for="delivery-address">Delivery address</label>
+                    <input class="field__input" type="text" id="delivery-address" name="delivery_address"
+                           autocomplete="street-address" maxlength="300"
+                           placeholder="City, street, house, apartment"
+                           data-error="delivery-address-error" aria-invalid="false">
+                    <span class="field__error" id="delivery-address-error"></span>
+                </div>
+
+                {% if not customer %}
+                <p class="checkout-guest">
+                    Ordering as a guest. <a href="/login">Log in</a> to fill in your details automatically.
+                </p>
+                {% endif %}
+
+                <div class="alert alert--warning" id="checkout-blocker" hidden></div>
+                <div class="alert alert--error" id="checkout-error" role="alert" hidden></div>
+
+                <button type="submit" class="btn btn--block place-order-btn" id="place-order-btn">
+                    Place order
+                </button>
+            </form>
+        </aside>
+    </div>
+</div>
+
+<dialog id="clear-cart-dialog" class="modal" aria-labelledby="clear-cart-title" closedby="any">
+    <form method="dialog" class="modal__view">
+        <h2 id="clear-cart-title" class="modal__title">Empty your cart?</h2>
+        <p class="modal__lead">All donuts and customizations in your cart will be removed.</p>
+        <div class="modal__actions">
+            <button type="submit" class="btn btn--danger" value="clear">Remove all</button>
+            <button type="submit" class="btn btn--ghost" value="cancel" autofocus>Keep them</button>
+        </div>
+    </form>
+</dialog>
 {% endblock %}
 
 {% block scripts %}
+<script id="checkout-data" type="application/json">{{ {"products": products_data}|tojson }}</script>
 <script src="{{ url_for('static', path='js/order.js') }}" defer></script>
-
 {% endblock %}

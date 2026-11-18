@@ -255,14 +255,20 @@ def logout(
     return response
 
 @app.get("/contacts")
-def contacts(request: Request):
+def contacts(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+):
     return templates.TemplateResponse(
         request=request,
         name="contacts.html",
     )
 
 @app.get("/")
-def home(request: Request):
+def home(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+):
     return templates.TemplateResponse(
         request,
         "home.html",
@@ -273,6 +279,7 @@ def store(
     request: Request,
     session: Session = Depends(get_session),
     branch: Branch | None = Depends(get_current_branch),
+    user: User | None = Depends(get_current_user),
 ):
     if branch is None:
         product_rows = [
@@ -345,6 +352,7 @@ def product_detail(
     product_id: int,
     session: Session = Depends(get_session),
     branch: Branch | None = Depends(get_current_branch),
+    user: User | None = Depends(get_current_user),
 ):
     product = session.scalar(
         select(Product)
@@ -467,6 +475,7 @@ def product_detail(
 def order_page(
     request: Request,
     session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
 ):
     products = session.scalars(
         select(Product).where(Product.is_active.is_(True))
@@ -492,14 +501,44 @@ def order_page(
         {
             "branches": branches,
             "products_data": products_data,
+            "customer": (
+                {
+                    "name": " ".join(
+                        part for part in (user.first_name, user.last_name) if part
+                    ),
+                    "email": user.email,
+                    "phone": user.phone or "",
+                }
+                if user is not None
+                else None
+            ),
         },
     )
+
+@app.get("/api/branches")
+def list_branches(session: Session = Depends(get_session)):
+    branches = session.scalars(
+        select(Branch).order_by(Branch.city, Branch.name)
+    ).all()
+
+    return [
+        {
+            "id": branch.id,
+            "code": branch.code,
+            "name": branch.name,
+            "city": branch.city,
+            "address": branch.address,
+        }
+        for branch in branches
+    ]
+
 
 @app.get("/orders/{order_id}/receipt")
 def order_receipt(
     request: Request,
     order_id: int,
     session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
 ):
     order = session.scalar(
         select(Order)

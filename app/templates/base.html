@@ -7,67 +7,126 @@
 
     <title>{% block title %}Donnie - Online Store{% endblock %}</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Modak&family=M+PLUS+1p:wght@400;500;700;800&family=Crimson+Text&display=swap">
+
     <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/header-footer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/ui.css') }}">
 
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Modak">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=M+PLUS+1p">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Crimson+Text">
-
-    <link rel="icon" type="image/x-icon"
+    <link rel="icon" type="image/png"
           href="{{ url_for('static', path='assets/icons/donnie-donut-icon.png') }}">
 
     {% block styles %}{% endblock %}
 </head>
 
-<body>
+{% set current_user = request.state.current_user %}
+{% set path = request.url.path %}
+
+<body {% block body_attrs %}{% endblock %}>
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="header">
-        <div class="nav-menu-list-icon"></div>
-        <div class="donnie-logo"></div>
+        <a class="donnie-logo" href="/" aria-label="Donnie home"></a>
 
-        <nav class="navigation-container">
-            <a class="nav-item-container" href="/">
-                <div class="nav-home-icon"></div>
-                <div class="nav-item-text">Home</div>
+        <nav class="navigation-container" aria-label="Main">
+            <a class="nav-item-container" href="/" {% if path == '/' %}aria-current="page"{% endif %}>
+                <span class="nav-home-icon" aria-hidden="true"></span>
+                <span class="nav-item-text">Home</span>
             </a>
 
-            <a class="nav-item-container" href="/store">
-                <div class="nav-donuts-icon"></div>
-                <div class="nav-item-text">Donuts</div>
+            <a class="nav-item-container" href="/store" {% if path.startswith('/store') or path.startswith('/product') %}aria-current="page"{% endif %}>
+                <span class="nav-donuts-icon" aria-hidden="true"></span>
+                <span class="nav-item-text">Donuts</span>
             </a>
 
-            <a class="nav-item-container" href="/contacts">
-                <div class="nav-contacts-icon"></div>
-                <div class="nav-item-text">Contacts</div>
-            </a>
-
-            <a class="nav-item-container" href="/profile" aria-label="Profile">
-                <div class="nav-profile-icon"></div>
+            <a class="nav-item-container" href="/contacts" {% if path == '/contacts' %}aria-current="page"{% endif %}>
+                <span class="nav-contacts-icon" aria-hidden="true"></span>
+                <span class="nav-item-text">About</span>
             </a>
         </nav>
+
+        <div class="header-actions">
+            <button class="branch-chip" type="button" data-open-branch>
+                <svg class="branch-chip__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/>
+                </svg>
+                <span class="branch-chip__label" data-branch-label>Branch</span>
+            </button>
+
+            <a class="cart-link" href="/order" data-cart-link aria-label="Cart" {% if path == '/order' %}aria-current="page"{% endif %}>
+                <img src="{{ url_for('static', path='assets/img/cart-controller.png') }}" alt="" class="cart-link__icon">
+                <span class="cart-link__count" data-cart-count hidden>0</span>
+            </a>
+
+            <div class="account-nav">
+                {% if current_user %}
+                <a class="account-link" href="/profile" {% if path == '/profile' %}aria-current="page"{% endif %}>
+                    <span class="nav-profile-icon" aria-hidden="true"></span>
+                    <span class="account-link__name">{{ current_user.first_name }}</span>
+                </a>
+                <form method="post" action="/logout" class="logout-form">
+                    <button type="submit" class="header-text-btn">Log out</button>
+                </form>
+                {% else %}
+                <a class="header-text-btn" href="/login" {% if path == '/login' %}aria-current="page"{% endif %}>Log in</a>
+                <a class="header-text-btn header-text-btn--solid" href="/register" {% if path == '/register' %}aria-current="page"{% endif %}>Sign up</a>
+                {% endif %}
+            </div>
+        </div>
     </header>
 
-    <main>
+    <main id="main">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer">
-        <a class="nav-item-container" href="/contacts">
-            <div class="nav-contacts-icon"></div>
-            <div class="nav-item-text">Contacts</div>
+    <nav class="footer" aria-label="Mobile">
+        <a class="nav-item-container" href="/" {% if path == '/' %}aria-current="page"{% endif %}>
+            <span class="nav-home-icon" aria-hidden="true"></span>
+            <span class="nav-item-text">Home</span>
         </a>
 
-        <a class="nav-item-container" href="/">
-            <div class="nav-home-icon"></div>
-            <div class="nav-item-text">Home</div>
+        <a class="nav-item-container" href="/store" {% if path.startswith('/store') or path.startswith('/product') %}aria-current="page"{% endif %}>
+            <span class="nav-donuts-icon" aria-hidden="true"></span>
+            <span class="nav-item-text">Donuts</span>
         </a>
 
-        <a class="nav-item-container" href="/store">
-            <div class="nav-donuts-icon"></div>
-            <div class="nav-item-text">Donuts</div>
+        <a class="nav-item-container" href="/contacts" {% if path == '/contacts' %}aria-current="page"{% endif %}>
+            <span class="nav-contacts-icon" aria-hidden="true"></span>
+            <span class="nav-item-text">About</span>
         </a>
-    </footer>
 
+        <a class="nav-item-container" href="{{ '/profile' if current_user else '/login' }}" {% if path in ['/profile', '/login', '/register'] %}aria-current="page"{% endif %}>
+            <span class="nav-profile-icon" aria-hidden="true"></span>
+            <span class="nav-item-text">{{ 'Account' if current_user else 'Log in' }}</span>
+        </a>
+    </nav>
+
+    <dialog id="branch-dialog" class="modal" aria-labelledby="branch-dialog-title" closedby="any">
+        <div class="modal__view" data-view="list">
+            <div class="modal__header">
+                <h2 id="branch-dialog-title" class="modal__title">Choose your Donnie</h2>
+                <button type="button" class="modal__close" data-close aria-label="Close">&times;</button>
+            </div>
+            <p class="modal__lead" data-branch-note></p>
+            <ul class="branch-list" data-branch-list></ul>
+        </div>
+
+        <div class="modal__view" data-view="confirm" hidden>
+            <div class="modal__header">
+                <h2 id="branch-confirm-title" class="modal__title">Change branch?</h2>
+            </div>
+            <p class="modal__lead" data-confirm-text></p>
+            <div class="modal__actions">
+                <button type="button" class="btn btn--danger" data-confirm-accept>Change and clear cart</button>
+                <button type="button" class="btn btn--ghost" data-confirm-cancel>Keep my cart</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script src="{{ url_for('static', path='js/cart.js') }}" defer></script>
+    <script src="{{ url_for('static', path='js/branch.js') }}" defer></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

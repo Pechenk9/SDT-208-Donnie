@@ -74,7 +74,7 @@
                 </div>
 
                 <strong>
-                    {{ "%.2f"|format(item.unit_price * item.quantity) }} UAH
+                    ${{ "%.2f"|format(item.unit_price * item.quantity) }}
                 </strong>
             </div>
             {% endfor %}
@@ -84,7 +84,7 @@
 
         <div class="receipt-total">
             <span>Total</span>
-            <strong>{{ "%.2f"|format(order.total_price) }} UAH</strong>
+            <strong>${{ "%.2f"|format(order.total_price) }}</strong>
         </div>
 
         <div class="receipt-footer">
@@ -98,9 +98,4 @@
 
     </div>
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
-    localStorage.removeItem('cart');
-</script>
 {% endblock %}

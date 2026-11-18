@@ -2,122 +2,105 @@
 
 {% block title %}Donnie - Donuts{% endblock %}
 
+{% block body_attrs %}data-branch-dependent{% endblock %}
+
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/store.css') }}">
 {% endblock %}
 
 {% block content %}
-
 <div class="store-wrapper">
-    <h2 class="store-heading">Choose your donut:</h2>
-
     <div class="store-layout">
-        <div class="store-main">
+        <section class="store-main" aria-labelledby="store-title">
+            <div class="store-top">
+                <h1 id="store-title" class="page-title store-heading">Choose your donut</h1>
 
-            {% if selected_branch %}
-            <p class="store-branch-context">
-                Assortment, prices and availability for {{ selected_branch.name }}
-                ({{ selected_branch.code }}).
-            </p>
-            {% else %}
-            <p class="store-branch-context">
-                No branch selected. Showing catalog prices; branch availability is unknown.
-            </p>
-            {% endif %}
-
-            <div class="store-header">
-
-                <div class="left-controls">
-                    <div class="control-btn-container" id="cart">
-                        <img src="{{ url_for('static', path='assets/img/store-controller-back.png') }}"
-                             class="btn-back" alt="">
-
-                        <img src="{{ url_for('static', path='assets/img/cart-controller.png') }}"
-                             class="btn-icon" alt="Cart">
-
-                        <span class="cart-badge">0</span>
-                    </div>
-                </div>
-
-                <div class="right-controls">
-
-                    <div class="control-btn-container" id="sort">
-                        <img src="{{ url_for('static', path='assets/img/store-controller-back.png') }}"
-                             class="btn-back" alt="">
-
-                        <img src="{{ url_for('static', path='assets/img/sort-controller.png') }}"
-                             class="btn-icon" alt="Sort">
-                    </div>
-
-                    <div class="search-bar">
-                        <input type="text" placeholder="Search for donut...">
-
-                        <div class="search-btn">
-                            <img src="{{ url_for('static', path='assets/img/search-controller.png') }}"
-                                 alt="Search">
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <button class="m-go-constructor">Go to constructor</button>
-
-            <div class="donuts-grid">
-
-                {% for product in products %}
-
-                <div class="donut-card" data-id="{{ product.id }}"
-                     data-name="{{ product.name }}"
-                     data-price="{{ product.price }}">
-                            
-                    {% if product.is_available is not false %}
-                    <div class="add-to-basket">
-                        <img
-                            src="{{ url_for('static', path='assets/img/basket-controller-back.png') }}"
-                            class="btn-back"
-                            alt=""
-                        >
-                        <img
-                            src="{{ url_for('static', path='assets/img/to-basket-controller.png') }}"
-                            class="btn-icon"
-                            alt="Add to basket"
-                        >
-                    </div>
-                    {% endif %}
-                
-                    <a href="/product/{{ product.id }}" class="donut-product-link">
-                        <div class="donut-img-container">
-                            <img src="{{ product.image_url or '' }}" alt="{{ product.name }}">
-                        </div>
-                    
-                        <div class="donut-info">
-                            <span class="donut-name">{{ product.name.upper() }}</span>
-                            <span class="donut-price">${{ "%.2f"|format(product.price) }}</span>
-                        </div>
-                    </a>
-
-                    <p class="catalog-availability{% if product.is_available is false %} unavailable{% endif %}">
-                        {% if product.is_available is none %}
-                        Select a branch to check availability
-                        {% elif product.is_available %}
-                        Available
-                        {% else %}
-                        Unavailable at this branch
-                        {% endif %}
+                <div class="store-branch">
+                    {% if selected_branch %}
+                    <p>
+                        Menu, prices and availability for
+                        <strong>{{ selected_branch.name }}</strong>, {{ selected_branch.city }}.
                     </p>
+                    <button type="button" class="link-btn" data-open-branch>Change branch</button>
+                    {% else %}
+                    <p>No branch selected yet — showing our full menu with standard prices.</p>
+                    <button type="button" class="btn btn--small btn--blue" data-open-branch>Choose a branch</button>
+                    {% endif %}
                 </div>
-
-                {% endfor %}
-
             </div>
 
-        </div>
-    </div>
-</div>
+            <div class="store-toolbar" role="search">
+                <div class="search-bar">
+                    <label for="catalogue-search" class="visually-hidden">Search donuts by name</label>
+                    <input
+                        id="catalogue-search"
+                        type="search"
+                        placeholder="Search for donut..."
+                        autocomplete="off"
+                        enterkeyhint="search"
+                    >
+                    <span class="search-btn" aria-hidden="true">
+                        <img src="{{ url_for('static', path='assets/img/search-controller.png') }}" alt="">
+                    </span>
+                </div>
 
+                <div class="sort-control">
+                    <label for="catalogue-sort">Sort</label>
+                    <select id="catalogue-sort">
+                        <option value="default">Default order</option>
+                        <option value="price-asc">Price: low to high</option>
+                        <option value="price-desc">Price: high to low</option>
+                    </select>
+                </div>
+            </div>
+
+            <p class="catalogue-status" id="catalogue-status" aria-live="polite"></p>
+
+            <ul class="donuts-grid" id="catalogue-grid" aria-labelledby="store-title"></ul>
+
+            <div id="catalogue-empty" class="state-message" hidden>
+                <p class="state-message__title" id="catalogue-empty-title">No donuts found</p>
+                <p id="catalogue-empty-text"></p>
+                <button type="button" class="btn btn--ghost btn--small" id="catalogue-clear-search">Clear search</button>
+            </div>
+
+            <nav class="pagination" id="catalogue-pagination" aria-label="Catalogue pages" hidden>
+                <button type="button" class="pagination__btn" data-page="prev">
+                    <span aria-hidden="true">&larr;</span> Previous
+                </button>
+                <ol class="pagination__pages" id="catalogue-pages"></ol>
+                <button type="button" class="pagination__btn" data-page="next">
+                    Next <span aria-hidden="true">&rarr;</span>
+                </button>
+            </nav>
+        </section>
+
+        <aside class="store-aside" aria-labelledby="cart-summary-title">
+            <div class="cart-summary" id="store-cart-summary">
+                <h2 class="cart-summary__title" id="cart-summary-title">Your cart</h2>
+                <dl class="cart-summary__rows">
+                    <div class="cart-summary__row"><dt>Donuts</dt><dd data-summary="donuts">0</dd></div>
+                    <div class="cart-summary__row"><dt>Cart lines</dt><dd data-summary="lines">0</dd></div>
+                    <div class="cart-summary__row cart-summary__row--total"><dt>Estimated total</dt><dd data-summary="total">$0.00</dd></div>
+                </dl>
+                <div class="min-order" data-summary="min-order">
+                    <span data-summary="min-text">Minimum order is 6 donuts.</span>
+                    <span class="min-order__bar" aria-hidden="true"><span class="min-order__fill" data-summary="min-fill" style="width:0%"></span></span>
+                </div>
+                <a class="btn btn--block" href="/order" data-summary="checkout">Go to checkout</a>
+                <p class="cart-summary__note">Prices are estimates. The final price is confirmed when you place the order.</p>
+            </div>
+        </aside>
+    </div>
+
+    <a class="mobile-cart-bar" href="/order" id="mobile-cart-bar" hidden>
+        <span><strong data-summary="donuts">0</strong> donuts · <span data-summary="total">$0.00</span></span>
+        <span class="mobile-cart-bar__cta" data-summary="mobile-cta">Checkout &rarr;</span>
+    </a>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script id="store-data" type="application/json">{{ {"products": products, "selected_branch": selected_branch}|tojson }}</script>
 <script src="{{ url_for('static', path='js/store.js') }}" defer></script>
 {% endblock %}

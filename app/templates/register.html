@@ -12,75 +12,77 @@
 <section class="login-page">
     <div class="login-card">
         <h1 class="login-title">Join Donnie!</h1>
-        <p class="login-intro">Create your account to get started.</p>
+        <p class="login-intro">Create an account to check out faster next time.</p>
 
         {% if errors %}
-        <ul class="login-error" role="alert">
-            {% for error in errors %}
-            <li>{{ error }}</li>
-            {% endfor %}
-        </ul>
+        <div class="alert alert--error login-alert" role="alert" id="register-errors">
+            <p><strong>Please fix the following:</strong></p>
+            <ul>
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
         {% endif %}
 
-        <form class="login-form" method="post" action="/register">
-            <label for="first_name">First name</label>
-            <input
-                id="first_name"
-                name="first_name"
-                type="text"
-                autocomplete="given-name"
-                maxlength="100"
-                value="{{ first_name }}"
-                required
-            >
+        <form class="login-form" method="post" action="/register" novalidate data-auth-form data-register-form>
+            <div class="field-row">
+                <div class="field">
+                    <label class="field__label" for="first_name">First name</label>
+                    <input class="field__input" id="first_name" name="first_name" type="text"
+                           autocomplete="given-name" maxlength="100" value="{{ first_name }}" required
+                           aria-invalid="false" data-error="first-name-error" autofocus>
+                    <span class="field__error" id="first-name-error"></span>
+                </div>
 
-            <label for="last_name">Last name (optional)</label>
-            <input
-                id="last_name"
-                name="last_name"
-                type="text"
-                autocomplete="family-name"
-                maxlength="100"
-                value="{{ last_name }}"
-            >
+                <div class="field">
+                    <label class="field__label" for="last_name">Last name <span class="field__optional">(optional)</span></label>
+                    <input class="field__input" id="last_name" name="last_name" type="text"
+                           autocomplete="family-name" maxlength="100" value="{{ last_name }}"
+                           aria-invalid="false" data-error="last-name-error">
+                    <span class="field__error" id="last-name-error"></span>
+                </div>
+            </div>
 
-            <label for="email">Email</label>
-            <input
-                id="email"
-                name="email"
-                type="email"
-                autocomplete="email"
-                maxlength="255"
-                value="{{ email }}"
-                required
-            >
+            <div class="field">
+                <label class="field__label" for="email">Email</label>
+                <input class="field__input" id="email" name="email" type="email"
+                       autocomplete="email" maxlength="255" value="{{ email }}" required
+                       aria-invalid="false" data-error="email-error">
+                <span class="field__error" id="email-error"></span>
+            </div>
 
-            <label for="password">Password</label>
-            <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="new-password"
-                minlength="8"
-                required
-            >
+            <div class="field">
+                <label class="field__label" for="password">Password</label>
+                <div class="password-field">
+                    <input class="field__input" id="password" name="password" type="password"
+                           autocomplete="new-password" minlength="8" required
+                           aria-invalid="false" data-error="password-error" aria-describedby="password-hint">
+                    <button type="button" class="password-toggle" data-password-toggle aria-controls="password" aria-pressed="false">Show</button>
+                </div>
+                <span class="field__hint" id="password-hint">At least 8 characters.</span>
+                <span class="field__error" id="password-error"></span>
+            </div>
 
-            <label for="confirm_password">Confirm password</label>
-            <input
-                id="confirm_password"
-                name="confirm_password"
-                type="password"
-                autocomplete="new-password"
-                required
-            >
+            <div class="field">
+                <label class="field__label" for="confirm_password">Confirm password</label>
+                <input class="field__input" id="confirm_password" name="confirm_password" type="password"
+                       autocomplete="new-password" required
+                       aria-invalid="false" data-error="confirm-password-error">
+                <span class="field__error" id="confirm-password-error"></span>
+            </div>
 
-            <button class="login-submit" type="submit">Create account</button>
+            <button class="btn btn--block login-submit" type="submit">Create account</button>
         </form>
 
         <p class="login-register-link">
             Already have an account? <a href="/login">Log in</a>
         </p>
-        <a class="login-store-link" href="/store">Return to the Store</a>
+        <a class="login-store-link" href="/store">&larr; Back to the store</a>
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/auth.js') }}" defer></script>
 {% endblock %}

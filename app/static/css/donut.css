@@ -1,112 +1,127 @@
-body{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(248, 214, 231);
+.product-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 36px) clamp(16px, 4vw, 40px) 60px;
 }
 
-.donut-page-container {
-  flex-grow: 1;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: 1200px;
-  margin: 0;
-  padding: 20px 20px;
-  font-family: 'M PLUS 1p', sans-serif;
-  -webkit-mask-image: radial-gradient(circle, black 40%, rgba(0,0,0,0) 100%);
-  mask-image: radial-gradient(circle, black 60%, rgba(0,0,0,0) 100%);
+.breadcrumbs {
+  margin-bottom: 16px;
 }
 
-.donut-single-card {
-  display: flex;
-  gap: 50px;
-  align-items: center;
-  height: 100%;
-  padding: 40px;
-}
-
-.donut-image-section {
-  flex: 1;
-  text-align: center;
-  border-radius: 30px;
-}
-
-.donut-image-section img {
-  max-width: 100%;
-  height: auto;
-  filter: drop-shadow(0 15px 15px rgba(0,0,0,0.1));
-}
-
-.donut-details-section {
-  flex: 1;
-}
-
-.donut-title {
-  font-family: 'Modak', cursive;
-  font-size: 3rem;
-  color: #ff69b4;
-  margin-bottom: 20px;
-  text-transform: uppercase;
-  -webkit-text-stroke: 0.3px rgba(255, 255, 255);
-}
-
-.donut-desc {
-  font-family: 'Crimson Text', serif;
-  font-size: 1.2rem;
-  line-height: 1.6;
-  color: #555;
-  margin-bottom: 30px;
-}
-
-.price-tag {
-  font-size: 2rem;
-  font-weight: bold;
-  margin-bottom: 30px;
-}
-
-.branch-context,
-.branch-context-note,
-.product-calories {
-  margin: 0 0 12px;
-  color: #555;
-  font-family: 'M PLUS 1p', sans-serif;
-}
-
-.branch-context {
-  color: #007ec2;
+.breadcrumbs a {
+  color: var(--blue);
   font-weight: 800;
+  text-decoration: none;
 }
 
-.branch-context-note {
-  font-size: 0.9rem;
+.breadcrumbs a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.product-availability {
-  margin-bottom: 12px;
-  color: #287a46;
-  font-family: 'M PLUS 1p', sans-serif;
+.product-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(24px, 4vw, 56px);
+  padding: clamp(20px, 4vw, 44px);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.product-media {
+  position: sticky;
+  top: calc(clamp(70px, 7vw, 92px) + 24px);
+  align-self: start;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #fff 0%, var(--pink-soft) 65%, transparent 72%);
+}
+
+.product-media img {
+  width: 88%;
+  height: auto;
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.12));
+}
+
+.product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.product-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(46px, 6vw, 72px);
+  line-height: 0.95;
+  color: var(--pink);
+  text-transform: uppercase;
+  -webkit-text-stroke: 1px #fff;
+}
+
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.product-calories {
+  color: var(--ink-soft);
+  font-size: 14px;
   font-weight: 700;
 }
 
-.unavailable {
-  color: #a52e56;
+.product-desc {
+  margin-top: 12px;
+  font-family: var(--font-copy);
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: #4a4a52;
 }
 
-.recipe-section {
-  width: 100%;
-  margin: 18px 0 30px;
+.product-branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: #eef6fb;
+  color: var(--blue-dark);
+  font-size: 14px;
 }
 
-.recipe-section h2 {
-  margin-bottom: 12px;
-  color: #007ec2;
-  font-family: 'M PLUS 1p', sans-serif;
-  font-size: 1.3rem;
+/* ---------- recipe ---------- */
+
+.recipe-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.recipe-heading h2 {
+  color: var(--blue);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.recipe-intro {
+  margin: 4px 0 12px;
+  color: var(--ink-soft);
+  font-size: 14px;
 }
 
 .recipe-list {
+  display: grid;
+  gap: 10px;
   list-style: none;
 }
 
@@ -114,124 +129,207 @@ body{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(237, 90, 160, 0.3);
-  font-family: 'M PLUS 1p', sans-serif;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.recipe-copy h3 {
-  color: #404040;
-  font-size: 1rem;
+.recipe-item.is-changed {
+  border-color: var(--pink);
 }
 
-.recipe-copy p,
-.recipe-quantity {
-  color: #555;
-  font-size: 0.9rem;
+.recipe-item.is-removed {
+  background: #faf6f8;
 }
 
-.ingredient-extra-price {
-  margin-top: 5px;
+.recipe-item.is-removed .recipe-name {
+  color: var(--ink-soft);
+  text-decoration: line-through;
 }
 
-.ingredient-availability {
-  margin-top: 5px;
-  color: #80621a;
+.recipe-item.is-locked {
+  border-style: dashed;
+  background: #fbf9fa;
+}
+
+.recipe-copy {
+  min-width: 0;
+}
+
+.recipe-name {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.recipe-desc {
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.recipe-note {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recipe-note--warn {
+  color: var(--danger);
 }
 
 .recipe-quantity {
   display: flex;
-  flex: 0 0 auto;
   flex-direction: column;
-  gap: 5px;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.ingredient-quantity {
-  box-sizing: border-box;
-  width: 110px;
-  min-height: 38px;
-  padding: 6px 8px;
-  border: 1px solid #ed5aa0;
-  border-radius: 8px;
-  font: inherit;
+.recipe-range {
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-align: right;
 }
 
-.purchase-controls {
-  display: flex;
-  gap: 20px;
+.recipe-fixed {
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #efe9ec;
+  color: var(--ink-soft);
+  font-weight: 800;
+}
+
+.recipe-fixed svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* ---------- purchase ---------- */
+
+.purchase-panel {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #fff 0%, #fff4f9 100%);
+  border: 2px solid var(--line);
+}
+
+.purchase-price {
+  display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
 }
 
-.quantity-picker {
+.purchase-price__label {
+  flex-basis: 100%;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.purchase-price__value {
+  color: var(--blue);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.purchase-price__each {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.purchase-actions {
   display: flex;
-  align-items: center;
-  background: rgba(224, 224, 224, 0.5);
-  border-radius: 50px;
-  padding: 5px 15px;
-  gap: 20px;
-  font-size: 1.5rem;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.qty-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 10px;
+.stepper--lg .stepper__btn {
+  width: 46px;
+  height: 46px;
+}
+
+.stepper--lg .stepper__value {
+  min-width: 48px;
+  font-size: 18px;
 }
 
 .add-btn {
-  background: #ff69b4;
-  color: rgb(255, 255, 255);
-  border: none;
-  padding: 15px 40px;
-  border-radius: 50px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: 0.3s;
+  flex: 1 1 200px;
+  min-height: 52px;
+  font-size: 18px;
 }
 
-.add-btn:hover {
-  background: #ff4da6;
-  transform: translateY(-2px);
+.add-btn.is-added {
+  background: var(--success);
 }
 
-.add-btn:disabled {
-  background: #aaa;
-  cursor: not-allowed;
-  transform: none;
+.purchase-note {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
-@media (max-width: 768px) {
+.purchase-feedback {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--success-tint);
+  color: #1d5a33;
+  font-weight: 700;
+}
 
-  .donut-single-card {
-    flex-direction: column;
-    padding: 20px;
-    text-align: center;
+.purchase-feedback a {
+  color: inherit;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 860px) {
+  .product-card {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .purchase-controls {
-    justify-content: center;
+  .product-media {
+    position: static;
+    width: min(320px, 80%);
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .product-card {
+    padding: 18px 14px;
+    border-radius: var(--radius-lg);
   }
 
   .recipe-item {
-    align-items: flex-start;
-  }
-
-  .donut-title {
-    font-size: 2.2rem;
-  }
-}
-
-@media (max-width: 600px) {
- .donut-page-container{
-     margin-bottom: 30px;
-  }
-
-  .recipe-item {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .recipe-quantity {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .purchase-actions .stepper {
+    flex: 1 1 100%;
+    justify-content: space-between;
   }
 }

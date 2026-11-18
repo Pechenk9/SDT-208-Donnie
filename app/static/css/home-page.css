@@ -253,3 +253,11 @@ main{
     -webkit-text-stroke: 2px white;
   }
 }
+/* CTAs are links now */
+.hero-cta-button,
+.m-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}

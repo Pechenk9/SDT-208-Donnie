@@ -1,115 +1,115 @@
-
 {% extends "base.html" %}
 
 {% block title %}{{ product.name }} - Donnie{% endblock %}
+
+{% block description %}{{ product.description or ("Order the " ~ product.name ~ " donut at Donnie.") }}{% endblock %}
+
+{% block body_attrs %}data-branch-dependent{% endblock %}
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/donut.css') }}">
 {% endblock %}
 
 {% block content %}
-<main class="donut-page-container">
-    <div class="donut-single-card" data-product-id="{{ product.id }}">
-        <div class="donut-image-section">
+<div class="product-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="/store">&larr; Back to donuts</a>
+    </nav>
+
+    <article class="product-card" data-product-id="{{ product.id }}">
+        <div class="product-media">
             <img
                 id="product-img"
-                src="{{ product.image_url or '' }}"
-                alt="{{ product.name }}"
+                src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                alt="{{ product.name }} donut"
+                width="480" height="480"
             >
         </div>
 
-        <div class="donut-details-section">
-            <h1 id="product-name" class="donut-title">
-                {{ product.name }}
-            </h1>
+        <div class="product-details">
+            <header class="product-header">
+                <h1 class="product-title">{{ product.name }}</h1>
 
-            <p id="product-description" class="donut-desc">
-                {{ product.description or "" }}
-            </p>
+                <div class="product-meta">
+                    {% if product.is_available is none %}
+                    <span class="pill pill--unknown">Select a branch to check availability</span>
+                    {% elif product.is_available %}
+                    <span class="pill pill--ok">Available at {{ product.branch.name }}</span>
+                    {% else %}
+                    <span class="pill pill--no">Not available at {{ product.branch.name }}</span>
+                    {% endif %}
 
-            <div class="price-tag">
-                $<span id="product-price">{{ "%.2f"|format(product.price) }}</span>
+                    {% if product.calories is not none %}
+                    <span class="product-calories">{{ product.calories }} kcal</span>
+                    {% endif %}
+                </div>
+
+                {% if product.description %}
+                <p class="product-desc">{{ product.description }}</p>
+                {% endif %}
+            </header>
+
+            <div class="product-branch">
+                {% if product.branch %}
+                <span>Prices for <strong>{{ product.branch.name }}</strong>, {{ product.branch.city }}</span>
+                <button type="button" class="link-btn" data-open-branch>Change</button>
+                {% else %}
+                <span>No branch selected — standard menu price shown.</span>
+                <button type="button" class="link-btn" data-open-branch>Choose a branch</button>
+                {% endif %}
             </div>
 
-            {% if product.branch %}
-            <p class="branch-context">
-                Prices and availability for {{ product.branch.name }}.
-            </p>
-            {% if product.branch_price is none %}
-            <p class="branch-context-note">
-                No branch-specific price is set; the standard catalog price is shown.
-            </p>
-            {% endif %}
-            {% if product.branch_is_available is none %}
-            <p class="branch-context-note">
-                No branch-specific product entry is set; default availability rules apply.
-            </p>
-            {% elif product.is_available %}
-            <p class="product-availability">Available at this branch</p>
-            {% else %}
-            <p class="product-availability unavailable">Not available at this branch</p>
-            {% endif %}
-            {% else %}
-            <p class="branch-context-note">
-                No branch context is available. Select a valid branch to see branch-specific pricing and availability. The standard catalog price is shown.
-            </p>
-            {% endif %}
-
-            {% if product.calories is not none %}
-            <p class="product-calories">{{ product.calories }} calories</p>
-            {% endif %}
-
             <section class="recipe-section" aria-labelledby="recipe-title">
-                <h2 id="recipe-title">Recipe ingredients</h2>
+                <div class="recipe-heading">
+                    <h2 id="recipe-title">Make it yours</h2>
+                    <button type="button" class="link-btn" id="reset-recipe" hidden>Reset to recipe</button>
+                </div>
+                <p class="recipe-intro">Amounts are per donut. Set an ingredient to 0 to leave it out.</p>
+
                 {% if product.ingredients %}
                 <ul class="recipe-list">
                     {% for ingredient in product.ingredients %}
-                    <li class="recipe-item" data-ingredient-id="{{ ingredient.id }}">
+                    {% set editable = ingredient.is_changeable and ingredient.is_available %}
+                    <li class="recipe-item{% if not editable %} is-locked{% endif %}" data-ingredient-id="{{ ingredient.id }}">
                         <div class="recipe-copy">
-                            <h3>{{ ingredient.name }}</h3>
+                            <h3 class="recipe-name" id="ingredient-name-{{ ingredient.id }}">{{ ingredient.name }}</h3>
                             {% if ingredient.description %}
-                            <p>{{ ingredient.description }}</p>
+                            <p class="recipe-desc">{{ ingredient.description }}</p>
                             {% endif %}
-                            <p class="ingredient-extra-price">
-                                Extra price: ${{ "%.2f"|format(ingredient.extra_price) }}
-                            </p>
                             {% if not ingredient.is_active %}
-                            <p class="ingredient-availability unavailable">
-                                Not currently available
-                            </p>
+                            <p class="recipe-note recipe-note--warn">Not currently available — kept as in the recipe.</p>
                             {% elif ingredient.branch_is_available is sameas false %}
-                            <p class="ingredient-availability unavailable">
-                                Not available at this branch
-                            </p>
-                            {% elif ingredient.branch_is_available is none and product.branch %}
-                            <p class="ingredient-availability">
-                                Branch availability is not recorded
-                            </p>
-                            {% elif not product.branch %}
-                            <p class="ingredient-availability">
-                                Select a branch to check ingredient availability
-                            </p>
+                            <p class="recipe-note recipe-note--warn">Not available at this branch — can't be changed.</p>
+                            {% elif not ingredient.is_changeable %}
+                            <p class="recipe-note">Part of the base recipe.</p>
                             {% endif %}
                         </div>
 
                         <div class="recipe-quantity">
-                            {% if ingredient.is_changeable %}
-                            <label for="ingredient-{{ ingredient.id }}">
-                                Quantity ({{ ingredient.unit }})
-                            </label>
-                            <input
-                                id="ingredient-{{ ingredient.id }}"
-                                class="ingredient-quantity"
-                                type="number"
-                                min="{{ ingredient.min_quantity }}"
-                                max="{{ ingredient.max_quantity }}"
-                                step="any"
-                                value="{{ ingredient.default_quantity }}"
-                                {% if not ingredient.is_available %}disabled{% endif %}
-                            >
+                            {% if editable %}
+                            <div class="stepper" role="group" aria-labelledby="ingredient-name-{{ ingredient.id }}">
+                                <button type="button" class="stepper__btn" data-step="-1" aria-label="Less {{ ingredient.name }}">&minus;</button>
+                                <input
+                                    class="stepper__input"
+                                    type="number"
+                                    inputmode="decimal"
+                                    id="ingredient-{{ ingredient.id }}"
+                                    min="0"
+                                    max="{{ ingredient.max_quantity }}"
+                                    step="any"
+                                    value="{{ ingredient.default_quantity }}"
+                                    aria-labelledby="ingredient-name-{{ ingredient.id }}"
+                                    aria-describedby="ingredient-range-{{ ingredient.id }}"
+                                >
+                                <span class="stepper__unit">{{ ingredient.unit }}</span>
+                                <button type="button" class="stepper__btn" data-step="1" aria-label="More {{ ingredient.name }}">+</button>
+                            </div>
+                            <span class="recipe-range" id="ingredient-range-{{ ingredient.id }}"></span>
                             {% else %}
-                            <span>
-                                {{ ingredient.default_quantity }} {{ ingredient.unit }} (fixed)
+                            <span class="recipe-fixed">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-7-2a2 2 0 0 1 4 0v2h-4Z"/></svg>
+                                {{ '%g'|format(ingredient.default_quantity) }} {{ ingredient.unit }}
+                                <span class="visually-hidden">(fixed)</span>
                             </span>
                             {% endif %}
                         </div>
@@ -117,29 +117,40 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p>No recipe details are available for this product.</p>
+                <p class="state-message">No recipe details are available for this donut.</p>
                 {% endif %}
             </section>
 
-            <div class="purchase-controls">
-                <div class="quantity-picker">
-                    <button id="minus-btn" class="qty-btn" type="button">—</button>
-                    <span id="qty-count">1</span>
-                    <button id="plus-btn" class="qty-btn" type="button">+</button>
+            <div class="purchase-panel">
+                <div class="purchase-price">
+                    <span class="purchase-price__label">Estimated price</span>
+                    <span class="purchase-price__value" id="product-price" aria-live="polite">{{ "$%.2f"|format(product.price) }}</span>
+                    <span class="purchase-price__each" id="product-price-each"></span>
                 </div>
 
-                <button
-                    id="add-to-cart-btn"
-                    class="add-btn"
-                    type="button"
-                    {% if product.is_available is sameas false %}disabled{% endif %}
-                >
-                    Add to Basket
-                </button>
+                <div class="purchase-actions">
+                    <div class="stepper stepper--lg" role="group" aria-label="Number of donuts">
+                        <button id="minus-btn" class="stepper__btn" type="button" aria-label="One donut less">&minus;</button>
+                        <output id="qty-count" class="stepper__value" aria-live="polite">1</output>
+                        <button id="plus-btn" class="stepper__btn" type="button" aria-label="One donut more">+</button>
+                    </div>
+
+                    <button id="add-to-cart-btn" class="btn add-btn" type="button"
+                        {% if product.is_available is sameas false %}disabled{% endif %}>
+                        {% if product.is_available is sameas false %}Unavailable here{% else %}Add to cart{% endif %}
+                    </button>
+                </div>
+
+                <p class="purchase-note">
+                    Estimated price. Ingredient changes don't affect the price right now; the final price is calculated when you place your order.
+                </p>
+                <p class="purchase-feedback" id="add-feedback" hidden>
+                    Added to your cart. <a href="/order">Go to checkout</a> or <a href="/store">keep shopping</a>.
+                </p>
             </div>
         </div>
-    </div>
-</main>
+    </article>
+</div>
 {% endblock %}
 
 {% block scripts %}

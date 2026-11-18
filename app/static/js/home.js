@@ -1,14 +1,3 @@
-const constBtn = document.querySelector(".hero-cta-button");
-const constBtnMob = document.querySelector(".m-btn");
-
-constBtn.addEventListener("click", () => {
-  window.location.href = "/constructor";
-});
-
-constBtnMob.addEventListener("click", () => {
-  window.location.href = "/constructor";
-});
-
 const value = `; ${document.cookie}`;
 const parts = value.split(`; visits=`);
 
