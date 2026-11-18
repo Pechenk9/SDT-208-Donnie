@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ panel_title }} - Donnie{% endblock %}
+
+{% block description %}Donnie management access.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+    <div class="profile-dashboard">
+        <header class="profile-header">
+            <div>
+                <p class="profile-eyebrow">DONNIE MANAGEMENT</p>
+                <h1>{{ panel_title }}</h1>
+                <p class="profile-header-copy">Management tools are not available yet.</p>
+            </div>
+        </header>
+
+        {% if is_manager_panel %}
+        <section class="profile-information" aria-label="Branch management selection">
+            {% if managed_branches|length > 1 %}
+            <form method="get" action="/manager">
+                <label for="managed-branch">Branch</label>
+                <select id="managed-branch" name="branch_id">
+                    {% for branch in managed_branches %}
+                    <option value="{{ branch.id }}"{% if branch.id == selected_branch.id %} selected{% endif %}>
+                        {{ branch.name }} — {{ branch.city }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button class="profile-management-link" type="submit">Manage branch</button>
+            </form>
+            {% endif %}
+            <p role="status">
+                You are managing {{ selected_branch.name }}.
+                Changes will apply to this branch.
+            </p>
+        </section>
+        {% else %}
+        <section class="profile-information">
+            <p>This panel is reserved for network-wide owner management.</p>
+        </section>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

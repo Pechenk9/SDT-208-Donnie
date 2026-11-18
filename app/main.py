@@ -35,6 +35,11 @@ from app.models import (
     User,
     UserRole,
 )
+from app.permissions import (
+    Permission,
+    get_managed_branches,
+    has_permission,
+)
 from app.config import get_session
 from app.security import hash_password, verify_password
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -236,7 +241,79 @@ def profile_page(
     return templates.TemplateResponse(
         request,
         "profile.html",
-        {"user": user},
+        {
+            "user": user,
+            "can_access_manager_panel": has_permission(
+                user,
+                Permission.MANAGER_PANEL,
+            ),
+            "can_access_owner_panel": has_permission(
+                user,
+                Permission.OWNER_PANEL,
+            ),
+        },
+    )
+
+
+@app.get("/manager")
+def manager_panel(
+    request: Request,
+    branch_id: int | None = None,
+    user: User = Depends(require_profile_user),
+):
+    if not has_permission(user, Permission.MANAGER_PANEL):
+        raise HTTPException(403, "Manager panel access required")
+
+    managed_branches = get_managed_branches(user)
+    if not managed_branches:
+        raise HTTPException(403, "No branches are assigned to this manager")
+
+    if branch_id is None:
+        selected_branch = managed_branches[0]
+    else:
+        selected_branch = next(
+            (
+                branch
+                for branch in managed_branches
+                if branch.id == branch_id
+            ),
+            None,
+        )
+        if selected_branch is None:
+            raise HTTPException(
+                403,
+                "You are not assigned to this branch",
+            )
+
+    return templates.TemplateResponse(
+        request,
+        "management_panel.html",
+        {
+            "panel_title": "Manager Panel",
+            "is_manager_panel": True,
+            "managed_branches": managed_branches,
+            "selected_branch": selected_branch,
+        },
+    )
+
+
+@app.get("/owner")
+def owner_panel(
+    request: Request,
+    user: User = Depends(require_profile_user),
+):
+    if not has_permission(user, Permission.OWNER_PANEL):
+        raise HTTPException(403, "Owner panel access required")
+
+    return templates.TemplateResponse(
+        request,
+        "management_panel.html",
+        {
+            "panel_title": "Owner Panel",
+            "is_manager_panel": False,
+            "managed_branches": [],
+            "selected_branch": None,
+        },
     )
 
 
@@ -462,7 +539,7 @@ def product_detail(
         "is_available": (
             None
             if branch is None
-            else branch_product is None or branch_product.is_available
+            else branch_product is None and branch_product.is_available
         ),
         "ingredients": ingredients,
     }
