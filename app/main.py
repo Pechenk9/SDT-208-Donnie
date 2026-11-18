@@ -1,4 +1,4 @@
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import InvalidOperation, ROUND_HALF_UP, Decimal
 import json
 from pathlib import Path
 import re
@@ -22,11 +22,13 @@ from app.deps import (
 )
 from app.models import (
     Branch,
+    BranchIngredient,
     BranchProduct,
     Ingredient,
     FulfillmentType,
     Order,
     OrderItem,
+    OrderItemIngredient,
     OrderStatus,
     Product,
     ProductIngredient,
@@ -572,6 +574,7 @@ async def create_order(
     customer_email: Annotated[str | None, Form()] = None,
     delivery_address: Annotated[str | None, Form()] = None,
     session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
 ):
     customer_name = customer_name.strip()
     customer_phone = customer_phone.strip()
@@ -617,127 +620,238 @@ async def create_order(
     if not isinstance(items, list) or not items:
         raise HTTPException(400, "Order must contain at least one item")
 
-    branch = session.get(Branch, branch_id)
-
-    if branch is None:
-        raise HTTPException(404, "Branch not found")
-
-    quantities = {}
-
+    product_ids = set()
+    total_quantity = 0
     for item in items:
         if not isinstance(item, dict):
             raise HTTPException(400, "Invalid order item")
 
         product_id = item.get("product_id")
         quantity = item.get("quantity")
-
+        ingredients = item.get("ingredients")
         if (
             isinstance(product_id, bool)
             or not isinstance(product_id, int)
             or product_id <= 0
         ):
             raise HTTPException(400, "Invalid product ID")
-
         if (
             isinstance(quantity, bool)
             or not isinstance(quantity, int)
             or not 1 <= quantity <= 99
         ):
             raise HTTPException(400, "Invalid product quantity")
+        if not isinstance(ingredients, list):
+            raise HTTPException(400, "Invalid ingredient selections")
 
-        if product_id in quantities:
-            raise HTTPException(400, "Duplicate product in order")
+        item["product_id"] = product_id
+        item["quantity"] = quantity
+        product_ids.add(product_id)
+        total_quantity += quantity
 
-        quantities[product_id] = quantity
+    if total_quantity < 6:
+        raise HTTPException(400, "Order must contain at least six donuts")
 
-    products = session.scalars(
-        select(Product).where(
-            Product.id.in_(quantities.keys()),
-            Product.is_active.is_(True),
-        )
-    ).all()
+    try:
+        branch = session.get(Branch, branch_id)
+        if branch is None:
+            raise HTTPException(404, "Branch not found")
 
-    products_by_id = {
-        product.id: product
-        for product in products
-    }
-
-    if len(products_by_id) != len(quantities):
-        raise HTTPException(
-            400,
-            "One or more products do not exist or are inactive",
-        )
-
-    branch_products = session.scalars(
-        select(BranchProduct).where(
-            BranchProduct.branch_id == branch_id,
-            BranchProduct.product_id.in_(quantities.keys()),
-        )
-    ).all()
-
-    branch_products_by_id = {
-        item.product_id: item
-        for item in branch_products
-    }
-
-    order_items = []
-    total_price = Decimal("0.00")
-
-    for product_id, quantity in quantities.items():
-        product = products_by_id[product_id]
-        branch_product = branch_products_by_id.get(product_id)
-
-        if branch_product and not branch_product.is_available:
+        products = session.scalars(
+            select(Product).where(
+                Product.id.in_(product_ids),
+                Product.is_active.is_(True),
+            )
+        ).all()
+        products_by_id = {product.id: product for product in products}
+        if len(products_by_id) != len(product_ids):
             raise HTTPException(
                 400,
-                f"{product.name} is unavailable at this branch",
+                "One or more products do not exist or are inactive",
             )
 
-        unit_price = (
-            branch_product.price
-            if branch_product and branch_product.price is not None
-            else product.base_price
-        )
+        branch_products = session.scalars(
+            select(BranchProduct).where(
+                BranchProduct.branch_id == branch_id,
+                BranchProduct.product_id.in_(product_ids),
+            )
+        ).all()
+        branch_products_by_id = {
+            availability.product_id: availability
+            for availability in branch_products
+        }
 
-        unit_price = Decimal(str(unit_price)).quantize(
+        recipes = session.scalars(
+            select(ProductIngredient)
+            .options(joinedload(ProductIngredient.ingredient))
+            .where(ProductIngredient.product_id.in_(product_ids))
+        ).all()
+        recipes_by_product = {}
+        for recipe in recipes:
+            recipes_by_product.setdefault(recipe.product_id, {})[
+                recipe.ingredient_id
+            ] = recipe
+
+        submitted_ingredient_ids = set()
+        for item in items:
+            seen_ingredient_ids = set()
+            for selection in item["ingredients"]:
+                if not isinstance(selection, dict):
+                    raise HTTPException(400, "Invalid ingredient selection")
+                ingredient_id = selection.get("ingredient_id")
+                quantity = selection.get("quantity")
+                if (
+                    isinstance(ingredient_id, bool)
+                    or not isinstance(ingredient_id, int)
+                    or ingredient_id <= 0
+                ):
+                    raise HTTPException(400, "Invalid ingredient ID")
+                if ingredient_id in seen_ingredient_ids:
+                    raise HTTPException(
+                        400,
+                        "Duplicate ingredient in order item",
+                    )
+                seen_ingredient_ids.add(ingredient_id)
+                try:
+                    parsed_quantity = (
+                        Decimal(str(quantity))
+                        if not isinstance(quantity, bool)
+                        and isinstance(quantity, (int, float))
+                        else Decimal("NaN")
+                    )
+                except (InvalidOperation, ValueError):
+                    parsed_quantity = Decimal("NaN")
+                try:
+                    valid_quantity = (
+                        parsed_quantity.is_finite()
+                        and parsed_quantity >= 0
+                        and parsed_quantity
+                        == parsed_quantity.quantize(Decimal("0.001"))
+                    )
+                except InvalidOperation:
+                    valid_quantity = False
+                if not valid_quantity:
+                    raise HTTPException(400, "Invalid ingredient quantity")
+                selection["ingredient_id"] = ingredient_id
+                selection["quantity"] = parsed_quantity
+                submitted_ingredient_ids.add(ingredient_id)
+
+        branch_ingredients = session.scalars(
+            select(BranchIngredient).where(
+                BranchIngredient.branch_id == branch_id,
+                BranchIngredient.ingredient_id.in_(submitted_ingredient_ids),
+            )
+        ).all() if submitted_ingredient_ids else []
+        branch_ingredients_by_id = {
+            availability.ingredient_id: availability
+            for availability in branch_ingredients
+        }
+
+        order_items = []
+        total_price = Decimal("0.00")
+        for item in items:
+            product = products_by_id[item["product_id"]]
+            branch_product = branch_products_by_id.get(product.id)
+            if branch_product is None or not branch_product.is_available:
+                raise HTTPException(
+                    400,
+                    f"{product.name} is unavailable at this branch",
+                )
+
+            recipes_for_product = recipes_by_product.get(product.id, {})
+            surcharge = Decimal("0.00")
+            ingredient_records = []
+            for selection in item["ingredients"]:
+                recipe = recipes_for_product.get(selection["ingredient_id"])
+                if recipe is None:
+                    raise HTTPException(
+                        400,
+                        "Ingredient does not belong to this product",
+                    )
+
+                quantity = selection["quantity"]
+                if quantity > recipe.max_quantity:
+                    raise HTTPException(
+                        400,
+                        f"{recipe.ingredient.name} exceeds its maximum quantity",
+                    )
+                if not recipe.is_changeable and quantity != recipe.default_quantity:
+                    raise HTTPException(
+                        400,
+                        f"{recipe.ingredient.name} cannot be customised",
+                    )
+
+                availability = branch_ingredients_by_id.get(
+                    recipe.ingredient_id
+                )
+                is_available = (
+                    recipe.ingredient.is_active
+                    and (
+                        availability is None
+                        or availability.is_available
+                    )
+                )
+                if quantity > 0 and not is_available:
+                    raise HTTPException(
+                        400,
+                        f"{recipe.ingredient.name} is unavailable at this branch",
+                    )
+                if (
+                    recipe.is_changeable
+                    and quantity > recipe.default_quantity
+                ):
+                    surcharge += recipe.ingredient.extra_price
+                if quantity > 0:
+                    ingredient_records.append(
+                        OrderItemIngredient(
+                            ingredient_id=recipe.ingredient_id,
+                            quantity=quantity,
+                            unit=recipe.unit,
+                        )
+                    )
+
+            base_price = (
+                branch_product.price
+                if branch_product.price is not None
+                else product.base_price
+            )
+            unit_price = (base_price + surcharge).quantize(
+                Decimal("0.01"),
+                rounding=ROUND_HALF_UP,
+            )
+            order_item = OrderItem(
+                product_id=product.id,
+                name_snapshot=product.name,
+                quantity=item["quantity"],
+                unit_price=unit_price,
+                ingredients=ingredient_records,
+            )
+            order_items.append(order_item)
+            total_price += unit_price * item["quantity"]
+
+        total_price = total_price.quantize(
             Decimal("0.01"),
             rounding=ROUND_HALF_UP,
         )
-
-        total_price += unit_price * quantity
-
-        order_items.append(
-            OrderItem(
-                product_id=product.id,
-                name_snapshot=product.name,
-                quantity=quantity,
-                unit_price=unit_price,
-            )
+        order = Order(
+            user_id=user.id if user is not None else None,
+            branch_id=branch_id,
+            status=OrderStatus.PENDING,
+            fulfillment_type=fulfillment_type,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            delivery_address=delivery_address,
+            total_price=total_price,
+            items=order_items,
         )
-
-    total_price = total_price.quantize(
-        Decimal("0.01"),
-        rounding=ROUND_HALF_UP,
-    )
-
-    order = Order(
-        user_id=None,
-        branch_id=branch_id,
-        status=OrderStatus.PENDING,
-        fulfillment_type=fulfillment_type,
-        customer_name=customer_name,
-        customer_phone=customer_phone,
-        customer_email=customer_email,
-        delivery_address=delivery_address,
-        total_price=total_price,
-        items=order_items,
-    )
-
-    try:
         session.add(order)
+        session.flush()
+        order_id = order.id
         session.commit()
-        session.refresh(order)
-
+    except HTTPException:
+        session.rollback()
+        raise
     except SQLAlchemyError:
         session.rollback()
         raise HTTPException(
@@ -746,6 +860,6 @@ async def create_order(
         )
 
     return RedirectResponse(
-        url=f"/orders/{order.id}/receipt",
+        url=f"/orders/{order_id}/receipt",
         status_code=303,
     )
