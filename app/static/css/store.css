@@ -30,6 +30,28 @@
   align-items: center;
 }
 
+.store-branch-context {
+  width: 100%;
+  margin: 0 0 14px;
+  color: #007ec2;
+  font-family: 'M PLUS 1p', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.catalog-availability {
+  margin-top: 10px;
+  color: #287a46;
+  font-family: 'M PLUS 1p', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.catalog-availability.unavailable {
+  color: #a52e56;
+}
+
 .constructor-cta {
   display: none;
 }

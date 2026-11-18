@@ -28,8 +28,98 @@
             </p>
 
             <div class="price-tag">
-                $<span id="product-price">{{ "%.2f"|format(product.base_price) }}</span>
+                $<span id="product-price">{{ "%.2f"|format(product.price) }}</span>
             </div>
+
+            {% if product.branch %}
+            <p class="branch-context">
+                Prices and availability for {{ product.branch.name }}.
+            </p>
+            {% if product.branch_price is none %}
+            <p class="branch-context-note">
+                No branch-specific price is set; the standard catalog price is shown.
+            </p>
+            {% endif %}
+            {% if product.branch_is_available is none %}
+            <p class="branch-context-note">
+                No branch-specific product entry is set; default availability rules apply.
+            </p>
+            {% elif product.is_available %}
+            <p class="product-availability">Available at this branch</p>
+            {% else %}
+            <p class="product-availability unavailable">Not available at this branch</p>
+            {% endif %}
+            {% else %}
+            <p class="branch-context-note">
+                No branch context is available. Select a valid branch to see branch-specific pricing and availability. The standard catalog price is shown.
+            </p>
+            {% endif %}
+
+            {% if product.calories is not none %}
+            <p class="product-calories">{{ product.calories }} calories</p>
+            {% endif %}
+
+            <section class="recipe-section" aria-labelledby="recipe-title">
+                <h2 id="recipe-title">Recipe ingredients</h2>
+                {% if product.ingredients %}
+                <ul class="recipe-list">
+                    {% for ingredient in product.ingredients %}
+                    <li class="recipe-item" data-ingredient-id="{{ ingredient.id }}">
+                        <div class="recipe-copy">
+                            <h3>{{ ingredient.name }}</h3>
+                            {% if ingredient.description %}
+                            <p>{{ ingredient.description }}</p>
+                            {% endif %}
+                            <p class="ingredient-extra-price">
+                                Extra price: ${{ "%.2f"|format(ingredient.extra_price) }}
+                            </p>
+                            {% if not ingredient.is_active %}
+                            <p class="ingredient-availability unavailable">
+                                Not currently available
+                            </p>
+                            {% elif ingredient.branch_is_available is sameas false %}
+                            <p class="ingredient-availability unavailable">
+                                Not available at this branch
+                            </p>
+                            {% elif ingredient.branch_is_available is none and product.branch %}
+                            <p class="ingredient-availability">
+                                Branch availability is not recorded
+                            </p>
+                            {% elif not product.branch %}
+                            <p class="ingredient-availability">
+                                Select a branch to check ingredient availability
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <div class="recipe-quantity">
+                            {% if ingredient.is_changeable %}
+                            <label for="ingredient-{{ ingredient.id }}">
+                                Quantity ({{ ingredient.unit }})
+                            </label>
+                            <input
+                                id="ingredient-{{ ingredient.id }}"
+                                class="ingredient-quantity"
+                                type="number"
+                                min="{{ ingredient.min_quantity }}"
+                                max="{{ ingredient.max_quantity }}"
+                                step="any"
+                                value="{{ ingredient.default_quantity }}"
+                                {% if not ingredient.is_available %}disabled{% endif %}
+                            >
+                            {% else %}
+                            <span>
+                                {{ ingredient.default_quantity }} {{ ingredient.unit }} (fixed)
+                            </span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>No recipe details are available for this product.</p>
+                {% endif %}
+            </section>
 
             <div class="purchase-controls">
                 <div class="quantity-picker">
@@ -38,7 +128,12 @@
                     <button id="plus-btn" class="qty-btn" type="button">+</button>
                 </div>
 
-                <button id="add-to-cart-btn" class="add-btn" type="button">
+                <button
+                    id="add-to-cart-btn"
+                    class="add-btn"
+                    type="button"
+                    {% if product.is_available is sameas false %}disabled{% endif %}
+                >
                     Add to Basket
                 </button>
             </div>
@@ -48,5 +143,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script id="product-data" type="application/json">{{ product_data|tojson }}</script>
 <script src="{{ url_for('static', path='js/product.js') }}" defer></script>
 {% endblock %}

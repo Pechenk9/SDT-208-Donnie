@@ -66,6 +66,97 @@ body{
   margin-bottom: 30px;
 }
 
+.branch-context,
+.branch-context-note,
+.product-calories {
+  margin: 0 0 12px;
+  color: #555;
+  font-family: 'M PLUS 1p', sans-serif;
+}
+
+.branch-context {
+  color: #007ec2;
+  font-weight: 800;
+}
+
+.branch-context-note {
+  font-size: 0.9rem;
+}
+
+.product-availability {
+  margin-bottom: 12px;
+  color: #287a46;
+  font-family: 'M PLUS 1p', sans-serif;
+  font-weight: 700;
+}
+
+.unavailable {
+  color: #a52e56;
+}
+
+.recipe-section {
+  width: 100%;
+  margin: 18px 0 30px;
+}
+
+.recipe-section h2 {
+  margin-bottom: 12px;
+  color: #007ec2;
+  font-family: 'M PLUS 1p', sans-serif;
+  font-size: 1.3rem;
+}
+
+.recipe-list {
+  list-style: none;
+}
+
+.recipe-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(237, 90, 160, 0.3);
+  font-family: 'M PLUS 1p', sans-serif;
+}
+
+.recipe-copy h3 {
+  color: #404040;
+  font-size: 1rem;
+}
+
+.recipe-copy p,
+.recipe-quantity {
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.ingredient-extra-price {
+  margin-top: 5px;
+}
+
+.ingredient-availability {
+  margin-top: 5px;
+  color: #80621a;
+}
+
+.recipe-quantity {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ingredient-quantity {
+  box-sizing: border-box;
+  width: 110px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid #ed5aa0;
+  border-radius: 8px;
+  font: inherit;
+}
+
 .purchase-controls {
   display: flex;
   gap: 20px;
@@ -108,6 +199,12 @@ body{
   transform: translateY(-2px);
 }
 
+.add-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+  transform: none;
+}
+
 @media (max-width: 768px) {
 
   .donut-single-card {
@@ -120,6 +217,10 @@ body{
     justify-content: center;
   }
 
+  .recipe-item {
+    align-items: flex-start;
+  }
+
   .donut-title {
     font-size: 2.2rem;
   }
@@ -128,5 +229,9 @@ body{
 @media (max-width: 600px) {
  .donut-page-container{
      margin-bottom: 30px;
+  }
+
+  .recipe-item {
+    flex-direction: column;
   }
 }

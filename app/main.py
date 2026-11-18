@@ -1,19 +1,41 @@
 from decimal import ROUND_HALF_UP, Decimal
 import json
 from pathlib import Path
+import re
 from typing import Annotated
 
 from fastapi import FastAPI, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.models import Branch, BranchProduct, FulfillmentType, Order, OrderItem, OrderStatus, Product
+from app.deps import (
+    COOKIE_NAME,
+    COOKIE_SECURE,
+    create_login_session,
+    get_current_branch,
+    get_current_user,
+    invalidate_login_session,
+    login_required,
+)
+from app.models import (
+    Branch,
+    BranchProduct,
+    Ingredient,
+    FulfillmentType,
+    Order,
+    OrderItem,
+    OrderStatus,
+    Product,
+    ProductIngredient,
+    User,
+    UserRole,
+)
 from app.config import get_session
-from sqlalchemy.exc import SQLAlchemyError
+from app.security import hash_password, verify_password
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -30,6 +52,215 @@ templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
 
+
+def require_profile_user(
+    user: User | None = Depends(get_current_user),
+) -> User:
+    if user is None:
+        raise HTTPException(
+            status_code=303,
+            headers={"Location": "/login"},
+        )
+
+    return login_required(user)
+
+
+@app.get("/login")
+def login_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+):
+    if user is not None:
+        return RedirectResponse(url="/profile", status_code=303)
+
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"error": None, "email": ""},
+    )
+
+
+@app.post("/login")
+def login(
+    request: Request,
+    email: str = Form(),
+    password: str = Form(),
+    user: User | None = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if user is not None:
+        return RedirectResponse(url="/profile", status_code=303)
+
+    normalized_email = email.strip().lower()
+    account = session.scalar(
+        select(User).where(func.lower(User.email) == normalized_email)
+    )
+
+    if account is None or not verify_password(password, account.password_hash):
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {
+                "error": "Invalid email or password.",
+                "email": normalized_email,
+            },
+            status_code=400,
+        )
+
+    invalidate_login_session(request, session)
+    response = RedirectResponse(url="/profile", status_code=303)
+    create_login_session(account, session, response)
+    return response
+
+
+@app.get("/register")
+def registration_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+):
+    if user is not None:
+        return RedirectResponse(url="/profile", status_code=303)
+
+    return templates.TemplateResponse(
+        request,
+        "register.html",
+        {
+            "errors": [],
+            "first_name": "",
+            "last_name": "",
+            "email": "",
+        },
+    )
+
+
+@app.post("/register")
+def register_user(
+    request: Request,
+    first_name: str = Form(default=""),
+    email: str = Form(default=""),
+    password: str = Form(default=""),
+    confirm_password: str = Form(default=""),
+    last_name: str = Form(default=""),
+    user: User | None = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if user is not None:
+        return RedirectResponse(url="/profile", status_code=303)
+
+    first_name = first_name.strip()
+    last_name = last_name.strip()
+    email = email.strip().lower()
+    errors = []
+    email_is_valid = (
+        len(email) <= 255
+        and re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) is not None
+    )
+
+    if not first_name:
+        errors.append("First name is required.")
+    elif len(first_name) > 100:
+        errors.append("First name must be 100 characters or fewer.")
+
+    if len(last_name) > 100:
+        errors.append("Last name must be 100 characters or fewer.")
+
+    if not email:
+        errors.append("Email is required.")
+    elif not email_is_valid:
+        errors.append("Enter a valid email address.")
+
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters long.")
+
+    if not confirm_password:
+        errors.append("Confirm password is required.")
+    elif password != confirm_password:
+        errors.append("Passwords do not match.")
+
+    if email_is_valid:
+        existing_user = session.scalar(
+            select(User).where(func.lower(User.email) == email)
+        )
+        if existing_user is not None:
+            errors.append("An account with this email is already registered.")
+
+    form_values = {
+        "errors": errors,
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+    }
+    if errors:
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            form_values,
+            status_code=400,
+        )
+
+    account = User(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        password_hash=hash_password(password),
+        role=UserRole.CUSTOMER,
+    )
+    session.add(account)
+
+    try:
+        session.flush()
+    except IntegrityError:
+        session.rollback()
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {
+                **form_values,
+                "errors": ["An account with this email is already registered."],
+            },
+            status_code=400,
+        )
+
+    response = RedirectResponse(url="/profile", status_code=303)
+    create_login_session(account, session, response)
+    return response
+
+
+@app.get("/profile")
+def profile_page(
+    request: Request,
+    user: User = Depends(require_profile_user),
+):
+    return templates.TemplateResponse(
+        request,
+        "profile.html",
+        {"user": user},
+    )
+
+
+@app.post("/logout")
+def logout(
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    invalidate_login_session(request, session)
+    response = RedirectResponse(url="/store", status_code=303)
+    response.delete_cookie(
+        COOKIE_NAME,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+    )
+    return response
+
+@app.get("/contacts")
+def contacts(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="contacts.html",
+    )
+
 @app.get("/")
 def home(request: Request):
     return templates.TemplateResponse(
@@ -41,17 +272,71 @@ def home(request: Request):
 def store(
     request: Request,
     session: Session = Depends(get_session),
+    branch: Branch | None = Depends(get_current_branch),
 ):
-    products = session.scalars(
-        select(Product)
-        .where(Product.is_active.is_(True))
-        .order_by(Product.id)
-    ).all()
+    if branch is None:
+        product_rows = [
+            (product, None)
+            for product in session.scalars(
+                select(Product)
+                .where(Product.is_active.is_(True))
+                .order_by(Product.id)
+            ).all()
+        ]
+    else:
+        product_rows = session.execute(
+            select(Product, BranchProduct)
+            .join(
+                BranchProduct,
+                and_(
+                    BranchProduct.product_id == Product.id,
+                    BranchProduct.branch_id == branch.id,
+                ),
+            )
+            .where(Product.is_active.is_(True))
+            .order_by(Product.id)
+        ).all()
+
+    products = []
+    for product, branch_product in product_rows:
+        effective_price = (
+            branch_product.price
+            if branch_product is not None and branch_product.price is not None
+            else product.base_price
+        )
+        products.append(
+            {
+                "id": product.id,
+                "name": product.name,
+                "image_url": product.image_url,
+                "base_price": float(product.base_price),
+                "price": float(effective_price),
+                "is_available": (
+                    None
+                    if branch_product is None
+                    else branch_product.is_available
+                ),
+            }
+        )
+
+    selected_branch = (
+        {
+            "id": branch.id,
+            "code": branch.code,
+            "name": branch.name,
+            "city": branch.city,
+        }
+        if branch is not None
+        else None
+    )
 
     return templates.TemplateResponse(
         request,
         "store.html",
-        {"products": products},
+        {
+            "products": products,
+            "selected_branch": selected_branch,
+        },
     )
 
 @app.get("/product/{product_id}")
@@ -59,9 +344,17 @@ def product_detail(
     request: Request,
     product_id: int,
     session: Session = Depends(get_session),
+    branch: Branch | None = Depends(get_current_branch),
 ):
     product = session.scalar(
-        select(Product).where(
+        select(Product)
+        .options(
+            selectinload(Product.branch_availability),
+            selectinload(Product.recipe)
+            .selectinload(ProductIngredient.ingredient)
+            .selectinload(Ingredient.branch_availability),
+        )
+        .where(
             Product.id == product_id,
             Product.is_active.is_(True),
         )
@@ -73,10 +366,101 @@ def product_detail(
             detail="Product not found",
         )
 
+    branch_product = next(
+        (
+            availability
+            for availability in product.branch_availability
+            if branch is not None and availability.branch_id == branch.id
+        ),
+        None,
+    )
+    effective_price = (
+        branch_product.price
+        if branch_product is not None and branch_product.price is not None
+        else product.base_price
+    )
+
+    ingredients = []
+    for recipe_item in sorted(
+        product.recipe,
+        key=lambda item: item.ingredient.name.casefold(),
+    ):
+        ingredient = recipe_item.ingredient
+        branch_ingredient = next(
+            (
+                availability
+                for availability in ingredient.branch_availability
+                if branch is not None and availability.branch_id == branch.id
+            ),
+            None,
+        )
+        branch_is_available = (
+            branch_ingredient.is_available
+            if branch_ingredient is not None
+            else None
+        )
+        ingredients.append(
+            {
+                "id": ingredient.id,
+                "name": ingredient.name,
+                "description": ingredient.description,
+                "default_quantity": float(recipe_item.default_quantity),
+                "min_quantity": 0,
+                "max_quantity": float(recipe_item.max_quantity),
+                "is_changeable": recipe_item.is_changeable,
+                "unit": recipe_item.unit,
+                "extra_price": float(ingredient.extra_price),
+                "is_active": ingredient.is_active,
+                "branch_is_available": branch_is_available,
+                "is_available": (
+                    ingredient.is_active
+                    and branch_is_available is not False
+                ),
+            }
+        )
+
+    product_data = {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "image_url": product.image_url,
+        "price": float(effective_price),
+        "base_price": float(product.base_price),
+        "branch_id": branch.id if branch is not None else None,
+        "branch_price": (
+            float(branch_product.price)
+            if branch_product is not None and branch_product.price is not None
+            else None
+        ),
+        "calories": product.calories,
+        "is_active": product.is_active,
+        "branch": (
+            {
+                "id": branch.id,
+                "code": branch.code,
+                "name": branch.name,
+                "city": branch.city,
+            }
+            if branch is not None
+            else None
+        ),
+        "branch_is_available": (
+            branch_product.is_available
+            if branch_product is not None
+            else None
+        ),
+        "is_available": (
+            None
+            if branch is None
+            else branch_product is None or branch_product.is_available
+        ),
+        "ingredients": ingredients,
+    }
+
     return templates.TemplateResponse(
         request,
         "product.html",
-        {"product": product},
+        {"product": product_data, "product_data": product_data},
     )
 
 @app.get("/order")
@@ -143,11 +527,11 @@ def order_receipt(
 async def create_order(
     customer_name: Annotated[str, Form(min_length=1)],
     customer_phone: Annotated[str, Form(min_length=1)],
+    branch_id: Annotated[int, Form(gt=0)],
+    fulfillment_type: Annotated[FulfillmentType, Form()],
+    items_json: Annotated[str, Form()],
     customer_email: Annotated[str | None, Form()] = None,
-    branch_id: Annotated[int, Form(gt=0)] = ...,
-    fulfillment_type: Annotated[FulfillmentType, Form()] = ...,
     delivery_address: Annotated[str | None, Form()] = None,
-    items_json: Annotated[str, Form()] = ...,
     session: Session = Depends(get_session),
 ):
     customer_name = customer_name.strip()

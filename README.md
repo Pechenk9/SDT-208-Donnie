@@ -85,13 +85,23 @@ alembic upgrade head
 
 ### 6. Populate the database
 
-Run the seed script to insert the initial data, including products, ingredients, recipes, and branches.
+Run the seed script to insert the initial data, including products, ingredients, recipes, branches, and branch-specific product assortments.
 
 ```bash
 python -m app.seed
 ```
 
-### 7. Start the application
+### 7. Create the initial accounts
+
+After applying migrations, run the account seeder:
+
+```bash
+python -m app.seed_users
+```
+
+For each account, enter a unique email address, first and last name, and password when prompted. Passwords are read with hidden input and stored only as scrypt hashes. The script creates one owner and two customers, and reports when an entered email already exists. Existing accounts keep their password; their role is set to the requested initial role.
+
+### 8. Start the application
 
 ```bash
 uvicorn app.main:app --reload
@@ -103,10 +113,14 @@ The application will be available at:
 http://127.0.0.1:8000
 ```
 
+Open `/login` to sign in. Successful login redirects to the Store; invalid credentials show a generic error. Submit a POST request to `/logout` to invalidate the server-side session and clear the cookie. The session cookie is HTTP-only, uses SameSite=Lax, and lasts 12 hours by default.
+
+Configure cookie behavior with `SESSION_LIFETIME_SECONDS` and `SESSION_COOKIE_SECURE`. By default, the cookie is secure when `ENVIRONMENT=production` (or `APP_ENV=production`) and not secure during local development. Set `SESSION_COOKIE_SECURE=true` explicitly when serving over production HTTPS.
+
 ## Current Features
 
-- Browse the donut catalogue.
-- View individual product pages.
+- Browse the donut catalogue with selected-branch prices and availability when a valid `selected_branch` cookie is present. Without a selected branch, show base prices and mark availability as unknown.
+- View product recipes and branch-specific prices and availability when a valid `selected_branch` cookie is present.
 - Add products to the shopping cart and manage quantities.
 - Select a branch for an order.
 - Choose between pickup and delivery.
@@ -114,6 +128,7 @@ http://127.0.0.1:8000
 - Validate customer and order information.
 - Calculate order totals using prices stored in the database.
 - Save orders and their items in PostgreSQL.
+- Register customer accounts, sign in, and view a personal profile.
 
 ## Project Goal
 

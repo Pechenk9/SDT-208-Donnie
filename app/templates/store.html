@@ -14,6 +14,17 @@
     <div class="store-layout">
         <div class="store-main">
 
+            {% if selected_branch %}
+            <p class="store-branch-context">
+                Assortment, prices and availability for {{ selected_branch.name }}
+                ({{ selected_branch.code }}).
+            </p>
+            {% else %}
+            <p class="store-branch-context">
+                No branch selected. Showing catalog prices; branch availability is unknown.
+            </p>
+            {% endif %}
+
             <div class="store-header">
 
                 <div class="left-controls">
@@ -58,8 +69,9 @@
 
                 <div class="donut-card" data-id="{{ product.id }}"
                      data-name="{{ product.name }}"
-                     data-price="{{ product.base_price }}">
+                     data-price="{{ product.price }}">
                             
+                    {% if product.is_available is not false %}
                     <div class="add-to-basket">
                         <img
                             src="{{ url_for('static', path='assets/img/basket-controller-back.png') }}"
@@ -72,6 +84,7 @@
                             alt="Add to basket"
                         >
                     </div>
+                    {% endif %}
                 
                     <a href="/product/{{ product.id }}" class="donut-product-link">
                         <div class="donut-img-container">
@@ -80,9 +93,19 @@
                     
                         <div class="donut-info">
                             <span class="donut-name">{{ product.name.upper() }}</span>
-                            <span class="donut-price">${{ "%.2f"|format(product.base_price) }}</span>
+                            <span class="donut-price">${{ "%.2f"|format(product.price) }}</span>
                         </div>
                     </a>
+
+                    <p class="catalog-availability{% if product.is_available is false %} unavailable{% endif %}">
+                        {% if product.is_available is none %}
+                        Select a branch to check availability
+                        {% elif product.is_available %}
+                        Available
+                        {% else %}
+                        Unavailable at this branch
+                        {% endif %}
+                    </p>
                 </div>
 
                 {% endfor %}

@@ -1,12 +1,13 @@
 
-const productCard = document.querySelector('.donut-single-card');
-
 const minusBtn = document.getElementById('minus-btn');
 const plusBtn = document.getElementById('plus-btn');
 const qtyDisplay = document.getElementById('qty-count');
 const addToCartBtn = document.getElementById('add-to-cart-btn');
+const productData = JSON.parse(
+    document.getElementById('product-data').textContent
+);
 
-const productId = Number(productCard.dataset.productId);
+const productId = productData.id;
 
 let count = 1;
 

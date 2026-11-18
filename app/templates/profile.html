@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Your Profile - Donnie{% endblock %}
+
+{% block description %}Your Donnie account profile.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+    <div class="profile-dashboard">
+        <header class="profile-header">
+            <div>
+                <p class="profile-eyebrow">DONNIE ACCOUNT</p>
+                <h1>Welcome, {{ user.first_name }}!</h1>
+                <p class="profile-header-copy">Your account, all in one place.</p>
+            </div>
+            <div class="profile-avatar" aria-hidden="true">
+                {{ user.first_name[0]|upper }}
+            </div>
+        </header>
+
+        <div class="profile-content">
+            <section class="profile-summary" aria-label="Account summary">
+                <h2>Account</h2>
+                <p class="profile-summary-name">
+                    {{ user.first_name }} {{ user.last_name }}
+                </p>
+                <span class="profile-role">{{ user.role.value|title }}</span>
+            </section>
+
+            <section class="profile-information" aria-labelledby="profile-information-title">
+                <h2 id="profile-information-title">Personal information</h2>
+                <dl class="profile-details">
+                    <div class="profile-detail">
+                        <dt>Email address</dt>
+                        <dd>{{ user.email }}</dd>
+                    </div>
+                    <div class="profile-detail">
+                        <dt>Account role</dt>
+                        <dd>{{ user.role.value|title }}</dd>
+                    </div>
+                </dl>
+            </section>
+        </div>
+
+        <footer class="profile-actions">
+            <a class="profile-store-link" href="/store">Continue shopping</a>
+            <form
+                class="profile-logout-form"
+                method="post"
+                action="/logout"
+                onsubmit="return confirm('Are you sure you want to log out?');"
+            >
+                <button class="profile-logout-button" type="submit">Log out</button>
+            </form>
+        </footer>
+    </div>
+</section>
+{% endblock %}

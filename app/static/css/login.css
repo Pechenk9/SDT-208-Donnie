@@ -1,0 +1,124 @@
+.login-page {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(100vh - clamp(70px, 8vw, 100px));
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 20px;
+}
+
+.login-card {
+  box-sizing: border-box;
+  width: min(100%, 460px);
+  padding: clamp(28px, 6vw, 48px);
+  background: #fff;
+  border: 3px solid rgba(237, 90, 160, 0.28);
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+
+.login-title {
+  color: #007ec2;
+  font-family: "Modak", cursive;
+  font-size: clamp(34px, 8vw, 48px);
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.login-intro {
+  margin: 10px 0 28px;
+  color: #404040;
+  font-family: "M PLUS 1p", sans-serif;
+  text-align: center;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: "M PLUS 1p", sans-serif;
+}
+
+.login-form label {
+  margin-top: 8px;
+  color: #404040;
+  font-weight: 700;
+}
+
+.login-form input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 2px solid #ed5aa0;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.login-form input:focus {
+  outline: 3px solid rgba(0, 126, 194, 0.25);
+  border-color: #007ec2;
+}
+
+.login-submit {
+  min-height: 52px;
+  margin-top: 16px;
+  color: #fff;
+  background: #f04194;
+  border: 2px solid #ed5aa0;
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: "M PLUS 1p", sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.login-error {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  color: #8d123f;
+  background: #ffe4ef;
+  border: 1px solid #ed5aa0;
+  border-radius: 10px;
+  font-family: "M PLUS 1p", sans-serif;
+}
+
+.login-store-link {
+  display: block;
+  margin-top: 24px;
+  color: #007ec2;
+  font-family: "M PLUS 1p", sans-serif;
+  font-weight: 700;
+  text-align: center;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.login-register-link {
+  margin-top: 20px;
+  color: #404040;
+  font-family: "M PLUS 1p", sans-serif;
+  text-align: center;
+}
+
+.login-register-link a {
+  color: #007ec2;
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .login-page {
+    min-height: calc(100vh - 125px);
+    padding-bottom: 90px;
+  }
+}

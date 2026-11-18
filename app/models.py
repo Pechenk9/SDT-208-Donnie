@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import enum
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -110,6 +111,39 @@ class User(Base):
 
     orders: Mapped[list[Order]] = relationship(
         back_populates="user",
+    )
+
+    login_sessions: Mapped[list[LoginSession]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
+class LoginSession(Base):
+    __tablename__ = "login_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(
+        back_populates="login_sessions",
     )
 
 
