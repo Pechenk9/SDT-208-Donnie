@@ -216,8 +216,17 @@
   box-shadow: var(--shadow);
 }
 
-.fulfillment {
+/* Form groups (delivery, tip, payment) are fieldsets: no browser frame around them */
+.checkout-form fieldset.field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
   border: 0;
+}
+
+.checkout-form fieldset.field > legend {
+  margin-bottom: 6px;
+  padding: 0;
 }
 
 .segmented {
