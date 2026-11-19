@@ -208,3 +208,120 @@
     flex-basis: 100%;
   }
 }
+
+/* ---------- orders & payments, QR codes ---------- */
+
+.manager-card--wide {
+  margin-bottom: 20px;
+}
+
+.manager-item-details h3 a {
+  color: inherit;
+}
+
+.manager-order-meta {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.qr-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.qr-controls__input {
+  width: 90px;
+  min-height: 40px;
+}
+
+.qr-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.qr-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 22px 18px 18px;
+  border-radius: 22px;
+  background: #121212;
+  color: #fff;
+  text-align: center;
+  break-inside: avoid;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.qr-card__heading {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.qr-card__box {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 190px;
+  padding: 14px 14px 10px;
+  border-radius: 16px;
+  background: #fff;
+  color: #6b6b6b;
+}
+
+.qr-card__box svg {
+  width: 100%;
+  height: auto;
+}
+
+.qr-card__meta {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.qr-card__meta span + span {
+  padding-left: 8px;
+  border-left: 1px solid #d6d6d6;
+}
+
+.qr-card__pay {
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.qr-card__brand {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* Print only the QR sheet */
+@media print {
+  body.is-printing-qr * {
+    visibility: hidden;
+  }
+
+  body.is-printing-qr .qr-sheet,
+  body.is-printing-qr .qr-sheet * {
+    visibility: visible;
+  }
+
+  body.is-printing-qr .qr-sheet {
+    position: absolute;
+    inset: 0 0 auto 0;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

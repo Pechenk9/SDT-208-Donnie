@@ -1,15 +1,34 @@
 :root {
+  /* Brand accents (Donnie pink + blue) */
   --pink: #f04194;
   --pink-strong: #ed5aa0;
   --pink-dark: #c92a76;
-  --pink-soft: #ffd4e8;
-  --pink-tint: #fbd1e6;
+  --pink-soft: #ffe3ef;
+  --pink-tint: #ffd6e7;
   --blue: #007ec2;
   --blue-dark: #00669e;
-  --blue-tint: #dce6f2;
-  --ink: #2f2f38;
-  --ink-soft: #5b5b66;
-  --line: #f3d3e3;
+  --blue-tint: #e3eef8;
+
+  /* Neutrals: mostly white pages, dark ink, quiet lines */
+  --bg: #ffffff;
+  --bg-soft: #faf6f8;
+  --header-bg: #ffd1e3;
+  --ink: #1b1a21;
+  --ink-soft: #5f5b68;
+  --line: #ece4e8;
+
+  /* Primary action: deep navy pill */
+  --cta: #13294b;
+  --cta-hover: #0a1a33;
+
+  /* Pastel tiles behind donut photos */
+  --tile-1: #ffe0ec;
+  --tile-2: #fff1d6;
+  --tile-3: #e4f0fb;
+  --tile-4: #e8f5e4;
+  --tile-5: #efe6fb;
+  --tile-6: #f6e7dc;
+
   --success: #287a46;
   --success-tint: #e3f4e9;
   --danger: #b0285a;
@@ -17,15 +36,18 @@
   --warning-tint: #fff4d6;
   --warning: #7a5a00;
 
-  --font-display: "Modak", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "M PLUS 1p", system-ui, sans-serif;
   --font-ui: "M PLUS 1p", system-ui, sans-serif;
-  --font-copy: "Crimson Text", Georgia, serif;
+  --font-copy: "M PLUS 1p", system-ui, sans-serif;
 
-  --radius-sm: 10px;
-  --radius: 18px;
-  --radius-lg: 25px;
-  --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --radius-sm: 12px;
+  --radius: 20px;
+  --radius-lg: 28px;
+  --shadow: 0 1px 2px rgba(27, 26, 33, 0.04), 0 10px 30px rgba(27, 26, 33, 0.07);
+  --header-height: clamp(70px, 7vw, 92px);
   --tabbar-height: 64px;
+  --page-max: 1240px;
+  --gutter: clamp(16px, 4vw, 40px);
 }
 
 *,
@@ -44,10 +66,15 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #ffd2e7 46%, #bad2df 100%);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
 }
 
 main {

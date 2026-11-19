@@ -74,6 +74,12 @@ INGREDIENTS = [
         "extra_price": "0.50",
     },
     {
+        "name": "Mango-passion fruit cream",
+        "description": "Tropical cream with mango and passion fruit.",
+        "group": "Filling",
+        "extra_price": "0.60",
+    },
+    {
         "name": "Strawberry glaze",
         "description": "Sweet strawberry-flavored coating.",
         "group": "Glaze",
@@ -104,6 +110,12 @@ INGREDIENTS = [
         "extra_price": "0.40",
     },
     {
+        "name": "Sunset glaze",
+        "description": "Pink-to-orange glaze with raspberry and mango flavor.",
+        "group": "Glaze",
+        "extra_price": "0.50",
+    },
+    {
         "name": "Chocolate stripes",
         "description": "Decorative chocolate stripes.",
         "group": "Toppings",
@@ -130,6 +142,12 @@ INGREDIENTS = [
     {
         "name": "Cookie crumbs",
         "description": "Crunchy crushed cookie topping.",
+        "group": "Toppings",
+        "extra_price": "0.20",
+    },
+    {
+        "name": "Neon sprinkles",
+        "description": "Bright cyan, purple and yellow sugar sprinkles.",
         "group": "Toppings",
         "extra_price": "0.20",
     },
@@ -199,6 +217,13 @@ PRODUCTS = [
     "image_url": "https://donut.com.ua/components/com_jshopping/files/img_products/thumb_thumb_BLUEBARRY_BOOM_3.png",
     "calories": 390,
 },
+    {
+        "name": "Neon Sunset",
+        "base_price": "4.50",
+        "description": "A late-night special: mango-passion fruit cream under a pink-to-orange sunset glaze with neon sprinkles.",
+        "image_url": "/static/assets/img/products/neon-sunset.png",
+        "calories": 370,
+    },
 ]
 
 RECIPES = {
@@ -256,6 +281,12 @@ RECIPES = {
         ("Blueberry glaze", "20.000", "28.000", "g", True),
         ("Cookie crumbs", "4.000", "8.000", "g", True),
     ],
+    "Neon Sunset": [
+        ("Classic dough", "70.000", "70.000", "g", False),
+        ("Mango-passion fruit cream", "18.000", "28.000", "g", True),
+        ("Sunset glaze", "22.000", "22.000", "g", False),
+        ("Neon sprinkles", "3.000", "6.000", "g", True),
+    ],
 }
 
 BRANCHES = [
@@ -287,6 +318,7 @@ BRANCH_PRODUCT_ASSORTMENTS = {
         ("Pistachio", True, "4.25"),
         ("Choco", True, "4.35"),
         ("Cappuccino", False, None),
+        ("Neon Sunset", True, None),
     ],
     "KYIV-01": [
         ("Strawberry", True, None),
@@ -296,6 +328,7 @@ BRANCH_PRODUCT_ASSORTMENTS = {
         ("Choco", False, "4.30"),
         ("Cappuccino", True, "3.95"),
         ("Blueberry Boom", True, "4.65"),
+        ("Neon Sunset", True, "4.60"),
     ],
     "ODESA-01": [
         ("Bananada", True, "3.80"),
@@ -305,6 +338,7 @@ BRANCH_PRODUCT_ASSORTMENTS = {
         ("Choco", True, "4.35"),
         ("Cappuccino", True, None),
         ("Blueberry Boom", False, "4.60"),
+        ("Neon Sunset", True, "4.70"),
     ],
 }
 

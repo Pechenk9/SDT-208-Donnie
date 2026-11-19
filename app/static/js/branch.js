@@ -224,6 +224,8 @@
             if (event.target.closest('[data-close]')) dialog.close();
             if (event.target.closest('[data-confirm-cancel]')) {
                 pendingBranch = null;
+                // A QR welcome for the branch the user just declined must not show later.
+                try { sessionStorage.removeItem('donnie_qr_welcome'); } catch (error) { /* ignore */ }
                 renderList();
                 showView('list');
                 const selected = dialog.querySelector('.branch-option[aria-current="true"]');
@@ -251,7 +253,83 @@
 
     document.addEventListener('click', event => {
         if (event.target.closest('[data-open-branch]')) open();
+
+        // "Order from this Donnie" buttons (home page): pick a branch directly.
+        // The dialog opens first so the "your cart will be emptied" confirmation can show in it.
+        const pick = event.target.closest('[data-choose-branch]');
+        if (pick) {
+            ready.then(() => {
+                open();
+                choose(pick.dataset.chooseBranch);
+            });
+        }
     });
+
+    /* ---------- QR codes: /qr/BRANCH?table=N lands on /store?branch=BRANCH&table=N ---------- */
+
+    const TABLE_KEY = 'donnie_table';
+    const WELCOME_KEY = 'donnie_qr_welcome';
+    const TABLE_TTL_MS = 4 * 60 * 60 * 1000; // a table visit lasts at most a few hours
+
+    function rememberTable(branch, table) {
+        try {
+            if (table) {
+                localStorage.setItem(TABLE_KEY, JSON.stringify({ branch_id: branch.id, table, at: Date.now() }));
+            } else {
+                localStorage.removeItem(TABLE_KEY);
+            }
+            sessionStorage.setItem(WELCOME_KEY, table ? `Welcome to ${branch.name} · Table ${table}` : `Welcome to ${branch.name}`);
+        } catch (error) { /* storage blocked: the QR still selects the branch */ }
+    }
+
+    // Table number for the currently selected branch, or null.
+    function currentTable() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(TABLE_KEY) || 'null');
+            const selected = current();
+            if (!saved || !selected || saved.branch_id !== selected.id) return null;
+            if (Date.now() - saved.at > TABLE_TTL_MS) {
+                localStorage.removeItem(TABLE_KEY);
+                return null;
+            }
+            return Number(saved.table) || null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function handleQrLanding() {
+        const params = new URLSearchParams(location.search);
+        const code = params.get('branch');
+        if (!code) return;
+
+        const table = Number(params.get('table'));
+        params.delete('branch');
+        params.delete('table');
+        // Clean the URL first, so the reload after choosing the branch doesn't repeat this.
+        const query = params.toString();
+        history.replaceState(null, '', location.pathname + (query ? `?${query}` : '') + location.hash);
+
+        const target = byCode(code);
+        if (!target) return;
+        rememberTable(target, Number.isInteger(table) && table > 0 ? table : null);
+
+        const selected = current();
+        if (!selected || selected.id !== target.id) {
+            // Same flow as picking a branch by hand, including the "your cart will be emptied" warning.
+            open();
+            choose(target.id);
+        }
+    }
+
+    function showQrWelcome() {
+        try {
+            const text = sessionStorage.getItem(WELCOME_KEY);
+            if (!text) return;
+            sessionStorage.removeItem(WELCOME_KEY);
+            if (window.DonnieCart && window.DonnieCart.toast) window.DonnieCart.toast(text, { type: 'success' });
+        } catch (error) { /* ignore */ }
+    }
 
     /* ---------- start ---------- */
 
@@ -261,6 +339,10 @@
             const settled = sync();
             try { if (settled) sessionStorage.removeItem(RELOAD_GUARD_KEY); } catch (error) { /* ignore */ }
             renderLabels();
+            if (settled) {
+                handleQrLanding();
+                if (!dialog || !dialog.open) showQrWelcome();
+            }
             return current();
         })
         .catch(() => {
@@ -274,5 +356,6 @@
         current,
         list: () => branches.slice(),
         byId,
+        table: currentTable,
     };
 })();

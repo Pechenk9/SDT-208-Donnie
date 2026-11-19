@@ -50,6 +50,29 @@ class FulfillmentType(enum.Enum):
     DELIVERY = "delivery"
 
 
+# Payment is stored as plain strings (with CHECK constraints) so new values
+# don't need a PostgreSQL enum migration.
+class PaymentMethod:
+    ON_RECEIPT = "on_receipt"  # pay at pickup / to the courier
+    ONLINE = "online"  # pay on the Donnie payment page (test mode)
+
+    ALL = (ON_RECEIPT, ONLINE)
+
+
+class PaymentStatus:
+    UNPAID = "unpaid"  # pays on receipt
+    PENDING = "pending"  # online payment started, not finished
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"
+
+    ALL = (UNPAID, PENDING, PAID, FAILED, REFUNDED)
+
+
+TIP_PERCENTAGES = (0, 5, 10, 15)
+MAX_TABLE_NUMBER = 99
+
+
 branch_managers = Table(
     "branch_managers",
     Base.metadata,
@@ -520,15 +543,72 @@ class Order(Base):
         Numeric(12, 2),
     )
 
+    # Dine-in order placed from a table QR code (pickup at that table).
+    table_number: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    tip_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2),
+        default=Decimal("0.00"),
+        server_default="0",
+        nullable=False,
+    )
+
+    payment_method: Mapped[str] = mapped_column(
+        String(20),
+        default=PaymentMethod.ON_RECEIPT,
+        server_default=PaymentMethod.ON_RECEIPT,
+        nullable=False,
+    )
+
+    payment_status: Mapped[str] = mapped_column(
+        String(20),
+        default=PaymentStatus.UNPAID,
+        server_default=PaymentStatus.UNPAID,
+        nullable=False,
+    )
+
+    paid_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    refunded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
     )
 
+    @property
+    def amount_due(self) -> Decimal:
+        return (self.total_price or Decimal("0")) + (self.tip_amount or Decimal("0"))
+
     __table_args__ = (
         CheckConstraint(
             "total_price >= 0",
             name="ck_orders_total_price",
+        ),
+        CheckConstraint(
+            "tip_amount >= 0",
+            name="ck_orders_tip_amount",
+        ),
+        CheckConstraint(
+            "table_number IS NULL OR (table_number >= 1 AND table_number <= 99)",
+            name="ck_orders_table_number",
+        ),
+        CheckConstraint(
+            "payment_method IN ('on_receipt', 'online')",
+            name="ck_orders_payment_method",
+        ),
+        CheckConstraint(
+            "payment_status IN ('unpaid', 'pending', 'paid', 'failed', 'refunded')",
+            name="ck_orders_payment_status",
         ),
         CheckConstraint(
             "fulfillment_type != 'delivery' OR delivery_address IS NOT NULL",

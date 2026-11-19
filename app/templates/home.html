@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Donuts Shop - Donnie{% endblock %}
@@ -12,116 +11,184 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
 {% endblock %}
 
 {% block content %}
-<section class="hero-section">
-    <div class="hero-title-cta-container">
-        <h1 class="hero-title-l1">
-            <span class="blue-font">Create</span>
-            <span class="pink-font">your</span>
-        </h1>
+<div class="home">
 
-        <h2 class="hero-title-l2">
-            <span class="pink-font">own</span>
-            <span class="blue-font">donut</span>
-        </h2>
-
-        <a class="hero-cta-button" href="/store">
-            Customize your donut
-        </a>
-    </div>
-
-    <div class="hero-image-container">
-        <div class="image-wrapper">
-            <img
-                class="hero-donut-image"
-                src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}"
-                alt="Custom Donut Constructed by User"
-            >
-        </div>
-    </div>
-</section>
-
-<section class="testimonials-container">
-    <h2 class="testimonials-title">What customers say</h2>
-
-    <div class="testimonials-grid">
-        <div class="testimonial-card">
-            <p class="testimonial-text">
-                "Best donuts I've ever had in Ukraine. Fresh, soft, and the custom toppings are amazing."
-            </p>
-            <p class="testimonial-author">— Daniel</p>
-        </div>
-
-        <div class="testimonial-card">
-            <p class="testimonial-text">
-                "I love creating my own donuts here. Fun, easy, and incredibly nice coffee."
-            </p>
-            <p class="testimonial-author">— Sofia</p>
-        </div>
-
-        <div class="testimonial-card">
-            <p class="testimonial-text">
-                "Perfect place for late night sweets. Donnie never disappoints."
-            </p>
-            <p class="testimonial-author">— Marcus</p>
-        </div>
-    </div>
-</section>
-
-<div class="mobile-wrapper">
-    <section class="m-hero-section">
-        <div class="m-title-wrapper">
-            <div class="m-row-1">
-                <span class="m-text-blue">Create</span>
-                <span class="m-text-pink">your</span>
+    <!-- Hero -->
+    <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__card">
+            <div class="hero__copy">
+                <span class="eyebrow eyebrow--light">Baked fresh this morning</span>
+                <h1 id="hero-title" class="hero__title">Create your own donut</h1>
+                <p class="hero__lead">Pick a glaze, add more of what you love, leave out what you don't. Order a box of six for pickup or delivery.</p>
+                <div class="hero__actions">
+                    <a class="btn btn--large" href="/store">Order now</a>
+                    <a class="btn btn--large btn--ghost" href="#how-it-works">How it works</a>
+                </div>
             </div>
-
-            <div class="m-row-2">
-                <span class="m-text-pink">own</span>
-                <span class="m-text-blue">donut</span>
+            <div class="hero__media">
+                <img
+                    class="hero__img"
+                    src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}"
+                    alt="A sugar donut with a splash of pink glaze and sprinkles"
+                    width="1986" height="2418"
+                    fetchpriority="high"
+                >
             </div>
-        </div>
-
-        <div class="m-visual-container">
-            <img
-                src="{{ url_for('static', path='assets/img/constructor-donut-cta.png') }}"
-                class="m-main-img"
-                alt="Donut"
-            >
-
-            <img
-                src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}"
-                class="m-main-img-nohand"
-                alt="Donut"
-            >
-
-            <a class="m-btn m-btn-pink m-btn-overlap" href="/store">
-                Customize your donut
-            </a>
         </div>
     </section>
 
-    <section class="m-store-section">
-        <h2 class="m-text-blue">More than</h2>
-        <div class="m-big-number">100+</div>
-        <h2 class="m-text-pink">variations</h2>
+    <!-- Featured donuts -->
+    {% if featured %}
+    <section class="home-section" aria-labelledby="featured-title">
+        <div class="section-head section-head--center reveal">
+            <h2 id="featured-title" class="section-title">Our donuts</h2>
+            <p class="section-lead">Classics and favourites, glazed every morning. Prices and availability depend on your Donnie.</p>
+        </div>
 
-        <a href="/store" class="m-btn m-btn-blue">
-            Go to Donnie Store
-        </a>
+        <ul class="featured-grid">
+            {% for product in featured %}
+            <li class="featured-card reveal" style="--tile: var(--tile-{{ (product.id % 6) + 1 }})">
+                <a class="featured-card__link" href="/product/{{ product.id }}">
+                    <span class="featured-card__tile">
+                        <img
+                            src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                            alt="" loading="lazy" decoding="async" width="220" height="220"
+                        >
+                    </span>
+                    <span class="featured-card__name">{{ product.name }}</span>
+                </a>
+                {% if product.description %}
+                <p class="featured-card__desc">{{ product.description }}</p>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
 
-        <img
-            src="{{ url_for('static', path='assets/img/store-donut-cta.png') }}"
-            class="m-store-img"
-            alt="Store"
-        >
+        <div class="section-cta reveal">
+            <a class="btn btn--ghost" href="/store">See all donuts</a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Box of six -->
+    <section class="feature reveal" id="how-it-works" aria-labelledby="box-title">
+        <div class="feature__media feature__media--pink">
+            <img
+                src="{{ url_for('static', path='assets/img/store-donut-cta.png') }}"
+                alt="A stack of glazed Donnie donuts"
+                loading="lazy" width="705" height="778"
+            >
+        </div>
+        <div class="feature__copy">
+            <span class="eyebrow">Box of 6</span>
+            <h2 id="box-title" class="section-title">Six is the magic number</h2>
+            <p class="section-lead">Every order is a box of at least six donuts. Mix any flavours you like: the cart shows how many more you need, and checkout opens as soon as the box is full.</p>
+            <ol class="steps">
+                <li><span class="steps__num">1</span> Choose your Donnie</li>
+                <li><span class="steps__num">2</span> Fill a box of six or more</li>
+                <li><span class="steps__num">3</span> Pick up or get it delivered</li>
+            </ol>
+            <div class="feature__actions">
+                <a class="btn" href="/store">Start a box</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Customise -->
+    <section class="feature feature--reverse reveal" aria-labelledby="custom-title">
+        <div class="feature__media feature__media--blue">
+            <img
+                src="{{ url_for('static', path='assets/img/constructor-donut-store.png') }}"
+                alt="A donut with extra toppings"
+                loading="lazy" width="1722" height="1724"
+            >
+        </div>
+        <div class="feature__copy">
+            <span class="eyebrow">Your recipe</span>
+            <h2 id="custom-title" class="section-title">Make it yours</h2>
+            <p class="section-lead">On every donut page you can add more cream, swap out the sprinkles or leave something out. Extras cost a little more, and taking something away never costs extra.</p>
+            <div class="feature__actions">
+                <a class="btn" href="/store">Customise a donut</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="home-section" aria-labelledby="reviews-title">
+        <div class="section-head section-head--center reveal">
+            <h2 id="reviews-title" class="section-title">What customers say</h2>
+        </div>
+
+        <div class="reviews">
+            <figure class="review reveal">
+                <blockquote>"Best donuts I've ever had in Ukraine. Fresh, soft, and the custom toppings are amazing."</blockquote>
+                <figcaption>Daniel</figcaption>
+            </figure>
+            <figure class="review reveal">
+                <blockquote>"I love creating my own donuts here. Fun, easy, and incredibly nice coffee."</blockquote>
+                <figcaption>Sofia</figcaption>
+            </figure>
+            <figure class="review reveal">
+                <blockquote>"Perfect place for late night sweets. Donnie never disappoints."</blockquote>
+                <figcaption>Marcus</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- Branches -->
+    {% if branches %}
+    <section class="home-section" aria-labelledby="branches-title">
+        <div class="branches-card reveal">
+            <div class="branches-card__head">
+                <h2 id="branches-title" class="section-title">Find a Donnie near you</h2>
+                <p class="section-lead">Each Donnie has its own menu and prices. Pick one and we'll show you what it bakes today.</p>
+            </div>
+            <ul class="branch-cards">
+                {% for branch in branches %}
+                <li class="branch-card">
+                    <span class="branch-card__city">{{ branch.city }}</span>
+                    <span class="branch-card__name">{{ branch.name }}</span>
+                    <span class="branch-card__address">{{ branch.address }}</span>
+                    <button type="button" class="btn btn--small" data-choose-branch="{{ branch.id }}">Order from here</button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- FAQ -->
+    <section class="home-section home-section--narrow" aria-labelledby="faq-title">
+        <div class="section-head section-head--center reveal">
+            <h2 id="faq-title" class="section-title">FAQs</h2>
+        </div>
+
+        <div class="faq reveal">
+            <details class="faq__item" name="faq">
+                <summary>Why do I need at least six donuts?</summary>
+                <p>We bake and pack donuts in boxes of six, so every order starts from one full box. You can mix any flavours.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Why do prices change when I switch branches?</summary>
+                <p>Every Donnie sets its own menu, prices and availability. When you switch, your cart is emptied so you always see the right prices.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>How much does customising cost?</summary>
+                <p>Adding more of an ingredient than the recipe has costs its extra price once. Removing something is free, but it doesn't make the donut cheaper.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Do I need an account to order?</summary>
+                <p>No, guests can order too. With an account your name, email and phone are filled in for you at checkout.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Can I get my donuts delivered?</summary>
+                <p>Yes. At checkout choose pickup at your Donnie or delivery, and enter your address.</p>
+            </details>
+        </div>
     </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script
-    src="{{ url_for('static', path='js/home.js') }}"
-    type="module"
-    defer
-></script>
+<script src="{{ url_for('static', path='js/home.js') }}" defer></script>
 {% endblock %}

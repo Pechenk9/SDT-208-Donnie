@@ -198,14 +198,37 @@
         return { total, complete };
     }
 
+    function tipPercent() {
+        const checked = form.querySelector('input[name="tip_percent"]:checked');
+        return checked ? Number(checked.value) : 0;
+    }
+
+    function paymentMethod() {
+        const checked = form.querySelector('input[name="payment_method"]:checked');
+        return checked ? checked.value : 'on_receipt';
+    }
+
+    // Same rounding as the server: tip = donuts total × percent, rounded to cents.
+    function tipFor(total) {
+        return Math.round(total * tipPercent()) / 100;
+    }
+
     function renderSummary(cart) {
         const { donuts, lines } = Cart.totals(cart);
         const { total, complete } = estimatedTotal(cart);
         const missing = Math.max(0, Cart.MIN_ORDER_DONUTS - donuts);
+        const tip = tipFor(total);
+        const plus = complete ? '' : '+';
 
         el('summary-donuts').textContent = String(donuts);
         el('summary-lines').textContent = String(lines);
-        el('summary-total').textContent = Cart.formatPrice(total) + (complete ? '' : '+');
+        el('summary-subtotal-row').hidden = tip === 0;
+        el('summary-tip-row').hidden = tip === 0;
+        el('summary-subtotal').textContent = Cart.formatPrice(total) + plus;
+        el('summary-tip').textContent = Cart.formatPrice(tip) + plus;
+        el('summary-total-label').textContent = tip === 0 ? 'Estimated total' : 'Estimated to pay';
+        el('summary-total').textContent = Cart.formatPrice(total + tip) + plus;
+        renderPaymentLabels(total);
 
         el('min-order').classList.toggle('is-met', missing === 0);
         el('min-order-fill').style.width = `${Math.min(100, (donuts / Cart.MIN_ORDER_DONUTS) * 100)}%`;
@@ -312,6 +335,34 @@
         return checked ? checked.value : 'pickup';
     }
 
+    // Table from a scanned QR code (only for the branch it belongs to).
+    let table = null;
+
+    function setupTable() {
+        table = Branch.table ? Branch.table() : null;
+        const option = el('table-option');
+        option.hidden = !table;
+        el('table-hint').hidden = !table;
+        if (table) {
+            el('table-number-label').textContent = String(table);
+            option.querySelector('input').checked = true;
+        } else if (option.querySelector('input').checked) {
+            form.querySelector('input[name="fulfillment_type"][value="pickup"]').checked = true;
+        }
+        updateFulfillment();
+    }
+
+    function renderPaymentLabels(total) {
+        const titles = { pickup: 'Pay at pickup', delivery: 'Pay the courier', table: 'Pay at the table' };
+        el('pay-on-receipt-title').textContent = titles[fulfillment()] || titles.pickup;
+        const tip = tipFor(total);
+        el('tip-hint').textContent = tip > 0
+            ? `${Cart.formatPrice(tip)} goes to the bakers and staff of your Donnie. Thank you!`
+            : 'Tips go to the bakers and staff of your Donnie.';
+        submitBtn.dataset.label = paymentMethod() === 'online' ? 'Place order and pay' : 'Place order';
+        if (!submitting) submitBtn.textContent = submitBtn.dataset.label;
+    }
+
     function validateField(input) {
         const value = input.value.trim();
         if (input === fields.name) {
@@ -363,8 +414,13 @@
     form.querySelectorAll('input[name="fulfillment_type"]').forEach(radio => {
         radio.addEventListener('change', () => {
             updateFulfillment();
+            renderSummary(Cart.read());
             if (fulfillment() === 'delivery') addressInput.focus();
         });
+    });
+
+    form.querySelectorAll('input[name="tip_percent"], input[name="payment_method"]').forEach(radio => {
+        radio.addEventListener('change', () => renderSummary(Cart.read()));
     });
 
     /* ---------- submission ---------- */
@@ -395,7 +451,7 @@
 
     function setSubmitting(value) {
         submitting = value;
-        submitBtn.textContent = value ? 'Placing order…' : 'Place order';
+        submitBtn.textContent = value ? 'Placing order…' : (submitBtn.dataset.label || 'Place order');
         submitBtn.setAttribute('aria-disabled', String(value || blockingReasons(Cart.read()).length > 0));
         form.setAttribute('aria-busy', String(value));
     }
@@ -435,8 +491,12 @@
         body.set('customer_name', fields.name.value.trim());
         body.set('customer_phone', fields.phone.value.trim());
         if (fields.email.value.trim()) body.set('customer_email', fields.email.value.trim());
-        body.set('fulfillment_type', fulfillment());
+        // A table order is a pickup order served at the table from the QR code.
+        body.set('fulfillment_type', fulfillment() === 'table' ? 'pickup' : fulfillment());
+        if (fulfillment() === 'table' && table) body.set('table_number', String(table));
         if (fulfillment() === 'delivery') body.set('delivery_address', fields.address.value.trim());
+        body.set('tip_percent', String(tipPercent()));
+        body.set('payment_method', paymentMethod());
         // Per-donut ingredient quantities for every recipe ingredient (0 = removed). No prices are sent.
         body.set('items_json', JSON.stringify(cart.items.map(item => ({
             product_id: item.product_id,
@@ -462,14 +522,17 @@
             return;
         }
 
-        const receipt = response.ok && /\/orders\/(\d+)\/receipt/.exec(new URL(response.url).pathname);
+        // The server redirects to the receipt, or to the payment page for online payment.
+        const receipt = response.ok && /\/orders\/(\d+)\/(receipt|pay)$/.exec(new URL(response.url).pathname);
         if (receipt) {
             // Only now, after the backend confirmed the order, the cart is cleared.
             completed = true;
             Cart.clearItems();
             contentView.hidden = true;
             successView.hidden = false;
-            el('checkout-success-title').textContent = `Order #${receipt[1]} placed!`;
+            el('checkout-success-title').textContent = receipt[2] === 'pay'
+                ? `Order #${receipt[1]} placed. Taking you to payment…`
+                : `Order #${receipt[1]} placed!`;
             el('checkout-success-link').href = response.url;
             successView.focus();
             setTimeout(() => location.assign(response.url), 1500);
@@ -490,6 +553,7 @@
 
     Branch.ready.then(async current => {
         branch = current;
+        setupTable();
         const cart = Cart.read();
         await loadDetails(cart);
         render();

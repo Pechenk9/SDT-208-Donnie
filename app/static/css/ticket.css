@@ -1,0 +1,204 @@
+/* Pickup ticket on the receipt: a layered card that tilts with depth and flips to a QR code.
+   Rebuilt from the "Parallax ticket" motion study, with Donnie colors, fonts and radius. */
+
+:root {
+  /* Springs are "stiffness damping", same values as the original tokens */
+  --ticket-tilt: 14;       /* deg */
+  --ticket-depth: 12;      /* px of parallax for the front layer */
+  --ticket-flip: 170 15;   /* flip spring, a little overshoot */
+}
+
+.t-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+
+.t-stage {
+  position: relative;
+  width: 264px;
+  height: 356px;
+  perspective: 900px;
+  touch-action: manipulation;
+}
+
+.ticket {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  cursor: pointer;
+  outline: none;
+  will-change: transform;
+}
+
+.ticket:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 6px;
+  border-radius: var(--radius-lg);
+}
+
+.t-side {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 0 0 1px var(--line) inset, 0 40px 70px -30px rgba(27, 26, 33, 0.55);
+}
+
+.t-back {
+  transform: rotateY(180deg);
+}
+
+.t-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Front: Donnie pink-to-navy card with a donut floating in its own layer */
+.t-bg {
+  inset: -20px;
+  background:
+    radial-gradient(60% 50% at 80% 18%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(160deg, var(--pink) 0%, #c2386f 45%, var(--cta) 100%);
+}
+
+.t-donut {
+  display: grid;
+  place-items: start end;
+  padding: 18px 10px 0 0;
+}
+
+.t-donut img {
+  width: 190px;
+  height: auto;
+  filter: drop-shadow(0 18px 22px rgba(20, 6, 40, 0.35));
+}
+
+.t-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, 0.5));
+}
+
+.t-text {
+  padding: 24px;
+}
+
+.t-eyebrow {
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font: 800 12px/1.3 var(--font-ui);
+}
+
+.t-title {
+  position: absolute;
+  left: 24px;
+  bottom: 62px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.t-meta {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.t-meta b {
+  color: #fff;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.t-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--g, 0);
+  background: radial-gradient(240px circle at var(--gx, 50%) var(--gy, 30%), rgba(255, 255, 255, 0.22), transparent 60%);
+  mix-blend-mode: screen;
+}
+
+/* Back: the real QR code staff can scan at the counter */
+.t-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.t-qr {
+  width: 168px;
+  height: 168px;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line) inset;
+}
+
+.t-qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.t-qr__fallback {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: center;
+}
+
+.t-facts {
+  display: flex;
+  gap: 22px;
+  text-align: center;
+}
+
+.t-facts div {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.t-facts b {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.t-hint {
+  color: var(--ink-soft);
+  font-size: 13px;
+}

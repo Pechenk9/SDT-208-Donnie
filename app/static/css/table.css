@@ -1,0 +1,132 @@
+/* Guest screens opened from a table QR code: one centered phone-width column. */
+
+.guest {
+  display: grid;
+  place-items: start center;
+  min-height: calc(100vh - var(--header-height));
+  padding: 20px 16px 32px;
+  background: var(--bg-soft);
+}
+
+.guest-card {
+  display: grid;
+  gap: 20px;
+  width: min(100%, 440px);
+  padding: 22px 18px;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.guest-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guest-logo {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--pink-tint) url(/static/assets/icons/donnie-donut-icon.png) center / 70% no-repeat;
+}
+
+.guest-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.guest-branch {
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.guest-address {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.guest-table {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.guest-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.guest-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.guest-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--bg-soft);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.guest-action:hover {
+  background: var(--pink-soft);
+}
+
+.guest-action:active {
+  transform: scale(0.98);
+}
+
+.guest-action__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.guest-action__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.guest-action__text strong {
+  font-size: 16px;
+}
+
+.guest-action__text span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.guest-action__chevron {
+  color: var(--ink-soft);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.guest-pay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: center;
+}

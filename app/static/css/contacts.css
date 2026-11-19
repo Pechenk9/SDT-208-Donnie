@@ -49,7 +49,8 @@
 
 .about-value h2 {
   margin-bottom: 6px;
-  color: var(--pink);
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 19px;
   font-weight: 800;
 }
@@ -61,12 +62,13 @@
 
 .section-heading {
   margin-bottom: 18px;
-  color: var(--blue);
+  color: var(--ink);
   font-family: var(--font-display);
   font-size: clamp(34px, 5vw, 46px);
-  font-weight: 400;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1;
-  -webkit-text-stroke: 1px #fff;
+  
 }
 
 .about-branch-list {
@@ -88,11 +90,12 @@
 }
 
 .about-branch.is-current {
-  border-color: var(--pink);
+  border-color: var(--pink-dark);
 }
 
 .about-branch h3 {
-  color: var(--pink);
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 800;
 }

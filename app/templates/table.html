@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Your table - Donnie{% endblock %}
+
+{% block description %}Menu, order and payment right from your table at Donnie.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/table.css') }}">
+{% endblock %}
+
+{% block site_footer %}{% endblock %}
+
+{% block content %}
+<div class="guest">
+    <section class="guest-card" aria-labelledby="guest-title" id="guest-ready" hidden>
+        <div class="guest-head">
+            <span class="guest-logo" aria-hidden="true"></span>
+            <div>
+                <p class="guest-branch" id="guest-branch"></p>
+                <p class="guest-address" id="guest-address"></p>
+            </div>
+            <span class="guest-table" id="guest-table"></span>
+        </div>
+
+        <h1 id="guest-title" class="guest-title">Order and pay right from your table</h1>
+
+        <nav class="guest-actions" aria-label="Table actions">
+            <a class="guest-action" href="/store">
+                <span class="guest-action__icon" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+                </span>
+                <span class="guest-action__text">
+                    <strong>Menu</strong>
+                    <span>Today's donuts, prices for this Donnie</span>
+                </span>
+                <span class="guest-action__chevron" aria-hidden="true">›</span>
+            </a>
+
+            <a class="guest-action" href="/order">
+                <span class="guest-action__icon" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/></svg>
+                </span>
+                <span class="guest-action__text">
+                    <strong>My order &amp; payment</strong>
+                    <span id="guest-cart">Your cart is empty</span>
+                </span>
+                <span class="guest-action__chevron" aria-hidden="true">›</span>
+            </a>
+
+            <a class="guest-action" href="/order#tip-options">
+                <span class="guest-action__icon" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>
+                </span>
+                <span class="guest-action__text">
+                    <strong>Thank the team</strong>
+                    <span>Add a tip when you pay</span>
+                </span>
+                <span class="guest-action__chevron" aria-hidden="true">›</span>
+            </a>
+        </nav>
+
+        <a class="btn btn--large btn--block" href="/store">Open the menu</a>
+
+        <p class="guest-pay">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>
+            Card, Apple Pay or Google Pay · secure online payment
+        </p>
+    </section>
+
+    <section class="guest-card guest-card--empty" id="guest-missing" hidden>
+        <h1 class="guest-title">Scan the code on your table</h1>
+        <p class="guest-address">The QR code on the table opens the menu and payment for that table.</p>
+        <a class="btn btn--large btn--block" href="/store">Browse donuts instead</a>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/table.js') }}" defer></script>
+{% endblock %}

@@ -5,7 +5,6 @@
     justify-content: center;
     align-items: center;
     padding: 50px 20px;
-    background: #f8f5f0;
 }
 
 .receipt {
@@ -13,9 +12,10 @@
     max-width: 600px;
     padding: 45px;
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 8px 35px rgba(0, 0, 0, 0.07);
-    color: #29231f;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    color: var(--ink);
 }
 
 .receipt-header {
@@ -115,6 +115,19 @@
     gap: 5px;
 }
 
+.receipt-subtotal {
+    margin-bottom: 10px;
+    color: var(--ink-soft);
+}
+
+.receipt-info strong .pill {
+    margin-left: 6px;
+}
+
+.receipt-pay-btn {
+    margin-top: 22px;
+}
+
 .receipt-total {
     align-items: center;
     font-size: 17px;
@@ -139,16 +152,16 @@
     display: inline-block;
     margin-top: 25px;
     padding: 13px 28px;
-    background: #29231f;
+    background: var(--cta);
     color: white;
     text-decoration: none;
-    border-radius: 6px;
+    border-radius: 999px;
     font-weight: 600;
     transition: background 0.2s;
 }
 
 .back-button:hover {
-    background: #514239;
+    background: var(--cta-hover);
 }
 
 @media (max-width: 500px) {
@@ -158,5 +171,67 @@
 
     .receipt-header h1 {
         font-size: 21px;
+    }
+}
+
+/* ---------- payment success (after the test payment) ---------- */
+
+.paid-hero {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.paid-hero__check {
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: #2fbf71;
+    animation: paid-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+.paid-hero__check svg {
+    width: 44px;
+    height: 44px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@keyframes paid-pop {
+    from { transform: scale(0.4); opacity: 0; }
+}
+
+.paid-hero__title {
+    margin-top: 6px;
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.paid-hero__amount {
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.paid-hero__text {
+    max-width: 34ch;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+}
+
+@media (max-width: 500px) {
+    .receipt-page {
+        align-items: flex-start;
+        padding: 16px;
     }
 }

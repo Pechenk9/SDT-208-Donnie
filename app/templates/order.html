@@ -59,7 +59,9 @@
                 <dl class="cart-summary__rows">
                     <div class="cart-summary__row"><dt>Donuts</dt><dd id="summary-donuts">0</dd></div>
                     <div class="cart-summary__row"><dt>Cart lines</dt><dd id="summary-lines">0</dd></div>
-                    <div class="cart-summary__row cart-summary__row--total"><dt>Estimated total</dt><dd id="summary-total">$0.00</dd></div>
+                    <div class="cart-summary__row" id="summary-subtotal-row" hidden><dt>Donuts</dt><dd id="summary-subtotal">$0.00</dd></div>
+                    <div class="cart-summary__row" id="summary-tip-row" hidden><dt>Tip for the team</dt><dd id="summary-tip">$0.00</dd></div>
+                    <div class="cart-summary__row cart-summary__row--total"><dt id="summary-total-label">Estimated total</dt><dd id="summary-total">$0.00</dd></div>
                 </dl>
 
                 <div class="min-order" id="min-order">
@@ -115,7 +117,12 @@
                             <input type="radio" name="fulfillment_type" value="delivery">
                             <span>Delivery</span>
                         </label>
+                        <label class="segmented__option" id="table-option" hidden>
+                            <input type="radio" name="fulfillment_type" value="table">
+                            <span>Table <strong id="table-number-label"></strong></span>
+                        </label>
                     </div>
+                    <p class="field__hint" id="table-hint" hidden>You scanned the QR code on your table, so we'll bring the order to you.</p>
                 </fieldset>
 
                 <div class="field" id="address-group" hidden>
@@ -126,6 +133,49 @@
                            data-error="delivery-address-error" aria-invalid="false">
                     <span class="field__error" id="delivery-address-error"></span>
                 </div>
+
+                <fieldset class="field">
+                    <legend class="field__label">Tip for the team <span class="field__optional">(optional)</span></legend>
+                    <div class="segmented segmented--tips" id="tip-options">
+                        <label class="segmented__option">
+                            <input type="radio" name="tip_percent" value="0" checked>
+                            <span>No tip</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="tip_percent" value="5">
+                            <span>5%</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="tip_percent" value="10">
+                            <span>10%</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="tip_percent" value="15">
+                            <span>15%</span>
+                        </label>
+                    </div>
+                    <span class="field__hint" id="tip-hint">Tips go to the bakers and staff of your Donnie.</span>
+                </fieldset>
+
+                <fieldset class="field">
+                    <legend class="field__label">Payment</legend>
+                    <div class="pay-options">
+                        <label class="pay-option">
+                            <input type="radio" name="payment_method" value="online" checked>
+                            <span class="pay-option__body">
+                                <strong>Pay online now</strong>
+                                <span>Card, Apple Pay or Google Pay. Quick and contactless.</span>
+                            </span>
+                        </label>
+                        <label class="pay-option">
+                            <input type="radio" name="payment_method" value="on_receipt">
+                            <span class="pay-option__body">
+                                <strong id="pay-on-receipt-title">Pay at pickup</strong>
+                                <span>Cash or card when you get your donuts.</span>
+                            </span>
+                        </label>
+                    </div>
+                </fieldset>
 
                 {% if not customer %}
                 <p class="checkout-guest">

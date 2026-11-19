@@ -33,7 +33,7 @@
 }
 
 .section-title {
-  color: var(--pink);
+  color: var(--ink);
   font-size: 22px;
   font-weight: 800;
 }
@@ -87,7 +87,7 @@
 }
 
 .cart-line__name a {
-  color: var(--pink);
+  color: var(--ink);
   text-decoration: none;
 }
 
@@ -116,7 +116,7 @@
 
 .line-ingredients summary {
   width: fit-content;
-  color: var(--blue);
+  color: var(--ink);
   font-weight: 700;
   cursor: pointer;
 }
@@ -161,7 +161,7 @@
 }
 
 .cart-line__price strong {
-  color: var(--blue);
+  color: var(--ink);
   font-size: 18px;
 }
 
@@ -174,7 +174,7 @@
 
 .checkout-aside {
   position: sticky;
-  top: calc(clamp(70px, 7vw, 92px) + 20px);
+  top: calc(var(--header-height) + 20px);
   display: grid;
   gap: 20px;
 }
@@ -185,7 +185,7 @@
   padding: 12px 14px;
   border-radius: var(--radius-sm);
   background: #eef6fb;
-  color: var(--blue-dark);
+  color: var(--ink-soft);
   font-size: 14px;
 }
 
@@ -222,11 +222,12 @@
 
 .segmented {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  background: var(--pink-soft);
+  background: var(--bg-soft);
 }
 
 .segmented__option {
@@ -244,16 +245,15 @@
   display: block;
   padding: 10px;
   border-radius: 999px;
-  color: var(--pink-dark);
+  color: var(--ink);
   font-weight: 800;
   text-align: center;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .segmented__option input:checked + span {
-  background: var(--pink);
+  background: var(--cta);
   color: #fff;
-  box-shadow: 0 3px 8px rgba(240, 65, 148, 0.35);
 }
 
 .segmented__option input:focus-visible + span {
@@ -271,7 +271,7 @@
 }
 
 .checkout-guest a {
-  color: var(--blue);
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -335,5 +335,82 @@
 
   .checkout-form {
     padding: 18px 16px;
+  }
+}
+
+/* ---------- payment choice ---------- */
+
+.pay-options {
+  display: grid;
+  gap: 8px;
+}
+
+.pay-option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.pay-option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.pay-option__body {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px 14px 46px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  font-size: 14px;
+  color: var(--ink-soft);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.pay-option__body strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+/* radio dot */
+.pay-option__body::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 17px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #b9b3bb;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.pay-option input:checked + .pay-option__body {
+  border-color: var(--cta);
+  background: var(--bg-soft);
+}
+
+.pay-option input:checked + .pay-option__body::before {
+  border-color: var(--cta);
+  box-shadow: inset 0 0 0 4px #fff;
+  background: var(--cta);
+}
+
+.pay-option input:focus-visible + .pay-option__body {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* On phones the order button stays reachable at the bottom while filling the form */
+@media (max-width: 700px) {
+  .place-order-btn {
+    position: sticky;
+    bottom: calc(var(--tabbar-height) + 10px);
+    z-index: 5;
+    min-height: 56px;
+    box-shadow: 0 10px 25px rgba(19, 41, 75, 0.3);
   }
 }

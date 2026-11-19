@@ -39,6 +39,8 @@
 
     function applySort(list, sort) {
         const sorted = list.slice();
+        // Default order: limited-edition donuts come first, the rest keep the server order.
+        if (sort === 'default') sorted.sort((a, b) => Number(Boolean(b.is_limited)) - Number(Boolean(a.is_limited)));
         if (sort === 'price-asc') sorted.sort((a, b) => a.price - b.price);
         if (sort === 'price-desc') sorted.sort((a, b) => b.price - a.price);
         return sorted; // Array.prototype.sort is stable, so equal prices keep the default order.
@@ -77,11 +79,15 @@
         return pill;
     }
 
+    // Each donut gets its own pastel tile behind the photo (cycled by id, so it never changes).
+    const TILE_COUNT = 6;
+
     function renderCard(product) {
         const unavailable = product.is_available === false;
 
         const item = document.createElement('li');
-        item.className = 'donut-card' + (unavailable ? ' is-unavailable' : '');
+        item.className = 'donut-card' + (unavailable ? ' is-unavailable' : '') + (product.is_limited ? ' is-limited' : '');
+        item.style.setProperty('--tile', `var(--tile-${(product.id % TILE_COUNT) + 1})`);
 
         const link = document.createElement('a');
         link.className = 'donut-product-link';
@@ -98,42 +104,63 @@
         image.height = 220;
         imageBox.appendChild(image);
 
-        const info = document.createElement('div');
-        info.className = 'donut-info';
+        if (product.is_limited) {
+            const badge = document.createElement('span');
+            badge.className = 'limited-badge';
+            badge.textContent = 'Limited edition';
+            imageBox.appendChild(badge);
+        }
+
         const name = document.createElement('h2');
         name.className = 'donut-name';
         name.textContent = product.name;
-        const price = document.createElement('span');
-        price.className = 'donut-price';
-        price.textContent = Cart.formatPrice(product.price);
-        info.append(name, price);
 
-        link.append(imageBox, info);
+        link.append(imageBox, name);
+        item.appendChild(link);
+
+        if (product.description) {
+            const description = document.createElement('p');
+            description.className = 'donut-desc';
+            description.textContent = product.description;
+            item.appendChild(description);
+        }
+
+        if (product.is_available !== true) {
+            item.appendChild(availabilityPill(product));
+        }
 
         const footer = document.createElement('div');
         footer.className = 'donut-card__footer';
-        footer.appendChild(availabilityPill(product));
+
+        const price = document.createElement('span');
+        price.className = 'donut-price';
+        price.textContent = Cart.formatPrice(product.price);
+        footer.appendChild(price);
+
+        const actions = document.createElement('div');
+        actions.className = 'donut-card__actions';
 
         const details = document.createElement('a');
-        details.className = 'donut-card__details';
+        details.className = 'btn btn--ghost btn--small';
         details.href = `/product/${product.id}`;
         details.textContent = 'Customize';
         details.setAttribute('aria-label', `Customize ${product.name}`);
-        footer.appendChild(details);
-
-        item.append(link, footer);
+        actions.appendChild(details);
 
         if (!unavailable) {
             const add = document.createElement('button');
             add.type = 'button';
-            add.className = 'add-to-basket';
+            add.className = 'btn btn--small add-to-basket';
             add.dataset.productId = String(product.id);
             add.setAttribute('aria-label', `Add ${product.name} to cart`);
             add.innerHTML =
-                '<img src="/static/assets/img/basket-controller-back.png" class="btn-back" alt="">' +
-                '<img src="/static/assets/img/to-basket-controller.png" class="btn-icon" alt="">';
-            item.appendChild(add);
+                '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>' +
+                '<span>Add</span>';
+            actions.appendChild(add);
         }
+
+        footer.appendChild(actions);
+        item.appendChild(footer);
 
         return item;
     }

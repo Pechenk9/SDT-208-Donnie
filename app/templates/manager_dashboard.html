@@ -41,6 +41,78 @@
         <p class="manager-success" role="status">{{ notice }}</p>
         {% endif %}
 
+        <section class="manager-card manager-card--wide" id="orders" aria-labelledby="orders-title">
+            <header class="manager-card-header">
+                <div>
+                    <p class="manager-card-eyebrow">LATEST 20 ORDERS</p>
+                    <h2 id="orders-title">Orders &amp; payments</h2>
+                </div>
+            </header>
+
+            {% if recent_orders %}
+            <ul class="manager-item-list">
+                {% for order in recent_orders %}
+                {% set pay_pill = {
+                    'paid': ('pill--ok', 'Paid online'),
+                    'pending': ('pill--unknown', 'Waiting for online payment'),
+                    'failed': ('pill--no', 'Online payment declined'),
+                    'refunded': ('pill--no', 'Refunded'),
+                    'unpaid': ('pill--unknown', 'Pays on receipt'),
+                }[order.payment_status] %}
+                <li class="manager-item">
+                    <div class="manager-item-details">
+                        <h3>
+                            <a href="/orders/{{ order.id }}/receipt">#{{ order.id }}</a>
+                            · {{ order.customer_name }}
+                        </h3>
+                        <span class="manager-order-meta">
+                            {% if order.table_number %}Table {{ order.table_number }}{% else %}{{ order.fulfillment_type.value | title }}{% endif %}
+                            · ${{ "%.2f"|format(order.amount_due) }}
+                            {% if order.tip_amount > 0 %}(tip ${{ "%.2f"|format(order.tip_amount) }}){% endif %}
+                            {% if order.created_at %}· {{ order.created_at.strftime('%d.%m %H:%M') }}{% endif %}
+                        </span>
+                        <span class="pill {{ pay_pill[0] }}">{{ pay_pill[1] }}</span>
+                    </div>
+                    {% if order.payment_method == 'online' and order.payment_status == 'paid' %}
+                    <div class="manager-item-actions">
+                        <form method="post" action="/manager/orders/{{ order.id }}/refund"
+                              onsubmit="return confirm('Refund ${{ "%.2f"|format(order.amount_due) }} for order #{{ order.id }}?');">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--danger btn--small" type="submit">Refund</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="manager-empty">No orders at this branch yet.</p>
+            {% endif %}
+        </section>
+
+        <section class="manager-card manager-card--wide qr-panel" id="qr-codes" aria-labelledby="qr-title"
+                 data-qr-base="{{ qr_base_url }}" data-branch-code="{{ selected_branch.code }}"
+                 data-branch-name="{{ selected_branch.name }}">
+            <header class="manager-card-header">
+                <div>
+                    <p class="manager-card-eyebrow">PRINT AND PUT ON THE TABLES</p>
+                    <h2 id="qr-title">QR codes</h2>
+                </div>
+            </header>
+            <p class="manager-empty">
+                Guests scan a code, the menu of {{ selected_branch.name }} opens with the branch already chosen.
+                Table codes also let them order to their table.
+            </p>
+            <form class="manager-add-form qr-controls" id="qr-form">
+                <label for="qr-tables">Number of tables</label>
+                <input id="qr-tables" type="number" min="0" max="99" value="6" class="field__input qr-controls__input">
+                <button class="btn btn--blue btn--small" type="submit">Make codes</button>
+                <button class="btn btn--ghost btn--small" type="button" id="qr-print">Print</button>
+            </form>
+            <div class="qr-sheet" id="qr-sheet" aria-live="polite"></div>
+            <p class="manager-empty" id="qr-error" hidden>QR codes could not be drawn (no internet for the QR library). Links: <code>{{ qr_base_url }}/qr/{{ selected_branch.code }}</code></p>
+        </section>
+
         <div class="manager-sections">
             <section class="manager-card" aria-labelledby="products-title">
                 <header class="manager-card-header">
@@ -176,4 +248,9 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+<script src="{{ url_for('static', path='js/manager-qr.js') }}" defer></script>
 {% endblock %}

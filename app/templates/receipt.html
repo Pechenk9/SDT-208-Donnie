@@ -5,20 +5,87 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/receipt.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/ticket.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="receipt-page">
     <div class="receipt">
+        {% if just_paid %}
+        <section class="paid-hero" aria-labelledby="paid-title">
+            <div class="paid-hero__check" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19 7"/></svg>
+            </div>
+            <h1 id="paid-title" class="paid-hero__title">Payment successful</h1>
+            <p class="paid-hero__amount">${{ "%.2f"|format(order.amount_due) }}</p>
+            <p class="paid-hero__text">
+                {% if order.tip_amount > 0 %}
+                Including a ${{ "%.2f"|format(order.tip_amount) }} tip for the team. Thank you!
+                {% else %}
+                Thank you! Your order #{{ order.id }} is on its way{% if order.table_number %} to table {{ order.table_number }}{% endif %}.
+                {% endif %}
+            </p>
+            <a class="btn btn--large btn--block" href="{{ '/table' if order.table_number else '/store' }}">
+                {{ 'Back to my table' if order.table_number else 'Back to the menu' }}
+            </a>
+        </section>
+        <div class="receipt-divider"></div>
+        {% endif %}
 
         <div class="receipt-header">
             <div class="receipt-logo">DONNIE</div>
             <div class="receipt-subtitle">DONUT MARKET</div>
 
+            {% if not just_paid %}
             <div class="success-icon">✓</div>
             <h1>Thank you for your order!</h1>
+            {% if order.payment_status == 'paid' %}
+            <p>Your order is placed and paid.</p>
+            {% elif order.payment_status == 'refunded' %}
+            <p>This payment was refunded.</p>
+            {% else %}
             <p>Your order has been successfully placed.</p>
+            {% endif %}
+            {% endif %}
         </div>
+
+        {% set donut_count = order.items|sum(attribute='quantity') %}
+        {% if order.table_number %}{% set where = 'Table ' ~ order.table_number %}{% elif order.fulfillment_type.value == 'delivery' %}{% set where = 'Delivery' %}{% else %}{% set where = 'Pickup' %}{% endif %}
+        {% set pay_label = {'paid': 'Paid', 'pending': 'Not paid yet', 'failed': 'Not paid yet', 'refunded': 'Refunded', 'unpaid': 'Pay on receipt'}[order.payment_status] %}
+        <section class="t-wrap" aria-label="Pickup ticket">
+            <div class="t-stage" id="ticket-stage">
+                <div class="ticket" id="ticket" role="button" tabindex="0" aria-pressed="false"
+                     aria-label="Pickup ticket for order {{ order.id }}, {{ where }}. Press to show the QR code">
+                    <div class="t-side t-front">
+                        <div class="t-layer t-bg" data-depth=".25"></div>
+                        <div class="t-layer t-donut" data-depth=".55">
+                            <img src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}" alt="" width="190" height="231">
+                        </div>
+                        <div class="t-shade"></div>
+                        <div class="t-layer t-text" data-depth=".9">
+                            <span class="t-eyebrow">Pickup ticket</span>
+                            <div class="t-title">Order<br>#{{ order.id }}</div>
+                            <div class="t-meta">
+                                <span>{{ order.branch.name }} · {{ where }}</span>
+                                <b>{{ pay_label }}</b>
+                            </div>
+                        </div>
+                        <div class="t-glare" id="ticket-glare"></div>
+                    </div>
+                    <div class="t-side t-back">
+                        <div class="t-qr" id="ticket-qr" data-order="{{ order.id }}"
+                             data-url="{{ request.base_url }}orders/{{ order.id }}/receipt"></div>
+                        <div class="t-facts">
+                            <div>Order<b>#{{ order.id }}</b></div>
+                            <div>{{ 'Table' if order.table_number else 'Get it' }}<b>{{ order.table_number if order.table_number else where }}</b></div>
+                            <div>Donuts<b>{{ donut_count }}</b></div>
+                        </div>
+                        <span class="t-hint">Show this at the counter · tap to flip back</span>
+                    </div>
+                </div>
+            </div>
+            <p class="t-hint">Tap the ticket to show your pickup QR code</p>
+        </section>
 
         <div class="receipt-divider"></div>
 
@@ -50,7 +117,9 @@
 
             <div>
                 <span>Fulfillment</span>
-                <strong>{{ order.fulfillment_type.value | title }}</strong>
+                <strong>
+                    {% if order.table_number %}At the table · Table {{ order.table_number }}{% else %}{{ order.fulfillment_type.value | title }}{% endif %}
+                </strong>
             </div>
 
             {% if order.delivery_address %}
@@ -59,6 +128,21 @@
                 <strong>{{ order.delivery_address }}</strong>
             </div>
             {% endif %}
+
+            <div>
+                <span>Payment</span>
+                <strong>
+                    {% if order.payment_method == 'online' %}Online{% elif order.table_number %}At the table{% elif order.fulfillment_type.value == 'delivery' %}To the courier{% else %}At pickup{% endif %}
+                    {% set pay_pill = {
+                        'paid': ('pill--ok', 'Paid'),
+                        'pending': ('pill--unknown', 'Waiting for payment'),
+                        'failed': ('pill--no', 'Payment declined'),
+                        'refunded': ('pill--unknown', 'Refunded'),
+                        'unpaid': ('pill--unknown', 'Pay on receipt'),
+                    }[order.payment_status] %}
+                    <span class="pill {{ pay_pill[0] }}">{{ pay_pill[1] }}</span>
+                </strong>
+            </div>
         </div>
 
         <div class="receipt-divider"></div>
@@ -82,10 +166,27 @@
 
         <div class="receipt-divider"></div>
 
-        <div class="receipt-total">
-            <span>Total</span>
+        {% if order.tip_amount > 0 %}
+        <div class="receipt-item receipt-subtotal">
+            <span>Donuts</span>
             <strong>${{ "%.2f"|format(order.total_price) }}</strong>
         </div>
+        <div class="receipt-item receipt-subtotal">
+            <span>Tip for the team</span>
+            <strong>${{ "%.2f"|format(order.tip_amount) }}</strong>
+        </div>
+        {% endif %}
+
+        <div class="receipt-total">
+            <span>Total</span>
+            <strong>${{ "%.2f"|format(order.amount_due) }}</strong>
+        </div>
+
+        {% if order.payment_method == 'online' and order.payment_status in ('pending', 'failed') %}
+        <a href="/orders/{{ order.id }}/pay" class="btn btn--block receipt-pay-btn">
+            Pay ${{ "%.2f"|format(order.amount_due) }} now
+        </a>
+        {% endif %}
 
         <div class="receipt-footer">
             <p>Thank you for choosing Donnie!</p>
@@ -98,4 +199,9 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+<script src="{{ url_for('static', path='js/ticket.js') }}" defer></script>
 {% endblock %}

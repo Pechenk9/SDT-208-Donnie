@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import InvalidOperation, ROUND_HALF_UP, Decimal
 import json
 from pathlib import Path
@@ -32,6 +33,10 @@ from app.models import (
     OrderItemIngredient,
     OrderStatus,
     IngredientGroup,
+    MAX_TABLE_NUMBER,
+    PaymentMethod,
+    PaymentStatus,
+    TIP_PERCENTAGES,
     Product,
     ProductIngredient,
     User,
@@ -62,6 +67,14 @@ app.mount(
 templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
+
+# Seasonal donuts shown with a "Limited edition" badge and listed first in the
+# catalogue. Matched by product name.
+LIMITED_EDITION_PRODUCTS = frozenset({"Neon Sunset"})
+
+
+def is_limited_edition(product: Product) -> bool:
+    return product.name in LIMITED_EDITION_PRODUCTS
 
 
 def require_profile_user(
@@ -266,6 +279,7 @@ _MANAGER_NOTICES = {
     "ingredient-added": "Ingredient added to this branch.",
     "ingredient-updated": "Ingredient availability updated.",
     "ingredient-removed": "Ingredient removed from this branch.",
+    "order-refunded": "Payment refunded. The order is marked as refunded.",
 }
 
 
@@ -387,10 +401,19 @@ def manager_panel(
         .order_by(Ingredient.name)
     ).all()
 
+    recent_orders = session.scalars(
+        select(Order)
+        .where(Order.branch_id == selected_branch.id)
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(20)
+    ).all()
+
     return templates.TemplateResponse(
         request,
         "manager_dashboard.html",
         {
+            "recent_orders": recent_orders,
+            "qr_base_url": str(request.base_url).rstrip("/"),
             "managed_branches": managed_branches,
             "selected_branch": selected_branch,
             "branch_products": branch_products,
@@ -1041,11 +1064,23 @@ def contacts(
 @app.get("/")
 def home(
     request: Request,
+    session: Session = Depends(get_session),
     user: User | None = Depends(get_current_user),
 ):
+    featured = session.scalars(
+        select(Product)
+        .where(Product.is_active.is_(True))
+        .order_by(Product.id)
+        .limit(4)
+    ).all()
+    branches = session.scalars(
+        select(Branch).order_by(Branch.city, Branch.name)
+    ).all()
+
     return templates.TemplateResponse(
         request,
         "home.html",
+        {"featured": featured, "branches": branches},
     )
 
 @app.get("/store")
@@ -1089,7 +1124,9 @@ def store(
             {
                 "id": product.id,
                 "name": product.name,
+                "description": product.description,
                 "image_url": product.image_url,
+                "is_limited": is_limited_edition(product),
                 "base_price": float(product.base_price),
                 "price": float(effective_price),
                 "is_available": (
@@ -1206,6 +1243,7 @@ def product_detail(
         "name": product.name,
         "description": product.description,
         "image_url": product.image_url,
+        "is_limited": is_limited_edition(product),
         "price": float(effective_price),
         "base_price": float(product.base_price),
         "branch_id": branch.id if branch is not None else None,
@@ -1311,6 +1349,7 @@ def list_branches(session: Session = Depends(get_session)):
 def order_receipt(
     request: Request,
     order_id: int,
+    paid: bool = False,
     session: Session = Depends(get_session),
     user: User | None = Depends(get_current_user),
 ):
@@ -1332,7 +1371,10 @@ def order_receipt(
     return templates.TemplateResponse(
         request,
         "receipt.html",
-        {"order": order},
+        {
+            "order": order,
+            "just_paid": paid and order.payment_status == PaymentStatus.PAID,
+        },
     )
 
 
@@ -1345,9 +1387,24 @@ async def create_order(
     items_json: Annotated[str, Form()],
     customer_email: Annotated[str | None, Form()] = None,
     delivery_address: Annotated[str | None, Form()] = None,
+    tip_percent: Annotated[int, Form()] = 0,
+    payment_method: Annotated[str, Form()] = PaymentMethod.ON_RECEIPT,
+    table_number: Annotated[int | None, Form()] = None,
     session: Session = Depends(get_session),
     user: User | None = Depends(get_current_user),
 ):
+    if tip_percent not in TIP_PERCENTAGES:
+        raise HTTPException(400, "Invalid tip")
+
+    if payment_method not in PaymentMethod.ALL:
+        raise HTTPException(400, "Invalid payment method")
+
+    if table_number is not None:
+        if fulfillment_type != FulfillmentType.PICKUP:
+            raise HTTPException(400, "Table orders can't be delivered")
+        if not 1 <= table_number <= MAX_TABLE_NUMBER:
+            raise HTTPException(400, "Invalid table number")
+
     customer_name = customer_name.strip()
     customer_phone = customer_phone.strip()
 
@@ -1605,6 +1662,7 @@ async def create_order(
             Decimal("0.01"),
             rounding=ROUND_HALF_UP,
         )
+        tip_amount = _tip_for(total_price, tip_percent)
         order = Order(
             user_id=user.id if user is not None else None,
             branch_id=branch_id,
@@ -1615,6 +1673,14 @@ async def create_order(
             customer_email=customer_email,
             delivery_address=delivery_address,
             total_price=total_price,
+            table_number=table_number,
+            tip_amount=tip_amount,
+            payment_method=payment_method,
+            payment_status=(
+                PaymentStatus.PENDING
+                if payment_method == PaymentMethod.ONLINE
+                else PaymentStatus.UNPAID
+            ),
             items=order_items,
         )
         session.add(order)
@@ -1631,7 +1697,170 @@ async def create_order(
             detail="Could not create order",
         )
 
+    next_page = "pay" if payment_method == PaymentMethod.ONLINE else "receipt"
     return RedirectResponse(
-        url=f"/orders/{order_id}/receipt",
+        url=f"/orders/{order_id}/{next_page}",
+        status_code=303,
+    )
+
+
+# ---------- QR codes and test-mode online payment (Expirenza-style) ----------
+
+
+@app.get("/qr/{branch_code}")
+def qr_entry(
+    branch_code: str,
+    table: int | None = None,
+    session: Session = Depends(get_session),
+):
+    """Landing URL printed in a QR code: opens the menu of that branch (and table)."""
+    branch = session.scalar(select(Branch).where(Branch.code == branch_code))
+    if branch is None:
+        raise HTTPException(404, "Branch not found")
+
+    if table is None:
+        return RedirectResponse(
+            url=f"/store?{urlencode({'branch': branch.code})}",
+            status_code=303,
+        )
+
+    if not 1 <= table <= MAX_TABLE_NUMBER:
+        raise HTTPException(400, "Invalid table number")
+
+    # Table codes open the guest "table home": menu, bill and payment for this table.
+    return RedirectResponse(
+        url=f"/table?{urlencode({'branch': branch.code, 'table': table})}",
+        status_code=303,
+    )
+
+
+@app.get("/table")
+def table_home(request: Request, user: User | None = Depends(get_current_user)):
+    """Mobile start screen after scanning a table QR code (filled in by branch.js / table.js)."""
+    return templates.TemplateResponse(request, "table.html")
+
+
+def _get_order(session: Session, order_id: int) -> Order:
+    order = session.scalar(
+        select(Order)
+        .options(joinedload(Order.branch), selectinload(Order.items))
+        .where(Order.id == order_id)
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+_PAYABLE_STATUSES = (PaymentStatus.PENDING, PaymentStatus.FAILED)
+
+
+def _tip_for(total: Decimal, percent: int) -> Decimal:
+    return (total * percent / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+@app.get("/orders/{order_id}/pay")
+def order_payment_page(
+    request: Request,
+    order_id: int,
+    declined: bool = False,
+    session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
+):
+    order = _get_order(session, order_id)
+    if (
+        order.payment_method != PaymentMethod.ONLINE
+        or order.payment_status not in _PAYABLE_STATUSES
+    ):
+        return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
+
+    current_tip = 0
+    if order.total_price > 0:
+        percent = int(
+            (order.tip_amount * 100 / order.total_price).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP
+            )
+        )
+        current_tip = percent if percent in TIP_PERCENTAGES else 0
+
+    tip_options = [
+        {
+            "percent": percent,
+            "amount": _tip_for(order.total_price, percent),
+        }
+        for percent in TIP_PERCENTAGES
+    ]
+
+    return templates.TemplateResponse(
+        request,
+        "payment.html",
+        {
+            "order": order,
+            "declined": declined,
+            "tip_options": tip_options,
+            "current_tip": current_tip,
+        },
+    )
+
+
+@app.post("/orders/{order_id}/pay")
+def order_payment_submit(
+    order_id: int,
+    outcome: Annotated[str, Form()],
+    tip_percent: Annotated[int | None, Form()] = None,
+    session: Session = Depends(get_session),
+):
+    """Test-mode payment: no card data and no real money, the button picks the outcome.
+    The guest can still change the tip on the payment screen."""
+    if outcome not in ("success", "decline"):
+        raise HTTPException(400, "Invalid payment outcome")
+    if tip_percent is not None and tip_percent not in TIP_PERCENTAGES:
+        raise HTTPException(400, "Invalid tip")
+
+    order = _get_order(session, order_id)
+    if order.payment_method != PaymentMethod.ONLINE:
+        raise HTTPException(400, "This order is paid on receipt")
+    if order.payment_status not in _PAYABLE_STATUSES:
+        return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
+
+    try:
+        if tip_percent is not None:
+            order.tip_amount = _tip_for(order.total_price, tip_percent)
+        if outcome == "success":
+            order.payment_status = PaymentStatus.PAID
+            order.paid_at = datetime.now(timezone.utc)
+        else:
+            order.payment_status = PaymentStatus.FAILED
+        session.commit()
+    except SQLAlchemyError:
+        session.rollback()
+        raise HTTPException(500, "Could not update the payment")
+
+    if outcome == "success":
+        return RedirectResponse(url=f"/orders/{order.id}/receipt?paid=1", status_code=303)
+    return RedirectResponse(url=f"/orders/{order.id}/pay?declined=1", status_code=303)
+
+
+@app.post("/manager/orders/{order_id}/refund")
+def refund_order(
+    order_id: int,
+    branch_id: Annotated[int, Form(gt=0)],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(user, branch_id, Permission.MANAGER_PANEL)
+    order = _get_order(session, order_id)
+    if order.branch_id != branch.id:
+        raise HTTPException(403, "This order belongs to another branch")
+    if (
+        order.payment_method != PaymentMethod.ONLINE
+        or order.payment_status != PaymentStatus.PAID
+    ):
+        raise HTTPException(400, "Only paid online orders can be refunded")
+
+    order.payment_status = PaymentStatus.REFUNDED
+    order.refunded_at = datetime.now(timezone.utc)
+    _commit_manager_change(session)
+    return RedirectResponse(
+        url=f"/manager?branch_id={branch.id}&notice=order-refunded#orders",
         status_code=303,
     )

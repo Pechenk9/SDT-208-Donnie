@@ -31,19 +31,43 @@
   outline-offset: 2px;
 }
 
-.header :focus-visible,
-.footer :focus-visible {
-  outline-color: #fff;
+.header :focus-visible {
+  outline-color: var(--ink);
 }
 
 .page-title {
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: clamp(40px, 6vw, 58px);
-  line-height: 1;
-  color: var(--blue);
-  -webkit-text-stroke: 1px #fff;
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  font-size: clamp(36px, 5.5vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Small pill label above a heading ("Box of 6", "Your recipe") */
+.eyebrow {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--pink-soft);
+  color: var(--pink-dark);
+  font: 800 13px/1.4 var(--font-ui);
+  letter-spacing: 0.02em;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.section-lead {
+  max-width: 60ch;
+  color: var(--ink-soft);
+  font-size: 17px;
 }
 
 /* ---------- buttons ---------- */
@@ -57,7 +81,7 @@
   padding: 10px 22px;
   border: 2px solid transparent;
   border-radius: 999px;
-  background: var(--pink);
+  background: var(--cta);
   color: #fff;
   font: 800 16px/1.1 var(--font-ui);
   text-align: center;
@@ -67,37 +91,51 @@
 }
 
 .btn:hover {
-  background: var(--pink-dark);
+  background: var(--cta-hover);
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .btn[disabled],
 .btn[aria-disabled="true"] {
-  background: #d9c4ce;
+  background: #d8d3da;
   color: #fff;
   cursor: not-allowed;
   transform: none;
 }
 
+.btn--pink {
+  background: var(--pink-dark);
+}
+
+.btn--pink:hover {
+  background: #a81f61;
+}
+
 .btn--blue {
-  background: var(--blue);
+  background: var(--cta);
 }
 
 .btn--blue:hover {
-  background: var(--blue-dark);
+  background: var(--cta-hover);
 }
 
 .btn--ghost {
-  background: #fff;
-  border-color: var(--pink);
-  color: var(--pink);
+  background: transparent;
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 .btn--ghost:hover {
-  background: var(--pink-soft);
+  background: var(--bg-soft);
+}
+
+.btn--large {
+  min-height: 54px;
+  padding: 14px 30px;
+  font-size: 17px;
 }
 
 .btn--danger {
@@ -177,7 +215,7 @@
   width: 100%;
   min-height: 48px;
   padding: 10px 14px;
-  border: 2px solid #e7b9cf;
+  border: 2px solid #ddd3d8;
   border-radius: var(--radius-sm);
   background: #fff;
   color: var(--ink);
@@ -187,8 +225,8 @@
 
 .field__input:focus {
   outline: none;
-  border-color: var(--pink);
-  box-shadow: 0 0 0 4px rgba(240, 65, 148, 0.18);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 4px rgba(27, 26, 33, 0.08);
 }
 
 .field__input[aria-invalid="true"] {
@@ -236,13 +274,13 @@
   gap: 12px;
   padding: 40px 20px;
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--bg-soft);
   text-align: center;
   color: var(--ink-soft);
 }
 
 .state-message__title {
-  color: var(--blue);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 800;
 }
@@ -280,13 +318,13 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--pink);
+  color: var(--ink);
   font: 800 22px/1 var(--font-ui);
   cursor: pointer;
 }
 
 .stepper__btn:hover:not(:disabled) {
-  background: var(--pink-soft);
+  background: var(--bg-soft);
 }
 
 .stepper__btn:disabled {
@@ -336,15 +374,18 @@
   flex-direction: column;
   gap: 14px;
   padding: 22px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: #fff;
   box-shadow: var(--shadow);
 }
 
 .cart-summary__title {
-  color: var(--pink);
-  font-size: 20px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
   font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .cart-summary__rows {
@@ -370,12 +411,12 @@
 
 .cart-summary__row--total {
   padding-top: 10px;
-  border-top: 2px dashed var(--line);
+  border-top: 1px solid var(--line);
   font-size: 18px;
 }
 
 .cart-summary__row--total dd {
-  color: var(--blue);
+  color: var(--ink);
 }
 
 .cart-summary__note {
@@ -394,7 +435,7 @@
 .min-order__bar {
   height: 8px;
   border-radius: 999px;
-  background: var(--pink-soft);
+  background: var(--line);
   overflow: hidden;
 }
 
@@ -433,7 +474,7 @@
 }
 
 .modal::backdrop {
-  background: rgba(64, 20, 45, 0.45);
+  background: rgba(27, 26, 33, 0.45);
   overflow: hidden;
   overscroll-behavior: contain;
 }
@@ -466,10 +507,11 @@
 
 .modal__title {
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 38px;
-  line-height: 1;
-  color: var(--blue);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .modal__close {
@@ -480,15 +522,15 @@
   flex-shrink: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--pink-soft);
-  color: var(--pink-dark);
+  background: var(--bg-soft);
+  color: var(--ink);
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
 }
 
 .modal__close:hover {
-  background: var(--pink-tint);
+  background: var(--line);
 }
 
 .modal__lead {
@@ -526,17 +568,18 @@
 }
 
 .branch-option:hover {
-  border-color: var(--pink);
-  background: #fff7fb;
+  border-color: var(--ink);
+  background: var(--bg-soft);
 }
 
 .branch-option[aria-current="true"] {
-  border-color: var(--pink);
+  border-color: var(--pink-dark);
   background: var(--pink-soft);
 }
 
 .branch-option__city {
-  color: var(--pink);
+  color: var(--ink);
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 18px;
 }
@@ -556,7 +599,7 @@
   right: 14px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: var(--pink);
+  background: var(--pink-dark);
   color: #fff;
   font-size: 12px;
   font-weight: 800;
@@ -618,7 +661,7 @@
   }
 
   .modal__title {
-    font-size: 32px;
+    font-size: 26px;
   }
 }
 
@@ -629,4 +672,41 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Photos with a white background are multiplied into their pastel tile.
+   Our own cut-out images (assets/img/products/) are already transparent,
+   so they keep their colours, also on the dark limited-edition tile. */
+.donut-img-container img[src*="/assets/img/products/"],
+.product-media img[src*="/assets/img/products/"],
+.featured-card__tile img[src*="/assets/img/products/"] {
+  mix-blend-mode: normal;
+}
+
+/* ---------- limited edition ---------- */
+
+/* Retro "sunset" tile used behind limited-edition donuts */
+:root {
+  --limited-tile: linear-gradient(180deg, #2a1650 0%, #5b2373 52%, #c2386f 78%, #ff8a4c 100%);
+  --limited-accent: linear-gradient(90deg, #ff2d95, #ff8a3c);
+}
+
+.limited-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--limited-accent);
+  color: #fff;
+  font: 800 12px/1.3 var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(255, 45, 149, 0.35);
+}
+
+.limited-badge::before {
+  content: "✦";
+  font-size: 11px;
 }

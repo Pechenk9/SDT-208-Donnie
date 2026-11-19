@@ -1,16 +1,16 @@
+/* Catalogue: white page, pastel photo tiles, pill actions, sticky cart summary. */
+
 .store-wrapper {
   width: 100%;
-  min-height: 100%;
-  padding: clamp(20px, 4vw, 40px) clamp(16px, 4vw, 40px) 60px;
-  background: linear-gradient(180deg, var(--pink-tint) 0%, var(--blue-tint) 100%);
+  padding: clamp(28px, 5vw, 56px) var(--gutter) 24px;
 }
 
 .store-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   align-items: start;
-  gap: 36px;
-  max-width: 1280px;
+  gap: 40px;
+  max-width: var(--page-max);
   margin: 0 auto;
 }
 
@@ -19,12 +19,10 @@
 }
 
 .store-top {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px 24px;
-  margin-bottom: 22px;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
 .store-branch {
@@ -32,12 +30,12 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
-  color: var(--blue-dark);
-  font-size: 15px;
+  color: var(--ink-soft);
+  font-size: 16px;
 }
 
 .store-branch strong {
-  color: var(--pink-dark);
+  color: var(--ink);
 }
 
 /* ---------- toolbar ---------- */
@@ -46,7 +44,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 16px;
+  gap: 12px;
 }
 
 .search-bar {
@@ -58,76 +56,63 @@
 
 .search-bar input {
   width: 100%;
-  min-height: 48px;
-  padding: 10px 52px 10px 20px;
-  border: 2px solid transparent;
+  min-height: 50px;
+  padding: 10px 20px 10px 48px;
+  border: 2px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--ink);
   font-size: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .search-bar input::placeholder {
-  color: #9a8f96;
+  color: #8d8794;
 }
 
 .search-bar input:focus {
   outline: none;
-  border-color: var(--pink);
-  box-shadow: 0 0 0 4px rgba(240, 65, 148, 0.18);
-}
-
-.search-bar input::-webkit-search-cancel-button {
-  margin-right: 4px;
+  border-color: var(--ink);
+  background: #fff;
 }
 
 .search-btn {
   position: absolute;
-  right: 6px;
+  left: 18px;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--pink);
+  color: var(--ink-soft);
   pointer-events: none;
-}
-
-.search-btn img {
-  width: 50%;
 }
 
 .sort-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 800;
-  color: var(--blue);
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .sort-control select {
-  min-height: 48px;
-  padding: 10px 40px 10px 18px;
-  border: 2px solid transparent;
+  min-height: 50px;
+  padding: 10px 42px 10px 20px;
+  border: 2px solid var(--line);
   border-radius: 999px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23f04194' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 16px center / 12px;
+  background: var(--bg-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%231b1a21' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 18px center / 12px;
   color: var(--ink);
   font-weight: 700;
   appearance: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .sort-control select:focus {
   outline: none;
-  border-color: var(--pink);
+  border-color: var(--ink);
 }
 
 .catalogue-status {
   min-height: 1.4em;
-  margin: 16px 0 4px;
+  margin: 18px 0 4px;
   color: var(--ink-soft);
   font-size: 14px;
   font-weight: 700;
@@ -138,8 +123,8 @@
 .donuts-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 30px;
-  margin-top: 18px;
+  gap: 40px 24px;
+  margin-top: 16px;
   list-style: none;
 }
 
@@ -148,128 +133,103 @@
 }
 
 .donut-card {
-  position: relative;
+  --tile: var(--tile-1);
   display: flex;
   flex-direction: column;
-  padding: 18px 18px 16px;
-  border-radius: var(--radius-lg);
-  background: #fff;
-  box-shadow: var(--shadow);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.donut-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.12);
-}
-
-.donut-card.is-unavailable .donut-img-container img {
-  filter: grayscale(0.8);
-  opacity: 0.6;
+  gap: 8px;
 }
 
 .donut-product-link {
-  display: block;
+  display: grid;
+  gap: 14px;
   color: inherit;
   text-decoration: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .donut-img-container {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 1 / 1;
-  padding: 8px;
+  padding: 14%;
+  border-radius: var(--radius-lg);
+  background: var(--tile);
+  overflow: hidden;
 }
 
 .donut-img-container img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transition: transform 0.3s ease;
+  /* Product photos come on a white background: multiply lets the pastel tile show through. */
+  mix-blend-mode: multiply;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.donut-card:hover .donut-img-container img {
-  transform: rotate(-6deg) scale(1.03);
+.donut-product-link:hover .donut-img-container img {
+  transform: rotate(-8deg) scale(1.06);
 }
 
-.donut-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 12px;
-  border-top: 2px solid var(--pink-tint);
+.donut-card.is-unavailable .donut-img-container img {
+  filter: grayscale(0.9);
+  opacity: 0.55;
 }
 
 .donut-name {
-  color: var(--pink);
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
-.donut-price {
-  flex-shrink: 0;
-  padding-left: 10px;
-  border-left: 2px solid var(--blue);
-  color: var(--blue);
-  font-size: 17px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+.donut-product-link:hover .donut-name {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.donut-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.donut-card > .pill {
+  align-self: flex-start;
 }
 
 .donut-card__footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 6px;
 }
 
-.donut-card__details {
-  color: var(--blue);
-  font-size: 14px;
+.donut-price {
+  color: var(--pink-dark);
+  font-size: 18px;
   font-weight: 800;
-  text-underline-offset: 3px;
+  font-variant-numeric: tabular-nums;
 }
 
-.add-to-basket {
-  position: absolute;
-  top: -14px;
-  right: -14px;
-  display: grid;
-  place-items: center;
-  width: 60px;
-  height: 60px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
+.donut-card__actions {
+  display: flex;
+  gap: 6px;
 }
 
-.add-to-basket .btn-back {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.add-to-basket .btn-icon {
-  position: relative;
-  z-index: 1;
-  width: 58%;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.add-to-basket:hover .btn-icon {
-  transform: rotate(15deg) scale(1.1);
-}
-
-.add-to-basket:focus-visible {
-  border-radius: 50%;
+.add-to-basket .icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.5;
 }
 
 .add-to-basket.is-loading {
@@ -277,12 +237,25 @@
   opacity: 0.7;
 }
 
-.add-to-basket.is-added .btn-icon {
-  animation: added-pop 0.6s ease;
+.add-to-basket.is-added {
+  background: var(--success);
+  animation: added-pop 0.5s ease;
 }
 
 @keyframes added-pop {
-  40% { transform: scale(1.35) rotate(-10deg); }
+  40% { transform: scale(1.08); }
+}
+
+/* ---------- limited edition ---------- */
+
+.donut-card.is-limited .donut-img-container {
+  background: var(--limited-tile);
+}
+
+.donut-img-container .limited-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
 }
 
 /* ---------- pagination ---------- */
@@ -293,7 +266,7 @@
   justify-content: center;
   align-items: center;
   gap: 10px;
-  margin-top: 36px;
+  margin-top: 48px;
 }
 
 .pagination[hidden] {
@@ -311,38 +284,36 @@
 .pagination__page {
   min-width: 44px;
   min-height: 44px;
-  padding: 8px 14px;
-  border: 2px solid transparent;
+  padding: 8px 16px;
+  border: 2px solid var(--line);
   border-radius: 999px;
   background: #fff;
-  color: var(--blue);
+  color: var(--ink);
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
 .pagination__btn:hover:not(:disabled),
 .pagination__page:hover {
-  border-color: var(--pink);
+  border-color: var(--ink);
 }
 
 .pagination__page[aria-current="page"] {
-  background: var(--pink);
+  border-color: var(--cta);
+  background: var(--cta);
   color: #fff;
 }
 
 .pagination__btn:disabled {
-  color: #b9b0b5;
+  color: #b9b3bb;
   cursor: not-allowed;
-  box-shadow: none;
-  background: rgba(255, 255, 255, 0.6);
 }
 
 /* ---------- cart summary ---------- */
 
 .store-aside {
   position: sticky;
-  top: calc(clamp(70px, 7vw, 92px) + 20px);
+  top: calc(var(--header-height) + 24px);
 }
 
 #catalogue-empty {
@@ -379,13 +350,13 @@
     align-items: center;
     gap: 12px;
     max-width: 640px;
-    margin: 24px auto 0;
-    padding: 14px 20px;
+    margin: 32px auto 0;
+    padding: 14px 22px;
     border-radius: 999px;
-    background: var(--blue);
+    background: var(--cta);
     color: #fff;
     text-decoration: none;
-    box-shadow: 0 10px 25px rgba(0, 60, 100, 0.35);
+    box-shadow: 0 10px 25px rgba(19, 41, 75, 0.3);
   }
 
   .mobile-cart-bar__cta {
@@ -401,39 +372,31 @@
 
 @media (max-width: 560px) {
   .donuts-grid {
-    gap: 22px 14px;
+    gap: 28px 14px;
   }
 
-  .donut-card {
-    padding: 12px 12px 12px;
+  .donut-name {
+    font-size: 17px;
   }
 
-  .donut-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .donut-name,
-  .donut-price {
-    font-size: 15px;
-  }
-
-  .donut-price {
-    padding-left: 0;
-    border-left: 0;
+  .donut-desc {
+    font-size: 13px;
   }
 
   .donut-card__footer {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
-  .add-to-basket {
-    width: 50px;
-    height: 50px;
-    top: -10px;
-    right: -8px;
+  /* Two pills don't fit a half-width card: the tile and name already open the
+     donut page, so only "Add" stays (full width). Unavailable donuts keep "Customize". */
+  .donut-card__actions .btn--ghost:has(+ .add-to-basket) {
+    display: none;
+  }
+
+  .donut-card__actions .btn {
+    flex: 1;
+    padding: 6px 10px;
   }
 
   .sort-control {

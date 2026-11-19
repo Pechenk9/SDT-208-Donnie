@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Pay for order #{{ order.id }} - Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/payment.css') }}">
+{% endblock %}
+
+{% block site_footer %}{% endblock %}
+
+{% block content %}
+<form class="pay-screen" method="post" action="/orders/{{ order.id }}/pay"
+      data-total="{{ '%.2f'|format(order.total_price) }}">
+    <header class="pay-top">
+        <span class="pay-top__logo" aria-hidden="true"></span>
+        <div>
+            <p class="pay-top__branch">{{ order.branch.name }}</p>
+            <p class="pay-top__meta">
+                Order #{{ order.id }}{% if order.table_number %} · Table {{ order.table_number }}{% endif %}
+            </p>
+        </div>
+        <span class="pay-test-badge">Test mode</span>
+    </header>
+
+    <section class="pay-amount" aria-label="Amount to pay">
+        <p class="pay-amount__label">To pay</p>
+        <p class="pay-amount__value" id="pay-amount">${{ "%.2f"|format(order.amount_due) }}</p>
+    </section>
+
+    {% if declined %}
+    <div class="alert alert--error" role="alert">
+        The payment was declined (test). Nothing was charged, you can try again.
+    </div>
+    {% endif %}
+
+    <details class="pay-block pay-order">
+        <summary>
+            <span>Your order</span>
+            <span class="pay-order__count">{{ order.items|sum(attribute='quantity') }} donuts · ${{ "%.2f"|format(order.total_price) }}</span>
+        </summary>
+        <ul class="pay-items">
+            {% for item in order.items %}
+            <li>
+                <span>{{ item.name_snapshot }} <span class="pay-items__qty">× {{ item.quantity }}</span></span>
+                <span>${{ "%.2f"|format(item.unit_price * item.quantity) }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+
+    <fieldset class="pay-block pay-tips">
+        <legend class="pay-tips__title">Tip for the team</legend>
+        <p class="pay-tips__lead">100% goes to the bakers and staff of {{ order.branch.name }}.</p>
+        <div class="tip-chips">
+            {% for option in tip_options %}
+            <label class="tip-chip">
+                <input type="radio" name="tip_percent" value="{{ option.percent }}"
+                       data-amount="{{ '%.2f'|format(option.amount) }}"
+                       {% if option.percent == current_tip %}checked{% endif %}>
+                <span>
+                    <strong>{{ 'No tip' if option.percent == 0 else option.percent ~ '%' }}</strong>
+                    {% if option.percent %}<small>${{ "%.2f"|format(option.amount) }}</small>{% endif %}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <div class="pay-bar">
+        <button type="submit" name="outcome" value="success" class="pay-bar__btn" id="pay-button">
+            Pay ${{ "%.2f"|format(order.amount_due) }}
+        </button>
+        <p class="pay-bar__methods">Card · Apple Pay · Google Pay</p>
+        <button type="submit" name="outcome" value="decline" class="link-btn pay-bar__decline">
+            Simulate a declined payment
+        </button>
+    </div>
+
+    <p class="pay-note">
+        Test payment page for the Donnie project: no card details are asked for and no real money
+        is charged. The button only marks the order as paid.
+    </p>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update the amount and the button when the guest changes the tip.
+    (() => {
+        const form = document.querySelector('.pay-screen');
+        const total = Number(form.dataset.total);
+        const amount = document.getElementById('pay-amount');
+        const button = document.getElementById('pay-button');
+        const format = value => `$${value.toFixed(2)}`;
+        form.addEventListener('change', event => {
+            if (event.target.name !== 'tip_percent') return;
+            const due = total + Number(event.target.dataset.amount);
+            amount.textContent = format(due);
+            button.textContent = `Pay ${format(due)}`;
+        });
+    })();
+</script>
+{% endblock %}

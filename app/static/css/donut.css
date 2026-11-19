@@ -10,7 +10,7 @@
 }
 
 .breadcrumbs a {
-  color: var(--blue);
+  color: var(--ink);
   font-weight: 800;
   text-decoration: none;
 }
@@ -26,25 +26,26 @@
   gap: clamp(24px, 4vw, 56px);
   padding: clamp(20px, 4vw, 44px);
   border-radius: 32px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--shadow);
+  background: #fff;
 }
 
 .product-media {
   position: sticky;
-  top: calc(clamp(70px, 7vw, 92px) + 24px);
+  top: calc(var(--header-height) + 24px);
   align-self: start;
   display: grid;
   place-items: center;
   aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 45%, #fff 0%, var(--pink-soft) 65%, transparent 72%);
+  padding: 10%;
+  border-radius: 32px;
+  background: var(--pink-tint);
 }
 
 .product-media img {
-  width: 88%;
+  width: 100%;
   height: auto;
-  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.12));
+  /* Photos have a white background: multiply blends it into the tile. */
+  mix-blend-mode: multiply;
 }
 
 .product-details {
@@ -56,12 +57,12 @@
 
 .product-title {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 800;
   font-size: clamp(46px, 6vw, 72px);
   line-height: 0.95;
-  color: var(--pink);
-  text-transform: uppercase;
-  -webkit-text-stroke: 1px #fff;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .product-meta {
@@ -94,7 +95,7 @@
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   background: #eef6fb;
-  color: var(--blue-dark);
+  color: var(--ink-soft);
   font-size: 14px;
 }
 
@@ -108,7 +109,8 @@
 }
 
 .recipe-heading h2 {
-  color: var(--blue);
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 22px;
   font-weight: 800;
 }
@@ -138,7 +140,7 @@
 }
 
 .recipe-item.is-changed {
-  border-color: var(--pink);
+  border-color: var(--ink);
 }
 
 .recipe-item.is-removed {
@@ -220,7 +222,7 @@
   gap: 14px;
   padding: 20px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, #fff 0%, #fff4f9 100%);
+  background: #fff;
   border: 2px solid var(--line);
 }
 
@@ -241,7 +243,8 @@
 }
 
 .purchase-price__value {
-  color: var(--blue);
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 38px;
   font-weight: 800;
   line-height: 1;
@@ -335,6 +338,24 @@
 }
 
 .recipe-item.is-extra .recipe-range {
-  color: var(--pink);
+  color: var(--pink-dark);
   font-weight: 600;
+}
+
+/* ---------- limited edition ---------- */
+
+.product-card.is-limited .product-media {
+  background: var(--limited-tile);
+}
+
+.product-card.is-limited .product-header {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.limited-note {
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 700;
 }

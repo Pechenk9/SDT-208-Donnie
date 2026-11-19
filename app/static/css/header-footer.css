@@ -1,24 +1,40 @@
+/* Header: flat pink bar, text navigation, pill actions. Mobile: white bottom tab bar. */
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .header,
 .footer {
   box-sizing: border-box;
   width: 100%;
-  background: var(--pink-strong);
-  box-shadow: inset 0px -7px 70.8px 10px rgba(9, 9, 9, 0.25);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 4%;
 }
 
 .header {
-  height: clamp(70px, 7vw, 92px);
   position: sticky;
   top: 0;
   z-index: 100;
-  gap: clamp(12px, 2vw, 32px);
+  height: var(--header-height);
+  gap: clamp(12px, 2.5vw, 36px);
+  padding: 0 var(--gutter);
+  background: var(--header-bg);
+  color: var(--ink);
 }
 
 .footer {
+  display: none;
+}
+
+.tabbar-pill[hidden] {
   display: none;
 }
 
@@ -26,16 +42,18 @@
   flex-shrink: 0;
   width: clamp(140px, 16vw, 240px);
   height: 75%;
-  background-image: url(/static/assets/img/donnie-logo.png);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: left center;
+  background: url(/static/assets/img/donnie-logo.png) left center / contain no-repeat;
+  transition: transform 0.2s ease;
+}
+
+.donnie-logo:hover {
+  transform: rotate(-2deg) scale(1.03);
 }
 
 .navigation-container {
   display: flex;
   align-items: center;
-  gap: clamp(10px, 2vw, 32px);
+  gap: clamp(4px, 1vw, 12px);
   margin-right: auto;
 }
 
@@ -43,42 +61,26 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 4px;
-  border-bottom: 3px solid transparent;
+  color: var(--ink);
   text-decoration: none;
-  transition: opacity 0.2s ease, border-color 0.2s ease;
 }
 
-.nav-item-container:hover {
-  opacity: 0.85;
+.header .nav-item-container {
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
 }
 
-.nav-item-container[aria-current="page"] {
-  border-bottom-color: var(--pink-soft);
+.header .nav-item-container:hover {
+  background: rgba(255, 255, 255, 0.55);
 }
 
-.nav-home-icon,
-.nav-donuts-icon,
-.nav-contacts-icon,
-.nav-profile-icon {
-  display: block;
-  width: clamp(28px, 3vw, 42px);
-  aspect-ratio: 1;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+.header .nav-item-container[aria-current="page"] {
+  background: #fff;
 }
-
-.nav-home-icon { background-image: url(/static/assets/img/nav-home-icon.png); }
-.nav-donuts-icon { background-image: url(/static/assets/img/nav-donuts-icon.png); }
-.nav-contacts-icon { background-image: url(/static/assets/img/nav-contacts-icon.png); }
-.nav-profile-icon { background-image: url(/static/assets/img/nav-profile-icon.png); }
 
 .nav-item-text {
-  font-family: var(--font-ui);
-  font-weight: 800;
-  font-size: clamp(15px, 1.6vw, 24px);
-  color: var(--pink-soft);
+  font: 700 16px/1 var(--font-ui);
 }
 
 /* ---------- right side actions ---------- */
@@ -86,27 +88,27 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 1.2vw, 16px);
+  gap: 10px;
 }
 
 .branch-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 180px;
-  min-height: 40px;
-  padding: 6px 14px 6px 10px;
-  border: 2px solid rgba(255, 255, 255, 0.75);
+  max-width: 190px;
+  min-height: 42px;
+  padding: 6px 16px 6px 12px;
+  border: 2px solid var(--ink);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  font: 800 15px/1 var(--font-ui);
+  background: transparent;
+  color: var(--ink);
+  font: 700 15px/1 var(--font-ui);
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .branch-chip:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .branch-chip__icon {
@@ -124,42 +126,38 @@
 
 .cart-link {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  background: var(--blue);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
-  transition: transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 20px 8px 16px;
+  border-radius: 999px;
+  background: var(--cta);
+  color: #fff;
+  font: 800 15px/1 var(--font-ui);
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
 .cart-link:hover {
-  transform: scale(1.06);
+  background: var(--cta-hover);
 }
 
-.cart-link[aria-current="page"] {
-  outline: 3px solid var(--pink-soft);
-}
-
-.cart-link__icon {
-  width: 60%;
+.cart-link:active {
+  transform: scale(0.97);
 }
 
 .cart-link__count {
-  position: absolute;
-  top: -6px;
-  right: -6px;
+  display: inline-grid;
+  place-items: center;
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #fff;
-  color: var(--pink-dark);
-  font: 800 12px/22px var(--font-ui);
-  text-align: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  background: var(--pink);
+  color: #fff;
+  font: 800 12px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
 }
 
 .cart-link__count[hidden] {
@@ -177,16 +175,24 @@
 .account-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .account-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #fff;
-  font: 800 15px var(--font-ui);
+  min-height: 42px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--ink);
+  font: 700 15px var(--font-ui);
   text-decoration: none;
+}
+
+.account-link:hover,
+.account-link[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .account-link__name {
@@ -203,40 +209,84 @@
 .header-text-btn {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 42px;
   padding: 6px 14px;
   border: 2px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: #fff;
-  font: 800 15px var(--font-ui);
+  color: var(--ink);
+  font: 700 15px var(--font-ui);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .header-text-btn:hover {
-  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.6);
 }
 
-.header-text-btn--solid {
-  background: #fff;
-  color: var(--pink);
+.header-text-btn--outline {
+  border-color: var(--ink);
 }
 
-.header-text-btn--solid:hover {
-  border-color: #fff;
-  background: var(--pink-soft);
+/* ---------- site footer (desktop + mobile) ---------- */
+
+.site-footer {
+  margin-top: clamp(48px, 8vw, 96px);
+  padding: 40px var(--gutter);
+  background: var(--bg-soft);
+  border-top: 1px solid var(--line);
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px 32px;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+}
+
+.site-footer__links a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-footer__links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---------- tablet ---------- */
 
-@media (max-width: 1000px) {
-  .navigation-container .nav-item-text {
+@media (max-width: 1060px) {
+  .account-link__name,
+  .cart-link__text {
     display: none;
   }
 
-  .account-link__name {
+  .cart-link {
+    padding: 8px 14px;
+  }
+}
+
+@media (max-width: 900px) {
+  .header .nav-item-container {
+    padding: 8px 10px;
+  }
+
+  .header-text-btn--outline {
     display: none;
   }
 }
@@ -246,12 +296,13 @@
 @media (max-width: 700px) {
   .header {
     height: 60px;
-    padding: 0 12px;
     gap: 8px;
+    padding: 0 16px;
   }
 
   .donnie-logo {
     width: 110px;
+    margin-right: auto;
   }
 
   .navigation-container,
@@ -260,54 +311,84 @@
   }
 
   .branch-chip {
-    max-width: 130px;
-    min-height: 36px;
-    padding: 4px 10px 4px 8px;
-    font-size: 13px;
+    max-width: 140px;
+    min-height: 38px;
+    padding: 4px 12px 4px 8px;
+    font-size: 14px;
   }
 
   .cart-link {
-    width: 40px;
-    height: 40px;
+    min-height: 40px;
+    padding: 6px 12px;
   }
 
   .footer {
     display: flex;
-    height: var(--tabbar-height);
+    justify-content: space-around;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     z-index: 100;
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
-    justify-content: space-around;
+    height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 1px solid var(--line);
   }
 
   .footer .nav-item-container {
+    flex: 1;
     flex-direction: column;
     justify-content: center;
-    gap: 2px;
-    border-bottom-width: 0;
-    border-top: 3px solid transparent;
+    gap: 3px;
+    border-radius: 14px;
+    color: var(--ink-soft);
   }
 
-  .footer .nav-item-container[aria-current="page"] {
-    border-top-color: var(--pink-soft);
+  .footer .nav-item-container {
+    position: relative;
+    z-index: 1;
+    transition: color 0.25s ease;
+  }
+
+  .footer .nav-item-container[aria-current="page"],
+  .footer .nav-item-container.is-going {
+    color: var(--pink-dark);
+  }
+
+  /* While a new tab is loading, the old one goes back to grey */
+  .footer:has(.is-going) .nav-item-container[aria-current="page"]:not(.is-going) {
+    color: var(--ink-soft);
+  }
+
+  /* Tab pill: slides under the active tab and stretches on the way (tabbar.js) */
+  .tabbar-pill {
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    width: 0;
+    border-radius: 18px;
+    background: var(--pink-soft);
+    will-change: transform, width;
+    pointer-events: none;
+  }
+
+  .footer .icon {
+    width: 22px;
+    height: 22px;
   }
 
   .footer .nav-item-text {
     font-size: 12px;
-    letter-spacing: 0.3px;
-  }
-
-  .footer .nav-home-icon,
-  .footer .nav-donuts-icon,
-  .footer .nav-contacts-icon,
-  .footer .nav-profile-icon {
-    width: 26px;
+    font-weight: 700;
   }
 
   main {
     padding-bottom: var(--tabbar-height);
+  }
+
+  .site-footer {
+    padding-bottom: calc(var(--tabbar-height) + 32px);
   }
 }

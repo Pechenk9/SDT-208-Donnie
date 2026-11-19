@@ -16,7 +16,7 @@
         <a href="/store">&larr; Back to donuts</a>
     </nav>
 
-    <article class="product-card" data-product-id="{{ product.id }}">
+    <article class="product-card{% if product.is_limited %} is-limited{% endif %}" data-product-id="{{ product.id }}">
         <div class="product-media">
             <img
                 id="product-img"
@@ -28,7 +28,13 @@
 
         <div class="product-details">
             <header class="product-header">
+                {% if product.is_limited %}
+                <span class="limited-badge">Limited edition</span>
+                {% endif %}
                 <h1 class="product-title">{{ product.name }}</h1>
+                {% if product.is_limited %}
+                <p class="limited-note">Only around for a short time. Grab it before it's gone.</p>
+                {% endif %}
 
                 <div class="product-meta">
                     {% if product.is_available is none %}

@@ -20,10 +20,9 @@
   align-items: center;
   gap: 24px;
   padding: clamp(28px, 6vw, 56px);
-  color: #fff;
-  background: linear-gradient(115deg, #ed5aa0, #f04194);
-  border-radius: 22px;
-  box-shadow: 0 8px 26px rgba(139, 34, 86, 0.2);
+  background: var(--pink-tint);
+  color: var(--ink);
+  border-radius: var(--radius-lg);
 }
 
 .profile-eyebrow {
@@ -35,9 +34,10 @@
 }
 
 .profile-header h1 {
-  font-family: "Modak", cursive;
+  font-family: var(--font-display);
   font-size: clamp(36px, 7vw, 58px);
-  font-weight: 400;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
@@ -53,11 +53,12 @@
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  color: #007ec2;
+  color: var(--ink);
   background: #fff;
   border: 5px solid rgba(255, 255, 255, 0.45);
   border-radius: 50%;
-  font-family: "Modak", cursive;
+  font-family: var(--font-display);
+  font-weight: 800;
   font-size: clamp(34px, 6vw, 50px);
 }
 
@@ -72,12 +73,12 @@
 .profile-information {
   box-sizing: border-box;
   padding: clamp(22px, 4vw, 34px);
-  border: 2px solid rgba(237, 90, 160, 0.22);
+  border: 1px solid var(--line);
   border-radius: 18px;
 }
 
 .profile-summary {
-  background: linear-gradient(160deg, #fff 0%, #ffe8f2 100%);
+  background: var(--bg-soft);
 }
 
 .profile-information {
@@ -87,7 +88,8 @@
 .profile-summary h2,
 .profile-information h2 {
   margin-bottom: 22px;
-  color: #007ec2;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-family: "M PLUS 1p", sans-serif;
   font-size: 20px;
   font-weight: 800;
@@ -105,7 +107,7 @@
 .profile-role {
   display: inline-block;
   padding: 6px 12px;
-  color: #007ec2;
+  color: var(--pink-dark);
   background: #e7f5fc;
   border-radius: 999px;
   font-family: "M PLUS 1p", sans-serif;
@@ -132,7 +134,7 @@
 }
 
 .profile-detail dt {
-  color: #007ec2;
+  color: var(--ink-soft);
   font-size: 14px;
   font-weight: 800;
 }
@@ -153,7 +155,7 @@
 }
 
 .profile-store-link {
-  color: #007ec2;
+  color: var(--ink);
   font-family: "M PLUS 1p", sans-serif;
   font-weight: 700;
   text-decoration-thickness: 2px;
@@ -167,9 +169,9 @@
   justify-content: center;
   padding: 8px 22px;
   color: #fff;
-  background: #ed5aa0;
-  border: 2px solid #ed5aa0;
-  border-radius: 12px;
+  background: var(--cta);
+  border: 2px solid var(--cta);
+  border-radius: 999px;
   font-family: "M PLUS 1p", sans-serif;
   font-weight: 800;
   text-decoration: none;
@@ -177,8 +179,8 @@
 }
 
 .profile-management-link:hover {
-  background: #d72e7c;
-  border-color: #d72e7c;
+  background: var(--cta-hover);
+  border-color: var(--cta-hover);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
@@ -189,10 +191,10 @@
 .profile-logout-button {
   min-height: 44px;
   padding: 8px 22px;
-  color: #d72e7c;
-  background: rgba(255, 255, 255, 0.75);
-  border: 2px solid #ed5aa0;
-  border-radius: 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
   cursor: pointer;
   font-family: "M PLUS 1p", sans-serif;
   font-weight: 800;
