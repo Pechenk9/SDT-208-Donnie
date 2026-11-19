@@ -5,7 +5,7 @@
 {% block body_attrs %}data-branch-dependent{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/store.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/store.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -103,5 +103,5 @@
 
 {% block scripts %}
 <script id="store-data" type="application/json">{{ {"products": products, "selected_branch": selected_branch}|tojson }}</script>
-<script src="{{ url_for('static', path='js/store.js') }}" defer></script>
+<script src="{{ static_url('js/store.js') }}" defer></script>
 {% endblock %}

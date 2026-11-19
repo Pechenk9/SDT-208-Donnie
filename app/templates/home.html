@@ -7,7 +7,7 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
 {% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/home-page.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/home-page.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -190,5 +190,5 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/home.js') }}" defer></script>
+<script src="{{ static_url('js/home.js') }}" defer></script>
 {% endblock %}

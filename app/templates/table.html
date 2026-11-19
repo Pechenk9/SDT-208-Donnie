@@ -5,7 +5,7 @@
 {% block description %}Menu, order and payment right from your table at Donnie.{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/table.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/table.css') }}">
 {% endblock %}
 
 {% block site_footer %}{% endblock %}
@@ -76,5 +76,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/table.js') }}" defer></script>
+<script src="{{ static_url('js/table.js') }}" defer></script>
 {% endblock %}

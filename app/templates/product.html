@@ -7,7 +7,7 @@
 {% block body_attrs %}data-branch-dependent{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/donut.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/donut.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -169,5 +169,5 @@
 
 {% block scripts %}
 <script id="product-data" type="application/json">{{ product_data|tojson }}</script>
-<script src="{{ url_for('static', path='js/product.js') }}" defer></script>
+<script src="{{ static_url('js/product.js') }}" defer></script>
 {% endblock %}

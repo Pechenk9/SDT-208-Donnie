@@ -68,6 +68,20 @@ templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
 
+
+def static_url(path: str) -> str:
+    """URL of a static file with its modification time as a version, e.g.
+    /static/css/main.css?v=1795106379. When a file changes, the URL changes too,
+    so browsers load the new CSS/JS instead of an old cached copy."""
+    try:
+        version = int((BASE_DIR / "static" / path).stat().st_mtime)
+    except OSError:
+        return f"/static/{path}"
+    return f"/static/{path}?v={version}"
+
+
+templates.env.globals["static_url"] = static_url
+
 # Seasonal donuts shown with a "Limited edition" badge and listed first in the
 # catalogue. Matched by product name.
 LIMITED_EDITION_PRODUCTS = frozenset({"Neon Sunset"})

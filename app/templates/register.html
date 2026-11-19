@@ -5,7 +5,7 @@
 {% block description %}Create your Donnie account.{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/login.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/login.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -84,5 +84,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/auth.js') }}" defer></script>
+<script src="{{ static_url('js/auth.js') }}" defer></script>
 {% endblock %}

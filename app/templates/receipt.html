@@ -4,8 +4,8 @@
 {% block title %}Order Receipt | Donnie{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/receipt.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/ticket.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/receipt.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/ticket.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -203,5 +203,5 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
-<script src="{{ url_for('static', path='js/ticket.js') }}" defer></script>
+<script src="{{ static_url('js/ticket.js') }}" defer></script>
 {% endblock %}

@@ -5,7 +5,7 @@
 {% block description %}About Donnie — fresh donuts made with love in Lviv, Kyiv and Odesa.{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/contacts.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/contacts.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -51,5 +51,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/about.js') }}" defer></script>
+<script src="{{ static_url('js/about.js') }}" defer></script>
 {% endblock %}

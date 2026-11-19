@@ -5,7 +5,7 @@
 {% block description %}Review your cart and place your Donnie order.{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='css/order.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/order.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -208,5 +208,5 @@
 
 {% block scripts %}
 <script id="checkout-data" type="application/json">{{ {"products": products_data}|tojson }}</script>
-<script src="{{ url_for('static', path='js/order.js') }}" defer></script>
+<script src="{{ static_url('js/order.js') }}" defer></script>
 {% endblock %}
