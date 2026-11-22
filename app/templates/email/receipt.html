@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Donnie: receipt for order #{{ order.id }}</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6f8;font-family:Arial,Helvetica,sans-serif;color:#1b1a21;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf6f8;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;">
+        <tr>
+          <td align="center" style="padding:28px 24px 8px;">
+            <div style="font-size:26px;font-weight:bold;letter-spacing:4px;color:#c92a76;">DONNIE</div>
+            <div style="font-size:11px;letter-spacing:3px;color:#5f5b68;">DONUT MARKET</div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:12px 24px 4px;">
+            <div style="font-size:20px;font-weight:bold;">Payment successful</div>
+            <div style="font-size:32px;font-weight:bold;color:#c92a76;padding-top:6px;">{{ money(order.amount_due) }}</div>
+            <div style="font-size:14px;color:#5f5b68;padding-top:6px;">Thank you, {{ order.customer_name }}!</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 24px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+              <tr><td style="color:#5f5b68;padding:4px 0;">Order</td><td align="right" style="padding:4px 0;"><b>#{{ order.id }}</b></td></tr>
+              <tr><td style="color:#5f5b68;padding:4px 0;">Branch</td><td align="right" style="padding:4px 0;">{{ order.branch.name }}, {{ order.branch.city }}</td></tr>
+              <tr>
+                <td style="color:#5f5b68;padding:4px 0;">{% if order.table_number %}Table{% elif order.fulfillment_type.value == 'delivery' %}Delivery{% else %}Pickup{% endif %}</td>
+                <td align="right" style="padding:4px 0;">{% if order.table_number %}{{ order.table_number }}{% elif order.fulfillment_type.value == 'delivery' %}{{ order.delivery_address }}{% else %}At the branch{% endif %}</td>
+              </tr>
+              {% if order.scheduled_date %}
+              <tr><td style="color:#5f5b68;padding:4px 0;">Time</td><td align="right" style="padding:4px 0;">{{ order.scheduled_date.strftime('%a, %d %b') }} · {{ order.time_slot | replace('-', ' – ') }}</td></tr>
+              {% endif %}
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 24px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-top:1px dashed #e3d9df;">
+              {% for item in order.items %}
+              <tr><td style="padding:8px 0 0;">{{ item.name_snapshot }} × {{ item.quantity }}</td><td align="right" style="padding:8px 0 0;">{{ money(item.unit_price * item.quantity) }}</td></tr>
+              {% endfor %}
+              {% if order.extras_amount > 0 %}
+              <tr><td style="padding:8px 0 0;color:#5f5b68;">Extras</td><td align="right" style="padding:8px 0 0;">{{ money(order.extras_amount) }}</td></tr>
+              {% endif %}
+              {% if order.tip_amount > 0 %}
+              <tr><td style="padding:8px 0 0;color:#5f5b68;">Tip for the team</td><td align="right" style="padding:8px 0 0;">{{ money(order.tip_amount) }}</td></tr>
+              {% endif %}
+              <tr>
+                <td style="padding:12px 0 0;border-top:1px dashed #e3d9df;font-size:16px;"><b>Total paid</b></td>
+                <td align="right" style="padding:12px 0 0;border-top:1px dashed #e3d9df;font-size:16px;"><b>{{ money(order.amount_due) }}</b></td>
+              </tr>
+            </table>
+            <div style="font-size:12px;color:#5f5b68;padding-top:8px;">
+              USD · LiqPay{% if order.payment_provider_id %} · payment {{ order.payment_provider_id }}{% endif %}{% if paid_at %} · {{ paid_at }} (Kyiv time){% endif %}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:24px;">
+            <a href="{{ receipt_url }}" style="display:inline-block;background:#c92a76;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:999px;">Track your order</a>
+          </td>
+        </tr>
+      </table>
+      <div style="max-width:480px;font-size:11px;color:#5f5b68;padding:12px 8px;">
+        You get this email because this address was given for order #{{ order.id }} at Donnie.
+      </div>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -205,7 +205,9 @@ class DemoLiqpayClient(LiqpayClient):
         """The guest picked a test card on the demo page. Same test cards as
         LiqPay's sandbox: 4242… succeeds, 4000…0002 is declined."""
         payment.end_date = _now()
-        payment.payment_id = payment.payment_id or secrets.randbelow(9 * 10**9) + 10**9
+        # Ten digits like LiqPay's ids, but within PostgreSQL's INTEGER
+        # (max 2_147_483_647) that demo_liqpay_payments.payment_id uses.
+        payment.payment_id = payment.payment_id or secrets.randbelow(10**9) + 10**9
         payment.card_mask = f"{card[:6]}*{card[-2:]}"
         if card == "4000000000000002":
             payment.status = "failure"

@@ -144,3 +144,22 @@ Settings in `.env` (see `.env.exmple`):
 
 - `PAYMENT_PROVIDER=demo` (default): a built-in emulator of the LiqPay checkout. No keys, no card details, no real money. The guest sees a demo checkout with LiqPay's sandbox test cards: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` is declined.
 - `PAYMENT_PROVIDER=liqpay` with `LIQPAY_PUBLIC_KEY` / `LIQPAY_PRIVATE_KEY`: the real LiqPay. Use the sandbox keys from your LiqPay account (prefix `sandbox_`); LiqPay's sandbox moves no money. Callbacks need a public address in `PUBLIC_BASE_URL`; on localhost the status is requested when the guest returns.
+
+## Payment receipts by email
+
+When LiqPay confirms an online payment, Donnie emails the receipt (items, extras, tip, total, LiqPay payment id and a link to track the order) to the email given at checkout. A signed-in guest who left the field empty gets it at their account address. The letter's link carries the order's access token (`?t=...`), so it opens on any device. Each order gets one letter: `orders.receipt_emailed_at` is set before sending, so the LiqPay callback and the guest's return never both send it. If the mail server fails, the payment is unaffected and the next trigger (for example opening the receipt page) tries again. Pay-on-receipt orders get no email.
+
+- `EMAIL_PROVIDER=console` (default): nothing is sent. Each letter is saved as an `.eml` file in `./outbox` (or `OUTBOX_DIR`); open it in any mail app to see it as the guest would.
+- `EMAIL_PROVIDER=smtp` with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `MAIL_FROM`: a real mail server. For Gmail use `smtp.gmail.com`, port `587` and an app password; for testing, Mailtrap's sandbox inbox catches every letter.
+
+Tests always use the console mode with a temporary outbox. Run `alembic upgrade head` to add the `receipt_emailed_at` column; orders paid before this change are marked as already emailed.
+
+## Who can open an order
+
+Order numbers are sequential, so the receipt, payment and status pages (`/orders/{id}/receipt`, `/pay`, `/status`) never open on the number alone; anyone else gets a 404. They open for:
+
+- the browser that placed the order: `POST /orders` sets an http-only cookie `donnie_order_{id}` with the order's `access_token` (path `/orders/{id}`, 30 days);
+- anyone with the emailed link or the pickup QR (`?t=<access_token>`); opening it also sets the cookie;
+- the account that placed the order, the owner and the managers of the order's branch.
+
+LiqPay's `result_url` includes the token too, so the guest gets the receipt back even if the cookie was lost on the way through LiqPay. The return page itself shows nothing and needs no token. `alembic upgrade head` gives existing orders their own random token (PostgreSQL 13+).

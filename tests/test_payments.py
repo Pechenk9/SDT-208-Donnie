@@ -47,7 +47,8 @@ def pay_online(client, order_id, card=SUCCESS_CARD, **data):
     checkout = start.json()["checkout"]
     opened = client.post(checkout["url"], data={"data": checkout["data"], "signature": checkout["signature"]})
     paid = client.post(opened.headers["location"], data={"card": card})
-    assert paid.headers["location"].endswith(f"/orders/{order_id}/payment-return")
+    # result_url carries the order's access token (?t=...) back from LiqPay.
+    assert f"/orders/{order_id}/payment-return?t=" in paid.headers["location"]
     return client.get(paid.headers["location"])
 
 

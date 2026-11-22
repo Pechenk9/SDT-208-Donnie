@@ -66,7 +66,7 @@ def test_pay_builds_a_signed_usd_checkout(client, database):
     assert params["currency"] == "USD"
     assert params["amount"] == "19.80"  # $18.00 donuts + $1.80 tip
     assert params["order_id"] == order.payment_reference
-    assert params["result_url"].endswith(f"/orders/{order.id}/payment-return")
+    assert params["result_url"].endswith(f"/orders/{order.id}/payment-return?t={order.access_token}")
     assert params["server_url"].endswith("/payments/liqpay/callback")
     assert order.payment_status == PaymentStatus.PENDING
     assert order.payment_amount == Decimal("19.80")
@@ -212,3 +212,14 @@ def test_real_client_status_and_refund_requests(client, database):
         app.dependency_overrides.pop(get_current_user, None)
     assert requests[-1] == {**requests[-1], "action": "refund", "amount": "18.00"}
     assert get_order(database).payment_status == PaymentStatus.REFUNDED
+
+
+def test_demo_payment_id_fits_postgres_integer(client, database):
+    # demo_liqpay_payments.payment_id is INTEGER; SQLite doesn't enforce it,
+    # PostgreSQL does, so a bigger id made demo payments fail there.
+    _, ids = database
+    place(client, ids, payment_method="online")
+    order = get_order(database)
+    for _ in range(3):
+        pay_online(client, order.id, card=DECLINED_CARD)
+        assert 10**9 <= int(get_order(database).payment_provider_id) < 2**31

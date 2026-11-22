@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 import re
 import secrets
+import socket
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import FastAPI, Depends, Form, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -55,7 +56,7 @@ from app.permissions import (
     is_owner,
 )
 from app.config import get_session
-from app import liqpay
+from app import liqpay, mailer
 from app.product_info import (
     KITCHEN_NOTE,
     STORAGE_NOTE,
@@ -453,7 +454,7 @@ def manager_panel(
             "order_status_views": {
                 order.id: manager_status_view(order) for order in recent_orders
             },
-            "qr_base_url": str(request.base_url).rstrip("/"),
+            "qr_base_url": _phone_base(request),
             "managed_branches": managed_branches,
             "selected_branch": selected_branch,
             "branch_products": branch_products,
@@ -1461,7 +1462,10 @@ def list_branches(session: Session = Depends(get_session)):
 def order_receipt(
     request: Request,
     order_id: int,
+    background_tasks: BackgroundTasks,
     paid: bool = False,
+    scan: bool = False,
+    t: str | None = None,
     session: Session = Depends(get_session),
     user: User | None = Depends(get_current_user),
 ):
@@ -1479,16 +1483,31 @@ def order_receipt(
             status_code=404,
             detail="Order not found",
         )
+    _require_order_access(request, order, user, t)
 
-    return templates.TemplateResponse(
+    # Retries a receipt email that failed earlier (no-op once it was sent).
+    _queue_receipt_email(background_tasks, session, order, request)
+
+    response = templates.TemplateResponse(
         request,
         "receipt.html",
         {
             "order": order,
-            "just_paid": paid and order.payment_status == PaymentStatus.PAID,
+            # Opened by scanning the ticket's QR: lead with whether it's paid.
+            "scanned": scan,
+            "paid_at_text": mailer.kyiv_time(order.paid_at),
+            "just_paid": not scan and paid and order.payment_status == PaymentStatus.PAID,
             "progress": order_progress(order),
+            "qr_url": (
+                f"{_phone_base(request)}/orders/{order.id}/receipt"
+                f"?t={order.access_token}&scan=1"
+            ),
         },
     )
+    if _token_ok(order, t):
+        # Opened from the emailed link: this browser may now poll the status.
+        _remember_order(response, order)
+    return response
 
 
 @app.post("/orders")
@@ -1831,10 +1850,13 @@ async def create_order(
         )
 
     next_page = "pay" if payment_method == PaymentMethod.ONLINE else "receipt"
-    return RedirectResponse(
+    response = RedirectResponse(
         url=f"/orders/{order_id}/{next_page}",
         status_code=303,
     )
+    # This browser placed the order, so it may open its receipt and pay.
+    _remember_order(response, order)
+    return response
 
 
 # ---------- QR codes and test-mode online payment (Expirenza-style) ----------
@@ -1884,6 +1906,58 @@ def _get_order(session: Session, order_id: int) -> Order:
     return order
 
 
+ORDER_COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # a month: long enough to track any pre-order
+
+
+def _order_cookie_name(order_id: int) -> str:
+    return f"donnie_order_{order_id}"
+
+
+def _token_ok(order: Order, token: str | None) -> bool:
+    if not token or not order.access_token:
+        return False
+    return secrets.compare_digest(token.encode(), order.access_token.encode())
+
+
+def _can_open_order(
+    request: Request, order: Order, user: User | None, token: str | None = None
+) -> bool:
+    """Who may see an order's receipt, payment and status pages: the browser
+    that placed it (cookie), anyone with the emailed link (?t=), the account
+    that placed it, the owner and the managers of its branch."""
+    if _token_ok(order, token):
+        return True
+    if _token_ok(order, request.cookies.get(_order_cookie_name(order.id))):
+        return True
+    if user is None:
+        return False
+    if order.user_id is not None and order.user_id == user.id:
+        return True
+    if is_owner(user):
+        return True
+    return any(branch.id == order.branch_id for branch in get_managed_branches(user))
+
+
+def _require_order_access(
+    request: Request, order: Order, user: User | None, token: str | None = None
+) -> None:
+    # 404, not 403: a stranger shouldn't even learn that the order exists.
+    if not _can_open_order(request, order, user, token):
+        raise HTTPException(status_code=404, detail="Order not found")
+
+
+def _remember_order(response, order: Order) -> None:
+    response.set_cookie(
+        key=_order_cookie_name(order.id),
+        value=order.access_token,
+        max_age=ORDER_COOKIE_MAX_AGE,
+        path=f"/orders/{order.id}",
+        httponly=True,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+    )
+
+
 _PAYABLE_STATUSES = (PaymentStatus.PENDING, PaymentStatus.FAILED)
 
 
@@ -1896,10 +1970,12 @@ def order_payment_page(
     request: Request,
     order_id: int,
     declined: bool = False,
+    t: str | None = None,
     session: Session = Depends(get_session),
     user: User | None = Depends(get_current_user),
 ):
     order = _get_order(session, order_id)
+    _require_order_access(request, order, user, t)
     if (
         order.payment_method != PaymentMethod.ONLINE
         or order.payment_status not in _PAYABLE_STATUSES
@@ -1945,6 +2021,38 @@ def _public_base(request: Request) -> str:
     return liqpay.PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
 
 
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def _lan_ip() -> str | None:
+    """This computer's address on the local network (e.g. 192.168.0.170).
+    Connecting a UDP socket only picks the outgoing interface; nothing is sent."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.0.2.1", 9))  # TEST-NET address, never routed
+            ip = probe.getsockname()[0]
+    except OSError:
+        return None
+    return None if ip.startswith("127.") else ip
+
+
+def _phone_base(request: Request) -> str:
+    """Where a QR code should point so a phone can open it: PUBLIC_BASE_URL
+    when set; otherwise this site's address, except that 127.0.0.1/localhost
+    (which on a phone means the phone itself) becomes the computer's Wi-Fi
+    address. Then a phone on the same Wi-Fi reaches the dev server, as long
+    as uvicorn listens on the network (--host 0.0.0.0)."""
+    if liqpay.PUBLIC_BASE_URL:
+        return liqpay.PUBLIC_BASE_URL
+    url = request.url
+    if url.hostname in _LOCAL_HOSTS:
+        ip = _lan_ip()
+        if ip:
+            port = f":{url.port}" if url.port else ""
+            return f"{url.scheme}://{ip}{port}"
+    return str(request.base_url).rstrip("/")
+
+
 def _callback_url(request: Request) -> str | None:
     base = _public_base(request)
     # The real LiqPay can't reach a laptop: without a public address the
@@ -1954,12 +2062,52 @@ def _callback_url(request: Request) -> str | None:
     return f"{base}/payments/liqpay/callback"
 
 
+def _queue_receipt_email(
+    background_tasks: BackgroundTasks,
+    session: Session,
+    order: Order | None,
+    request: Request,
+) -> None:
+    """Emails the payment receipt once LiqPay has confirmed the payment.
+    Call it after the payment is committed. The letter is sent after the
+    response, so a slow or broken mail server never holds up the guest."""
+    if order is None:
+        return
+    try:
+        if not mailer.claim_receipt(session, order):
+            return
+        message = mailer.build_receipt(
+            order,
+            f"{_public_base(request)}/orders/{order.id}/receipt?t={order.access_token}",
+        )
+    except Exception:
+        mailer.log.exception("Could not prepare the receipt for order #%s", order.id)
+        session.rollback()
+        mailer.release_receipt(session.get_bind(), order.id)
+        return
+    background_tasks.add_task(
+        mailer.deliver_receipt, message, session.get_bind(), order.id
+    )
+
+
+def _order_by_reference(session: Session, reference: str | None) -> Order | None:
+    if not reference:
+        return None
+    return session.scalar(
+        select(Order)
+        .options(joinedload(Order.branch), selectinload(Order.items))
+        .where(Order.payment_reference == reference)
+    )
+
+
 @app.post("/orders/{order_id}/pay")
 def order_payment_submit(
     request: Request,
     order_id: int,
     tip_percent: Annotated[int | None, Form()] = None,
+    t: str | None = None,
     session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
 ):
     """Starts a LiqPay payment for the amount due and sends the guest to the
     LiqPay checkout. The guest can still change the tip on our screen."""
@@ -1967,6 +2115,7 @@ def order_payment_submit(
         raise HTTPException(400, "Invalid tip")
 
     order = _get_order(session, order_id)
+    _require_order_access(request, order, user, t)
     if order.payment_method != PaymentMethod.ONLINE:
         raise HTTPException(400, "This order is paid on receipt")
     if order.payment_status not in _PAYABLE_STATUSES:
@@ -1986,7 +2135,9 @@ def order_payment_submit(
         order_id=order.payment_reference,
         amount=order.payment_amount,
         description=f"Donnie order #{order.id}, {order.branch.name}",
-        result_url=f"{base}/orders/{order.id}/payment-return",
+        # The token rides along so the guest's browser gets its receipt back
+        # even if it dropped our cookie on the way through LiqPay.
+        result_url=f"{base}/orders/{order.id}/payment-return?t={order.access_token}",
         server_url=_callback_url(request),
     )
     try:
@@ -2004,11 +2155,16 @@ def order_payment_submit(
 
 @app.api_route("/orders/{order_id}/payment-return", methods=["GET", "POST"])
 def order_payment_return(
+    request: Request,
     order_id: int,
+    background_tasks: BackgroundTasks,
+    t: str | None = None,
     session: Session = Depends(get_session),
 ):
     """LiqPay sends the guest back here (result_url). We ask LiqPay for the
-    payment status ourselves, so it works even when no callback reached us."""
+    payment status ourselves, so it works even when no callback reached us.
+    It shows nothing about the order itself, so it needs no access check;
+    the pages it redirects to do."""
     order = _get_order(session, order_id)
     if order.payment_reference:
         try:
@@ -2019,16 +2175,24 @@ def order_payment_return(
             session.rollback()
 
     if order.payment_status == PaymentStatus.PAID:
-        return RedirectResponse(url=f"/orders/{order.id}/receipt?paid=1", status_code=303)
-    if order.payment_status == PaymentStatus.FAILED:
-        return RedirectResponse(url=f"/orders/{order.id}/pay?declined=1", status_code=303)
-    if order.payment_status == PaymentStatus.PENDING:
-        return RedirectResponse(url=f"/orders/{order.id}/pay", status_code=303)
-    return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
+        _queue_receipt_email(background_tasks, session, order, request)
+        url = f"/orders/{order.id}/receipt?paid=1"
+    elif order.payment_status == PaymentStatus.FAILED:
+        url = f"/orders/{order.id}/pay?declined=1"
+    elif order.payment_status == PaymentStatus.PENDING:
+        url = f"/orders/{order.id}/pay"
+    else:
+        url = f"/orders/{order.id}/receipt"
+    response = RedirectResponse(url=url, status_code=303)
+    if _token_ok(order, t):
+        _remember_order(response, order)
+    return response
 
 
 @app.post("/payments/liqpay/callback")
 def liqpay_callback(
+    request: Request,
+    background_tasks: BackgroundTasks,
     data: Annotated[str, Form()],
     signature: Annotated[str, Form()],
     session: Session = Depends(get_session),
@@ -2038,6 +2202,11 @@ def liqpay_callback(
         session.rollback()
         return JSONResponse({"ok": False}, status_code=400)
     session.commit()
+    # The signature is valid, so data decodes; it names the payment attempt.
+    reference = liqpay.decode_data(data).get("order_id")
+    _queue_receipt_email(
+        background_tasks, session, _order_by_reference(session, reference), request
+    )
     return {"ok": True}
 
 
@@ -2083,7 +2252,9 @@ def demo_liqpay_page(
 
 @app.post("/demo-liqpay/pay/{reference}")
 def demo_liqpay_pay(
+    request: Request,
     reference: str,
+    background_tasks: BackgroundTasks,
     card: Annotated[str, Form()],
     session: Session = Depends(get_session),
 ):
@@ -2097,16 +2268,24 @@ def demo_liqpay_pay(
     if payment.status == "created" and card != "cancel":
         client.pay(session, payment, card)
         session.commit()
+        # pay() ran the signed callback; like the real one, it sends the receipt.
+        _queue_receipt_email(
+            background_tasks, session, _order_by_reference(session, reference), request
+        )
     return RedirectResponse(url=payment.result_url, status_code=303)
 
 
 @app.get("/orders/{order_id}/status")
 def order_status(
+    request: Request,
     order_id: int,
+    t: str | None = None,
     session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
 ):
     """Current tracker state, polled by the open receipt page."""
     order = _get_order(session, order_id)
+    _require_order_access(request, order, user, t)
     return {
         "status": order.status.value,
         "progress": order_progress(order),
