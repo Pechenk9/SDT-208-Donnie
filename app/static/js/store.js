@@ -43,6 +43,7 @@
         if (sort === 'default') sorted.sort((a, b) => Number(Boolean(b.is_limited)) - Number(Boolean(a.is_limited)));
         if (sort === 'price-asc') sorted.sort((a, b) => a.price - b.price);
         if (sort === 'price-desc') sorted.sort((a, b) => b.price - a.price);
+        if (sort === 'popular') sorted.sort((a, b) => Number(Boolean(b.is_bestseller)) - Number(Boolean(a.is_bestseller)));
         return sorted; // Array.prototype.sort is stable, so equal prices keep the default order.
     }
 
@@ -104,11 +105,22 @@
         image.height = 220;
         imageBox.appendChild(image);
 
-        if (product.is_limited) {
-            const badge = document.createElement('span');
-            badge.className = 'limited-badge';
-            badge.textContent = 'Limited edition';
-            imageBox.appendChild(badge);
+        if (product.is_limited || product.is_bestseller) {
+            const badges = document.createElement('div');
+            badges.className = 'badge-row';
+            if (product.is_limited) {
+                const badge = document.createElement('span');
+                badge.className = 'limited-badge';
+                badge.textContent = 'Limited edition';
+                badges.appendChild(badge);
+            }
+            if (product.is_bestseller) {
+                const badge = document.createElement('span');
+                badge.className = 'bestseller-badge';
+                badge.textContent = 'Bestseller';
+                badges.appendChild(badge);
+            }
+            imageBox.appendChild(badges);
         }
 
         const name = document.createElement('h2');
@@ -329,6 +341,69 @@
             button.classList.remove('is-loading');
         }
     }
+
+    /* ---------- Donnie's pick: a mixed box of six ---------- */
+
+    const tastingBtn = document.getElementById('tasting-box-btn');
+
+    function shuffled(list) {
+        const copy = list.slice();
+        for (let i = copy.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+    }
+
+    async function addTastingBox() {
+        if (!hasBranch) {
+            window.DonnieBranch.open('Choose a branch first — Donnie\'s pick depends on what it bakes today.');
+            return;
+        }
+
+        tastingBtn.disabled = true;
+        tastingBtn.classList.add('is-loading');
+        try {
+            // Bestsellers and limited editions go in first, then a random mix of the rest.
+            const available = PRODUCTS.filter(product => product.is_available === true);
+            const featured = available.filter(product => product.is_bestseller || product.is_limited);
+            const others = available.filter(product => !product.is_bestseller && !product.is_limited);
+            const ordered = [...shuffled(featured), ...shuffled(others)];
+
+            const settled = await Promise.allSettled(ordered.map(product => Cart.loadProduct(product.id)));
+            const orderable = settled
+                .map((result, index) => ({ result, product: ordered[index] }))
+                .filter(({ result }) =>
+                    result.status === 'fulfilled'
+                    && result.value.is_available !== false
+                    && Cart.missingRequiredIngredients(result.value).length === 0
+                )
+                .map(({ result, product }) => ({ product, details: result.value }));
+
+            if (orderable.length === 0) {
+                Cart.toast('Nothing is available for a mixed box at this branch right now.', { type: 'error' });
+                return;
+            }
+
+            // Six different donuts when possible; with a smaller menu the picks repeat.
+            const box = [];
+            for (let i = 0; box.length < Cart.MIN_ORDER_DONUTS; i += 1) box.push(orderable[i % orderable.length]);
+            box.forEach(({ product, details }) => {
+                Cart.addLine({ productId: product.id, quantity: 1, ingredients: Cart.defaultIngredients(details) });
+            });
+
+            const names = [...new Set(box.map(({ product }) => product.name))];
+            Cart.toast(`Donnie's pick added: ${names.join(', ')}.`, { action: { href: '/order', label: 'Checkout' } });
+            bumpBadge();
+        } catch (error) {
+            Cart.toast('Could not put the box together. Please try again.', { type: 'error' });
+        } finally {
+            tastingBtn.disabled = false;
+            tastingBtn.classList.remove('is-loading');
+        }
+    }
+
+    tastingBtn.addEventListener('click', addTastingBox);
 
     function bumpBadge() {
         document.querySelectorAll('[data-cart-count]').forEach(node => {

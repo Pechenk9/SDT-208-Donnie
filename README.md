@@ -135,3 +135,12 @@ Configure cookie behavior with `SESSION_LIFETIME_SECONDS` and `SESSION_COOKIE_SE
 ## Project Goal
 
 Donnie aims to provide a convenient online ordering experience for a donut shop network operating across multiple cities. The project is being developed as a team prototype, with plans to expand its functionality with custom donut creation, customer accounts, and branch management.
+
+## Online payment (LiqPay)
+
+Online orders are paid through [LiqPay](https://www.liqpay.ua/en/doc). Donnie builds the checkout `data` (base64 JSON: amount in USD, a unique `order_id` per attempt, `result_url`, `server_url`) and its `signature` (`base64(sha1(private_key + data + private_key))`), and the browser posts both to the LiqPay checkout. The result comes from the signed callback to `server_url` or from a `status` request when the guest returns. Managers refund with the `refund` action.
+
+Settings in `.env` (see `.env.exmple`):
+
+- `PAYMENT_PROVIDER=demo` (default): a built-in emulator of the LiqPay checkout. No keys, no card details, no real money. The guest sees a demo checkout with LiqPay's sandbox test cards: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` is declined.
+- `PAYMENT_PROVIDER=liqpay` with `LIQPAY_PUBLIC_KEY` / `LIQPAY_PRIVATE_KEY`: the real LiqPay. Use the sandbox keys from your LiqPay account (prefix `sandbox_`); LiqPay's sandbox moves no money. Callbacks need a public address in `PUBLIC_BASE_URL`; on localhost the status is requested when the guest returns.

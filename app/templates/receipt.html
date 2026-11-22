@@ -10,7 +10,8 @@
 
 {% block content %}
 <div class="receipt-page">
-    <div class="receipt">
+    <div class="receipt{% if just_paid %} receipt--paid{% endif %}">
+        <div class="receipt-col receipt-col--main">
         {% if just_paid %}
         <section class="paid-hero" aria-labelledby="paid-title">
             <div class="paid-hero__check" aria-hidden="true">
@@ -49,6 +50,40 @@
             {% endif %}
         </div>
 
+        {% if progress %}
+        {% set last_index = progress.steps|length - 1 %}
+        <section class="order-track" id="order-track" aria-labelledby="order-track-title"
+                 data-status-url="/orders/{{ order.id }}/status"
+                 data-current="{{ progress.current }}" data-complete="{{ 'true' if progress.complete else 'false' }}">
+            <h2 class="order-track__title" id="order-track-title">Order status</h2>
+            <div class="order-track__track">
+                <span class="order-track__bar" style="--progress: {{ (progress.current / last_index * 100)|round(3) }}%"></span>
+                <ol class="order-track__dots">
+                    {% for name in progress.steps %}
+                    {% set is_done = loop.index0 < progress.current or progress.complete %}
+                    {% set is_current = loop.index0 == progress.current and not progress.complete %}
+                    <li class="order-track__dot{% if is_done %} is-done{% elif is_current %} is-current{% endif %}"
+                        style="left: {{ (loop.index0 / last_index * 100)|round(3) }}%"
+                        {% if is_current %}aria-current="step"{% endif %}>
+                        <b aria-hidden="true">{{ loop.index }}</b>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                        <span class="visually-hidden">{{ name }}: {{ 'done' if is_done else ('in progress' if is_current else 'next') }}</span>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+            <div class="order-track__names" aria-hidden="true">
+                {% for name in progress.steps %}
+                <span class="{% if loop.index0 <= progress.current %}is-on{% endif %}"
+                      style="left: {{ (loop.index0 / last_index * 100)|round(3) }}%">{{ name }}</span>
+                {% endfor %}
+            </div>
+            <p class="order-track__hint" aria-live="polite">{{ progress.hint }}</p>
+        </section>
+        {% elif order.status.value == 'cancelled' %}
+        <p class="order-track__cancelled">This order was cancelled.</p>
+        {% endif %}
+
         {% set donut_count = order.items|sum(attribute='quantity') %}
         {% if order.table_number %}{% set where = 'Table ' ~ order.table_number %}{% elif order.fulfillment_type.value == 'delivery' %}{% set where = 'Delivery' %}{% else %}{% set where = 'Pickup' %}{% endif %}
         {% set pay_label = {'paid': 'Paid', 'pending': 'Not paid yet', 'failed': 'Not paid yet', 'refunded': 'Refunded', 'unpaid': 'Pay on receipt'}[order.payment_status] %}
@@ -86,8 +121,10 @@
             </div>
             <p class="t-hint">Tap the ticket to show your pickup QR code</p>
         </section>
+        </div>
 
-        <div class="receipt-divider"></div>
+        <div class="receipt-col receipt-col--side">
+        <div class="receipt-divider receipt-divider--between"></div>
 
         <div class="receipt-info">
             <div>
@@ -129,10 +166,30 @@
             </div>
             {% endif %}
 
+            {% if not order.table_number %}
+            <div>
+                <span>{{ 'Delivery time' if order.fulfillment_type.value == 'delivery' else 'Ready for pickup' }}</span>
+                <strong>
+                    {% if order.scheduled_date %}
+                    {{ order.scheduled_date.strftime('%a, %d %b') }} · {{ order.time_slot | replace('-', ' – ') }}
+                    {% else %}
+                    As soon as possible
+                    {% endif %}
+                </strong>
+            </div>
+            {% endif %}
+
+            {% if order.postcard_message %}
+            <div>
+                <span>Postcard</span>
+                <strong class="receipt-postcard">“{{ order.postcard_message }}”</strong>
+            </div>
+            {% endif %}
+
             <div>
                 <span>Payment</span>
                 <strong>
-                    {% if order.payment_method == 'online' %}Online{% elif order.table_number %}At the table{% elif order.fulfillment_type.value == 'delivery' %}To the courier{% else %}At pickup{% endif %}
+                    {% if order.payment_method == 'online' %}LiqPay{% elif order.table_number %}At the table{% elif order.fulfillment_type.value == 'delivery' %}To the courier{% else %}At pickup{% endif %}
                     {% set pay_pill = {
                         'paid': ('pill--ok', 'Paid'),
                         'pending': ('pill--unknown', 'Waiting for payment'),
@@ -166,11 +223,23 @@
 
         <div class="receipt-divider"></div>
 
-        {% if order.tip_amount > 0 %}
+        {% if order.tip_amount > 0 or order.extras_amount > 0 %}
         <div class="receipt-item receipt-subtotal">
             <span>Donuts</span>
-            <strong>${{ "%.2f"|format(order.total_price) }}</strong>
+            <strong>${{ "%.2f"|format(order.donuts_amount) }}</strong>
         </div>
+        {% endif %}
+        {% if order.has_extras %}
+        {% set extras_parts = [] %}
+        {% if order.gift_box %}{% set _ = extras_parts.append('gift box') %}{% endif %}
+        {% if order.candles %}{% set _ = extras_parts.append(order.candles ~ ' candle' ~ ('s' if order.candles != 1 else '')) %}{% endif %}
+        {% if order.postcard_message %}{% set _ = extras_parts.append('postcard') %}{% endif %}
+        <div class="receipt-item receipt-subtotal">
+            <span>Extras: {{ extras_parts | join(', ') }}</span>
+            <strong>{{ "$%.2f"|format(order.extras_amount) if order.extras_amount > 0 else 'Free' }}</strong>
+        </div>
+        {% endif %}
+        {% if order.tip_amount > 0 %}
         <div class="receipt-item receipt-subtotal">
             <span>Tip for the team</span>
             <strong>${{ "%.2f"|format(order.tip_amount) }}</strong>
@@ -196,6 +265,7 @@
                 Back to store
             </a>
         </div>
+        </div>
 
     </div>
 </div>
@@ -204,4 +274,16 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="{{ static_url('js/ticket.js') }}" defer></script>
+<script src="{{ static_url('js/springs.js') }}" defer></script>
+<script src="{{ static_url('js/order-track.js') }}" defer></script>
+<noscript>
+    <style>
+        /* Without JavaScript the tracker shows its final state right away. */
+        .order-track__bar { width: var(--progress); }
+        .order-track__dot.is-done { background: var(--success); }
+        .order-track__dot.is-done b { opacity: 0; }
+        .order-track__dot.is-done path { stroke-dashoffset: 0; }
+        .order-track__dot.is-current { background: var(--cta); color: #fff; }
+    </style>
+</noscript>
 {% endblock %}

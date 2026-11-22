@@ -423,3 +423,108 @@
     box-shadow: 0 10px 25px rgba(19, 41, 75, 0.3);
   }
 }
+
+/* ---------- pre-order day and time window ---------- */
+
+.schedule-pickers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.schedule-pickers[hidden] {
+  display: none;
+}
+
+.schedule-pickers .field {
+  margin: 0;
+}
+
+@media (max-width: 420px) {
+  .schedule-pickers {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- compact checkout ----------
+   Left: the cart and the form (fields in two columns).
+   Right: a short, sticky summary with the Place order button. */
+
+.checkout-layout {
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+}
+
+.checkout-main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.checkout-aside {
+  gap: 14px;
+}
+
+.checkout-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.checkout-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  padding: 20px 22px;
+}
+
+.checkout-form > .section-title,
+.checkout-form > .field--wide {
+  grid-column: 1 / -1;
+}
+
+.checkout-form .field {
+  margin: 0;
+}
+
+/* The two payment choices side by side. */
+.pay-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pay-option__body {
+  height: 100%;
+}
+
+.segmented__option span {
+  padding: 9px 8px;
+}
+
+/* Tighter cart lines and summary. */
+.cart-lines {
+  gap: 10px;
+}
+
+.checkout-aside .cart-summary {
+  padding: 18px 20px;
+}
+
+.checkout-branch {
+  padding: 10px 12px;
+}
+
+.checkout-branch__hint {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .checkout-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .checkout-form,
+  .pay-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -20,6 +20,9 @@
     const addressGroup = el('address-group');
     const addressInput = el('delivery-address');
     const clearDialog = el('clear-cart-dialog');
+    const extrasConfig = data.extras || { schedule: [] };
+    const dateSelect = el('scheduled-date');
+    const slotSelect = el('time-slot');
 
     const details = new Map(); // product id -> prepared product data from /product/{id}
     const failed = new Set();  // product ids whose details could not be loaded
@@ -198,37 +201,21 @@
         return { total, complete };
     }
 
-    function tipPercent() {
-        const checked = form.querySelector('input[name="tip_percent"]:checked');
-        return checked ? Number(checked.value) : 0;
-    }
-
     function paymentMethod() {
         const checked = form.querySelector('input[name="payment_method"]:checked');
         return checked ? checked.value : 'on_receipt';
-    }
-
-    // Same rounding as the server: tip = donuts total × percent, rounded to cents.
-    function tipFor(total) {
-        return Math.round(total * tipPercent()) / 100;
     }
 
     function renderSummary(cart) {
         const { donuts, lines } = Cart.totals(cart);
         const { total, complete } = estimatedTotal(cart);
         const missing = Math.max(0, Cart.MIN_ORDER_DONUTS - donuts);
-        const tip = tipFor(total);
         const plus = complete ? '' : '+';
 
         el('summary-donuts').textContent = String(donuts);
         el('summary-lines').textContent = String(lines);
-        el('summary-subtotal-row').hidden = tip === 0;
-        el('summary-tip-row').hidden = tip === 0;
-        el('summary-subtotal').textContent = Cart.formatPrice(total) + plus;
-        el('summary-tip').textContent = Cart.formatPrice(tip) + plus;
-        el('summary-total-label').textContent = tip === 0 ? 'Estimated total' : 'Estimated to pay';
-        el('summary-total').textContent = Cart.formatPrice(total + tip) + plus;
-        renderPaymentLabels(total);
+        el('summary-total').textContent = Cart.formatPrice(total) + plus;
+        renderPaymentLabels();
 
         el('min-order').classList.toggle('is-met', missing === 0);
         el('min-order-fill').style.width = `${Math.min(100, (donuts / Cart.MIN_ORDER_DONUTS) * 100)}%`;
@@ -352,13 +339,9 @@
         updateFulfillment();
     }
 
-    function renderPaymentLabels(total) {
+    function renderPaymentLabels() {
         const titles = { pickup: 'Pay at pickup', delivery: 'Pay the courier', table: 'Pay at the table' };
         el('pay-on-receipt-title').textContent = titles[fulfillment()] || titles.pickup;
-        const tip = tipFor(total);
-        el('tip-hint').textContent = tip > 0
-            ? `${Cart.formatPrice(tip)} goes to the bakers and staff of your Donnie. Thank you!`
-            : 'Tips go to the bakers and staff of your Donnie.';
         submitBtn.dataset.label = paymentMethod() === 'online' ? 'Place order and pay' : 'Place order';
         if (!submitting) submitBtn.textContent = submitBtn.dataset.label;
     }
@@ -409,7 +392,64 @@
         addressGroup.hidden = !delivery;
         addressInput.required = delivery;
         if (!delivery) showFieldError(addressInput, '');
+        // Table orders are served right away, so there is nothing to schedule.
+        el('schedule-group').hidden = fulfillment() === 'table';
+        renderScheduleHint();
     }
+
+    /* ---------- pre-order day and time window ---------- */
+
+    const dayFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+    function dayLabel(isoDate) {
+        const label = dayFormat.format(new Date(`${isoDate}T00:00:00Z`));
+        if (isoDate === extrasConfig.today) return `Today · ${label}`;
+        return label;
+    }
+
+    function scheduleMode() {
+        const checked = form.querySelector('input[name="schedule_mode"]:checked');
+        return checked ? checked.value : 'asap';
+    }
+
+    function fillDays() {
+        dateSelect.replaceChildren(...extrasConfig.schedule.map(day => {
+            const option = document.createElement('option');
+            option.value = day.date;
+            option.textContent = dayLabel(day.date);
+            return option;
+        }));
+        fillSlots();
+    }
+
+    function fillSlots() {
+        const day = extrasConfig.schedule.find(entry => entry.date === dateSelect.value);
+        slotSelect.replaceChildren(...(day ? day.slots : []).map(slot => {
+            const option = document.createElement('option');
+            option.value = slot;
+            option.textContent = slot.replace('-', ' – ');
+            return option;
+        }));
+    }
+
+    function renderScheduleHint() {
+        const later = scheduleMode() === 'later';
+        el('schedule-pickers').hidden = !later;
+        const where = fulfillment() === 'delivery' ? 'delivered' : 'ready for pickup';
+        el('schedule-hint').textContent = later
+            ? `Your box will be ${where} within the chosen window. You can pre-order up to a week ahead.`
+            : 'We start baking right after you order.';
+    }
+
+    form.querySelectorAll('input[name="schedule_mode"]').forEach(radio => {
+        radio.addEventListener('change', renderScheduleHint);
+    });
+    dateSelect.addEventListener('change', fillSlots);
+
+    if (!extrasConfig.schedule.length) {
+        form.querySelector('input[name="schedule_mode"][value="later"]').closest('label').hidden = true;
+    }
+    fillDays();
 
     form.querySelectorAll('input[name="fulfillment_type"]').forEach(radio => {
         radio.addEventListener('change', () => {
@@ -419,7 +459,7 @@
         });
     });
 
-    form.querySelectorAll('input[name="tip_percent"], input[name="payment_method"]').forEach(radio => {
+    form.querySelectorAll('input[name="payment_method"]').forEach(radio => {
         radio.addEventListener('change', () => renderSummary(Cart.read()));
     });
 
@@ -495,8 +535,11 @@
         body.set('fulfillment_type', fulfillment() === 'table' ? 'pickup' : fulfillment());
         if (fulfillment() === 'table' && table) body.set('table_number', String(table));
         if (fulfillment() === 'delivery') body.set('delivery_address', fields.address.value.trim());
-        body.set('tip_percent', String(tipPercent()));
         body.set('payment_method', paymentMethod());
+        if (fulfillment() !== 'table' && scheduleMode() === 'later' && dateSelect.value && slotSelect.value) {
+            body.set('scheduled_date', dateSelect.value);
+            body.set('time_slot', slotSelect.value);
+        }
         // Per-donut ingredient quantities for every recipe ingredient (0 = removed). No prices are sent.
         body.set('items_json', JSON.stringify(cart.items.map(item => ({
             product_id: item.product_id,

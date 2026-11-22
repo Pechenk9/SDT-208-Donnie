@@ -28,8 +28,11 @@
 
         <div class="product-details">
             <header class="product-header">
-                {% if product.is_limited %}
-                <span class="limited-badge">Limited edition</span>
+                {% if product.is_limited or product.is_bestseller %}
+                <div class="badge-row">
+                    {% if product.is_limited %}<span class="limited-badge">Limited edition</span>{% endif %}
+                    {% if product.is_bestseller %}<span class="bestseller-badge">Bestseller</span>{% endif %}
+                </div>
                 {% endif %}
                 <h1 class="product-title">{{ product.name }}</h1>
                 {% if product.is_limited %}
@@ -54,6 +57,26 @@
                 <p class="product-desc">{{ product.description }}</p>
                 {% endif %}
             </header>
+
+            <dl class="product-facts">
+                <div class="product-facts__row">
+                    <dt>Allergens</dt>
+                    <dd>
+                        {% if product.allergens %}
+                        <ul class="allergen-list" aria-label="Allergens in the original recipe">
+                            {% for allergen in product.allergens %}<li>{{ allergen }}</li>{% endfor %}
+                        </ul>
+                        {% else %}
+                        None of the main allergens in the original recipe.
+                        {% endif %}
+                        <span>{{ kitchen_note }}</span>
+                    </dd>
+                </div>
+                <div class="product-facts__row">
+                    <dt>Freshness and storage</dt>
+                    <dd>{{ storage_note }}</dd>
+                </div>
+            </dl>
 
             <div class="product-branch">
                 {% if product.branch %}
@@ -164,6 +187,26 @@
             </div>
         </div>
     </article>
+
+    {% if related %}
+    <section class="related" aria-labelledby="related-title">
+        <h2 class="related__title" id="related-title">You may also like</h2>
+        <ul class="related-grid">
+            {% for item in related %}
+            <li class="related-card{% if item.is_limited %} is-limited{% endif %}" style="--tile: var(--tile-{{ (item.id % 6) + 1 }})">
+                <a href="/product/{{ item.id }}">
+                    <span class="related-card__tile">
+                        <img src="{{ item.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                             alt="" loading="lazy" decoding="async" width="160" height="160">
+                    </span>
+                    <span class="related-card__name">{{ item.name }}</span>
+                    <span class="related-card__price">{{ "$%.2f"|format(item.price) }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
 

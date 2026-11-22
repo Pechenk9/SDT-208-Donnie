@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Enum as SAEnum,
     ForeignKey,
@@ -71,6 +73,19 @@ class PaymentStatus:
 
 TIP_PERCENTAGES = (0, 5, 10, 15)
 MAX_TABLE_NUMBER = 99
+
+# "Make it a celebration" add-ons at checkout (idea from Kyiv cake shops such
+# as Milk Bar, where candles, a postcard and gift packaging sit next to the
+# order). Prices are decided on the server; the client only shows estimates.
+GIFT_BOX_PRICE = Decimal("2.00")  # one gift box with a ribbon for the order
+CANDLE_PRICE = Decimal("0.20")  # per candle
+MAX_CANDLES = 24
+MAX_POSTCARD_LENGTH = 200
+
+# Pre-order windows for pickup and delivery, also borrowed from Kyiv bakeries
+# that let you pick a day and a time window instead of "as soon as possible".
+TIME_SLOTS = ("09:30-12:00", "12:00-15:00", "15:00-18:00", "18:00-21:00")
+MAX_PREORDER_DAYS = 7
 
 
 branch_managers = Table(
@@ -556,6 +571,44 @@ class Order(Base):
         nullable=False,
     )
 
+    # Celebration add-ons. extras_amount is already included in total_price.
+    gift_box: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+
+    candles: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+
+    postcard_message: Mapped[str | None] = mapped_column(
+        String(MAX_POSTCARD_LENGTH),
+        nullable=True,
+    )
+
+    extras_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2),
+        default=Decimal("0.00"),
+        server_default="0",
+        nullable=False,
+    )
+
+    # Pre-order: both empty means "as soon as possible".
+    scheduled_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
+    time_slot: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
     payment_method: Mapped[str] = mapped_column(
         String(20),
         default=PaymentMethod.ON_RECEIPT,
@@ -575,6 +628,24 @@ class Order(Base):
         nullable=True,
     )
 
+    # LiqPay: order_id of the current payment attempt (unique per attempt),
+    # the amount it asked for, and LiqPay's payment_id once it is known.
+    payment_reference: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        index=True,
+    )
+
+    payment_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2),
+        nullable=True,
+    )
+
+    payment_provider_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+
     refunded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -589,6 +660,14 @@ class Order(Base):
     def amount_due(self) -> Decimal:
         return (self.total_price or Decimal("0")) + (self.tip_amount or Decimal("0"))
 
+    @property
+    def donuts_amount(self) -> Decimal:
+        return (self.total_price or Decimal("0")) - (self.extras_amount or Decimal("0"))
+
+    @property
+    def has_extras(self) -> bool:
+        return bool(self.gift_box or self.candles or self.postcard_message)
+
     __table_args__ = (
         CheckConstraint(
             "total_price >= 0",
@@ -597,6 +676,18 @@ class Order(Base):
         CheckConstraint(
             "tip_amount >= 0",
             name="ck_orders_tip_amount",
+        ),
+        CheckConstraint(
+            "candles >= 0 AND candles <= 24",
+            name="ck_orders_candles",
+        ),
+        CheckConstraint(
+            "extras_amount >= 0",
+            name="ck_orders_extras_amount",
+        ),
+        CheckConstraint(
+            "(scheduled_date IS NULL) = (time_slot IS NULL)",
+            name="ck_orders_schedule_pair",
         ),
         CheckConstraint(
             "table_number IS NULL OR (table_number >= 1 AND table_number <= 99)",
@@ -717,3 +808,38 @@ class OrderItemIngredient(Base):
     ingredient: Mapped[Ingredient] = relationship(
         back_populates="order_usages",
     )
+
+
+class DemoLiqpayPayment(Base):
+    """Payments of the built-in LiqPay emulator (PAYMENT_PROVIDER=demo).
+    Field names follow the LiqPay API."""
+
+    __tablename__ = "demo_liqpay_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    order_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+
+    payment_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+
+    currency: Mapped[str] = mapped_column(String(3))
+
+    description: Mapped[str] = mapped_column(String(255))
+
+    status: Mapped[str] = mapped_column(String(30), default="created")
+
+    result_url: Mapped[str] = mapped_column(Text)
+
+    server_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    card_mask: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    err_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    err_description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    create_date: Mapped[int] = mapped_column(BigInteger)
+
+    end_date: Mapped[int] = mapped_column(BigInteger)

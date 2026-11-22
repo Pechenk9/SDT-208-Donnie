@@ -223,7 +223,10 @@
 }
 
 .pay-bar__btn {
+  position: relative;
+  overflow: hidden;
   width: 100%;
+  height: 58px;
   min-height: 58px;
   border: 0;
   border-radius: 18px;
@@ -262,4 +265,172 @@
   .pay-bar {
     bottom: calc(var(--tabbar-height) + 10px);
   }
+}
+
+/* ---------- Pay button: loading > success ---------- */
+
+.pay-btn__label,
+.pay-btn__done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+.pay-btn__done {
+  opacity: 0;
+  color: #fff;
+}
+
+.pay-btn__done svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pay-btn__spin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0 10%, #fff 85%, rgba(255, 255, 255, 0) 85%);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 68%, #000 72%);
+  mask: radial-gradient(circle closest-side, transparent 68%, #000 72%);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* While busy the button keeps its own colour (no hover) and can't be pressed again. */
+.pay-bar__btn.is-busy,
+.pay-bar__btn.is-busy:hover {
+  background: #000;
+  cursor: progress;
+  transform: none;
+  transition: none;
+}
+
+.pay-bar__error {
+  width: 100%;
+}
+
+
+/* ---------- demo LiqPay checkout ---------- */
+
+.demo-bank__top {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.demo-bank__title {
+  font: 800 24px/1.2 var(--font-display);
+  color: var(--ink);
+}
+
+.demo-bank__lead,
+.demo-bank__lead code {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.demo-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.demo-cards legend {
+  margin-bottom: 8px;
+}
+
+.demo-cards__option {
+  position: relative;
+  cursor: pointer;
+}
+
+.demo-cards__option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.demo-card {
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  aspect-ratio: 1.586;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2b2b33 0%, #121217 100%);
+  color: #fff;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, outline-color 0.2s ease;
+}
+
+.demo-card--decline {
+  background: linear-gradient(135deg, #5b2a3a 0%, #231018 100%);
+}
+
+.demo-cards__option input:checked + .demo-card {
+  opacity: 1;
+  outline-color: var(--cta);
+}
+
+.demo-cards__option input:focus-visible + .demo-card {
+  outline-color: var(--blue);
+}
+
+.demo-card__chip {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 32px;
+  height: 24px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #e8cf8a, #b8954a);
+}
+
+.demo-card__number {
+  font: 700 clamp(12px, 3.4vw, 15px)/1 var(--font-ui);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.demo-card__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.demo-bank__hint {
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: center;
+}
+
+.demo-bank__cancel {
+  color: var(--ink-soft);
+  font-size: 13px;
 }
