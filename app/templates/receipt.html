@@ -12,6 +12,37 @@
 <div class="receipt-page">
     <div class="receipt{% if just_paid %} receipt--paid{% endif %}">
         <div class="receipt-col receipt-col--main">
+        {% if scanned %}
+        {#- Scanned from the ticket's QR: answer "is it paid?" before anything else. -#}
+        {% if order.status.value == 'cancelled' %}
+            {% set check = ('stop', 'Cancelled', 'This order was cancelled. Do not hand it out.') %}
+        {% elif order.payment_status == 'paid' %}
+            {% set check = ('ok', 'Paid', 'Paid online with LiqPay' ~ (' · ' ~ paid_at_text ~ ' Kyiv time' if paid_at_text else '') ~ '.') %}
+        {% elif order.payment_status == 'refunded' %}
+            {% set check = ('stop', 'Refunded', 'The payment was returned to the guest. Do not hand it out.') %}
+        {% elif order.payment_status == 'unpaid' %}
+            {% set check = ('due', 'Not paid yet', 'Collect the money ' ~ ('at the table' if order.table_number else 'on delivery' if order.fulfillment_type.value == 'delivery' else 'at pickup') ~ ': cash or card.') %}
+        {% elif order.payment_status == 'failed' %}
+            {% set check = ('stop', 'Not paid', 'The online payment was declined.') %}
+        {% else %}
+            {% set check = ('stop', 'Not paid', 'The online payment is not finished yet.') %}
+        {% endif %}
+        <section class="scan-check scan-check--{{ check[0] }}" aria-labelledby="scan-check-verdict">
+            <p class="scan-check__eyebrow">Order #{{ order.id }} · {{ order.customer_name }}</p>
+            <div class="scan-check__verdict" id="scan-check-verdict">
+                <span class="scan-check__icon" aria-hidden="true">{{ '✓' if check[0] == 'ok' else '!' if check[0] == 'due' else '✕' }}</span>
+                {{ check[1] }}
+            </div>
+            <p class="scan-check__amount">${{ "%.2f"|format(order.amount_due) }}</p>
+            <p class="scan-check__note">{{ check[2] }}</p>
+            <dl class="scan-check__facts">
+                <div><dt>Order status</dt><dd>{{ order.status.value | title }}</dd></div>
+                <div><dt>Get it</dt><dd>{% if order.table_number %}Table {{ order.table_number }}{% else %}{{ order.fulfillment_type.value | title }}{% endif %}</dd></div>
+                <div><dt>Donuts</dt><dd>{{ order.items|sum(attribute='quantity') }}</dd></div>
+            </dl>
+        </section>
+        <div class="receipt-divider"></div>
+        {% endif %}
         {% if just_paid %}
         <section class="paid-hero" aria-labelledby="paid-title">
             <div class="paid-hero__check" aria-hidden="true">
@@ -37,7 +68,7 @@
             <div class="receipt-logo">DONNIE</div>
             <div class="receipt-subtitle">DONUT MARKET</div>
 
-            {% if not just_paid %}
+            {% if not just_paid and not scanned %}
             <div class="success-icon">✓</div>
             <h1>Thank you for your order!</h1>
             {% if order.payment_status == 'paid' %}
@@ -53,7 +84,7 @@
         {% if progress %}
         {% set last_index = progress.steps|length - 1 %}
         <section class="order-track" id="order-track" aria-labelledby="order-track-title"
-                 data-status-url="/orders/{{ order.id }}/status"
+                 data-status-url="/orders/{{ order.id }}/status?t={{ order.access_token }}"
                  data-current="{{ progress.current }}" data-complete="{{ 'true' if progress.complete else 'false' }}">
             <h2 class="order-track__title" id="order-track-title">Order status</h2>
             <div class="order-track__track">
@@ -109,7 +140,7 @@
                     </div>
                     <div class="t-side t-back">
                         <div class="t-qr" id="ticket-qr" data-order="{{ order.id }}"
-                             data-url="{{ request.base_url }}orders/{{ order.id }}/receipt"></div>
+                             data-url="{{ qr_url }}"></div>
                         <div class="t-facts">
                             <div>Order<b>#{{ order.id }}</b></div>
                             <div>{{ 'Table' if order.table_number else 'Get it' }}<b>{{ order.table_number if order.table_number else where }}</b></div>
@@ -252,7 +283,7 @@
         </div>
 
         {% if order.payment_method == 'online' and order.payment_status in ('pending', 'failed') %}
-        <a href="/orders/{{ order.id }}/pay" class="btn btn--block receipt-pay-btn">
+        <a href="/orders/{{ order.id }}/pay?t={{ order.access_token }}" class="btn btn--block receipt-pay-btn">
             Pay ${{ "%.2f"|format(order.amount_due) }} now
         </a>
         {% endif %}

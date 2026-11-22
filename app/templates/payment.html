@@ -9,7 +9,7 @@
 {% block site_footer %}{% endblock %}
 
 {% block content %}
-<form class="pay-screen" method="post" action="/orders/{{ order.id }}/pay"
+<form class="pay-screen" method="post" action="/orders/{{ order.id }}/pay?t={{ order.access_token }}"
       data-total="{{ '%.2f'|format(order.total_price) }}">
     <header class="pay-top">
         <span class="pay-top__logo" aria-hidden="true"></span>

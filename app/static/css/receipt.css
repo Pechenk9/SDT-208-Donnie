@@ -663,3 +663,94 @@
         margin-top: 0;
     }
 }
+
+/* ---------- Opened by scanning the ticket's QR: paid or not, at a glance ---------- */
+.scan-check {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 22px 18px 18px;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    --scan: var(--danger);
+    background: var(--danger-tint);
+    color: var(--scan);
+}
+
+.scan-check--ok {
+    --scan: var(--success);
+    background: var(--success-tint);
+}
+
+.scan-check--due {
+    --scan: #8a5a00;
+    background: #fff4dc;
+}
+
+.scan-check__eyebrow {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.scan-check__verdict {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: clamp(2rem, 9vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.scan-check__icon {
+    display: grid;
+    place-items: center;
+    width: 1.3em;
+    height: 1.3em;
+    border-radius: 50%;
+    font-size: 0.75em;
+    background: var(--scan);
+    color: #fff;
+}
+
+.scan-check__amount {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.scan-check__note {
+    margin: 0;
+    max-width: 32ch;
+    font-size: 0.95rem;
+    color: var(--ink);
+}
+
+.scan-check__facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    margin: 10px 0 0;
+}
+
+.scan-check__facts div {
+    padding: 8px 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.scan-check__facts dt {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+}
+
+.scan-check__facts dd {
+    margin: 2px 0 0;
+    font-weight: 700;
+    color: var(--ink);
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import enum
+import secrets
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -647,6 +648,23 @@ class Order(Base):
     )
 
     refunded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Secret that opens this order's receipt, payment and status pages for a
+    # guest: kept in a cookie by the browser that placed the order and put in
+    # the emailed receipt link (?t=...). Order ids are sequential, so the id
+    # alone must never be enough to see someone's name, phone and address.
+    access_token: Mapped[str] = mapped_column(
+        String(64),
+        default=lambda: secrets.token_urlsafe(24),
+        nullable=False,
+    )
+
+    # When the payment receipt went to customer_email. Set before sending,
+    # so a LiqPay callback and the guest's return never send it twice.
+    receipt_emailed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

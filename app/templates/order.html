@@ -76,7 +76,9 @@
                            autocomplete="email" maxlength="255"
                            placeholder="you@example.com"
                            value="{{ customer.email if customer else '' }}"
-                           data-error="customer-email-error" aria-invalid="false">
+                           data-error="customer-email-error" aria-invalid="false"
+                           aria-describedby="customer-email-hint">
+                    <span class="field__hint" id="customer-email-hint">We'll email your receipt here after you pay online.</span>
                     <span class="field__error" id="customer-email-error"></span>
                 </div>
 
