@@ -59,7 +59,8 @@
                     'refunded': ('pill--no', 'Refunded'),
                     'unpaid': ('pill--unknown', 'Pays on receipt'),
                 }[order.payment_status] %}
-                <li class="manager-item">
+                {% set sv = order_status_views[order.id] %}
+                <li class="manager-item" id="order-{{ order.id }}">
                     <div class="manager-item-details">
                         <h3>
                             <a href="/orders/{{ order.id }}/receipt">#{{ order.id }}</a>
@@ -71,17 +72,49 @@
                             {% if order.tip_amount > 0 %}(tip ${{ "%.2f"|format(order.tip_amount) }}){% endif %}
                             {% if order.created_at %}· {{ order.created_at.strftime('%d.%m %H:%M') }}{% endif %}
                         </span>
-                        <span class="pill {{ pay_pill[0] }}">{{ pay_pill[1] }}</span>
+                        {% if order.scheduled_date or order.has_extras %}
+                        <span class="manager-order-meta manager-order-extras">
+                            {% if order.scheduled_date %}Pre-order {{ order.scheduled_date.strftime('%d.%m') }}, {{ order.time_slot | replace('-', '–') }}{% endif %}
+                            {% if order.gift_box %}· Gift box{% endif %}
+                            {% if order.candles %}· {{ order.candles }} candles{% endif %}
+                            {% if order.postcard_message %}· Postcard: “{{ order.postcard_message }}”{% endif %}
+                        </span>
+                        {% endif %}
+                        <span class="manager-order-pills">
+                            <span class="pill {{ 'pill--no' if order.status.value == 'cancelled' else ('pill--ok' if order.status.value == 'completed' else 'pill--unknown') }}">{{ sv.label }}</span>
+                            <span class="pill {{ pay_pill[0] }}">{{ pay_pill[1] }}</span>
+                        </span>
                     </div>
-                    {% if order.payment_method == 'online' and order.payment_status == 'paid' %}
                     <div class="manager-item-actions">
+                        {% if sv.back %}
+                        <form method="post" action="/manager/orders/{{ order.id }}/status">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--ghost btn--small" type="submit" name="action" value="back"
+                                    aria-label="Move order #{{ order.id }} one step back">Back</button>
+                        </form>
+                        {% endif %}
+                        {% if sv.next %}
+                        <form method="post" action="/manager/orders/{{ order.id }}/status">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--small" type="submit" name="action" value="next"
+                                    aria-label="Move order #{{ order.id }} to {{ sv.next }}">Next: {{ sv.next }}</button>
+                        </form>
+                        {% endif %}
+                        {% if sv.cancel %}
+                        <form method="post" action="/manager/orders/{{ order.id }}/status"
+                              onsubmit="return confirm('Cancel order #{{ order.id }}?');">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--ghost btn--small manager-cancel-btn" type="submit" name="action" value="cancel">Cancel</button>
+                        </form>
+                        {% endif %}
+                        {% if order.payment_method == 'online' and order.payment_status == 'paid' %}
                         <form method="post" action="/manager/orders/{{ order.id }}/refund"
                               onsubmit="return confirm('Refund ${{ "%.2f"|format(order.amount_due) }} for order #{{ order.id }}?');">
                             <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                             <button class="btn btn--danger btn--small" type="submit">Refund</button>
                         </form>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>

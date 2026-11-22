@@ -30,6 +30,14 @@
                 </div>
             </div>
 
+            <section class="tasting-box" aria-labelledby="tasting-box-title">
+                <div class="tasting-box__copy">
+                    <h2 class="tasting-box__title" id="tasting-box-title">Can't decide?</h2>
+                    <p class="tasting-box__text">Take Donnie's pick: six different donuts from today's menu in one box. You can still swap them in the cart.</p>
+                </div>
+                <button type="button" class="btn btn--blue" id="tasting-box-btn">Add Donnie's pick of 6</button>
+            </section>
+
             <div class="store-toolbar" role="search">
                 <div class="search-bar">
                     <label for="catalogue-search" class="visually-hidden">Search donuts by name</label>
@@ -49,6 +57,7 @@
                     <label for="catalogue-sort">Sort</label>
                     <select id="catalogue-sort">
                         <option value="default">Default order</option>
+                        <option value="popular">Most popular</option>
                         <option value="price-asc">Price: low to high</option>
                         <option value="price-desc">Price: high to low</option>
                     </select>

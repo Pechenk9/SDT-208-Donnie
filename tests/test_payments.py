@@ -1,4 +1,4 @@
-"""Tips, table orders, test-mode online payment, refunds and QR entry links."""
+"""Tips, table orders, online payment (LiqPay demo), refunds and QR entry links."""
 import json
 from decimal import Decimal
 
@@ -27,6 +27,28 @@ def place(client, ids, **extra):
     }
     data.update({key: str(value) for key, value in extra.items()})
     return client.post("/orders", data=data)
+
+
+SUCCESS_CARD = "4242424242424242"
+DECLINED_CARD = "4000000000000002"
+
+
+def pay_online(client, order_id, card=SUCCESS_CARD, **data):
+    """Runs the LiqPay demo flow: Donnie's Pay button, the signed checkout
+    posted to the demo LiqPay, a test card, then the return page.
+    Returns the return page's redirect."""
+    start = client.post(
+        f"/orders/{order_id}/pay",
+        data={key: str(v) for key, v in data.items()},
+        headers={"Accept": "application/json"},
+    )
+    if start.status_code != 200:
+        return start
+    checkout = start.json()["checkout"]
+    opened = client.post(checkout["url"], data={"data": checkout["data"], "signature": checkout["signature"]})
+    paid = client.post(opened.headers["location"], data={"card": card})
+    assert paid.headers["location"].endswith(f"/orders/{order_id}/payment-return")
+    return client.get(paid.headers["location"])
 
 
 def get_order(database):
@@ -88,7 +110,7 @@ def test_online_payment_success_flow(client, database):
     assert page.status_code == 200
     assert "$18.90" in page.text
 
-    paid = client.post(f"/orders/{order.id}/pay", data={"outcome": "success"})
+    paid = pay_online(client, order.id)
     assert paid.headers["location"] == f"/orders/{order.id}/receipt?paid=1"
     order = get_order(database)
     assert order.payment_status == PaymentStatus.PAID
@@ -106,11 +128,11 @@ def test_declined_payment_can_be_retried(client, database):
     place(client, ids, payment_method="online")
     order = get_order(database)
 
-    declined = client.post(f"/orders/{order.id}/pay", data={"outcome": "decline"})
+    declined = pay_online(client, order.id, card=DECLINED_CARD)
     assert declined.headers["location"] == f"/orders/{order.id}/pay?declined=1"
     assert get_order(database).payment_status == PaymentStatus.FAILED
 
-    client.post(f"/orders/{order.id}/pay", data={"outcome": "success"})
+    pay_online(client, order.id)
     assert get_order(database).payment_status == PaymentStatus.PAID
 
 
@@ -118,7 +140,7 @@ def test_on_receipt_orders_cannot_be_paid_online(client, database):
     _, ids = database
     place(client, ids)
     order = get_order(database)
-    response = client.post(f"/orders/{order.id}/pay", data={"outcome": "success"})
+    response = client.post(f"/orders/{order.id}/pay")
     assert response.status_code == 400
     assert get_order(database).payment_status == PaymentStatus.UNPAID
 
@@ -151,7 +173,7 @@ def test_manager_refunds_paid_online_order(client, database):
     _, ids = database
     place(client, ids, payment_method="online")
     order = get_order(database)
-    client.post(f"/orders/{order.id}/pay", data={"outcome": "success"})
+    pay_online(client, order.id)
 
     _login_as(database, UserRole.MANAGER, ids["branch"])
     try:
@@ -183,7 +205,7 @@ def test_customer_cannot_refund(client, database):
     _, ids = database
     place(client, ids, payment_method="online")
     order = get_order(database)
-    client.post(f"/orders/{order.id}/pay", data={"outcome": "success"})
+    pay_online(client, order.id)
 
     _login_as(database, UserRole.CUSTOMER)
     try:
@@ -210,7 +232,7 @@ def test_tip_can_be_changed_on_the_payment_screen(client, database):
     place(client, ids, payment_method="online", tip_percent=5)
     order = get_order(database)
 
-    client.post(f"/orders/{order.id}/pay", data={"outcome": "success", "tip_percent": 15})
+    pay_online(client, order.id, tip_percent=15)
     order = get_order(database)
     assert order.tip_amount == Decimal("2.70")
     assert order.amount_due == Decimal("20.70")
@@ -221,6 +243,6 @@ def test_rejects_unknown_tip_on_payment_screen(client, database):
     _, ids = database
     place(client, ids, payment_method="online")
     order = get_order(database)
-    response = client.post(f"/orders/{order.id}/pay", data={"outcome": "success", "tip_percent": 50})
+    response = client.post(f"/orders/{order.id}/pay", data={"tip_percent": 50})
     assert response.status_code == 400
     assert get_order(database).payment_status == PaymentStatus.PENDING

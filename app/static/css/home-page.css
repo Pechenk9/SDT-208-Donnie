@@ -454,3 +454,21 @@
     animation: none;
   }
 }
+
+/* ---------- bestseller badge and seasonal collection ---------- */
+
+.featured-card__tile {
+  position: relative;
+}
+
+.featured-card__badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.feature__media--limited {
+  background: var(--limited-tile);
+}

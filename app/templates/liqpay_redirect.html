@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Opening LiqPay - Donnie{% endblock %}
+
+{% block site_footer %}{% endblock %}
+
+{% block content %}
+<form class="pay-screen" method="post" action="{{ checkout.url }}" id="liqpay-form" accept-charset="utf-8">
+    <input type="hidden" name="data" value="{{ checkout.data }}">
+    <input type="hidden" name="signature" value="{{ checkout.signature }}">
+    <p class="state-message__title">Opening LiqPay…</p>
+    <p>If nothing happens, press the button.</p>
+    <button type="submit" class="btn btn--block">Continue to LiqPay</button>
+</form>
+<script>document.getElementById('liqpay-form').submit();</script>
+{% endblock %}

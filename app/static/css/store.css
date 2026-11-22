@@ -252,10 +252,11 @@
   background: var(--limited-tile);
 }
 
-.donut-img-container .limited-badge {
+.donut-img-container .badge-row {
   position: absolute;
   top: 12px;
   left: 12px;
+  right: 12px;
 }
 
 /* ---------- pagination ---------- */
@@ -406,4 +407,48 @@
   .sort-control select {
     flex: 1;
   }
+}
+
+/* ---------- Donnie's pick (tasting box) ---------- */
+
+.tasting-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--pink-soft);
+  border: 2px dashed var(--pink-tint);
+}
+
+.tasting-box__copy {
+  display: grid;
+  flex: 1 1 260px;
+  gap: 4px;
+}
+
+@media (max-width: 520px) {
+  .tasting-box .btn {
+    width: 100%;
+  }
+}
+
+.tasting-box__title {
+  margin: 0;
+  font: 800 18px/1.2 var(--font-display);
+  color: var(--ink);
+}
+
+.tasting-box__text {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.tasting-box .btn.is-loading {
+  cursor: progress;
+  opacity: 0.7;
 }

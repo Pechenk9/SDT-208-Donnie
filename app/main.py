@@ -3,11 +3,12 @@ from decimal import InvalidOperation, ROUND_HALF_UP, Decimal
 import json
 from pathlib import Path
 import re
+import secrets
 from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, Depends, Form, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import and_, delete, func, select
@@ -34,6 +35,10 @@ from app.models import (
     OrderStatus,
     IngredientGroup,
     MAX_TABLE_NUMBER,
+    CANDLE_PRICE,
+    GIFT_BOX_PRICE,
+    MAX_CANDLES,
+    MAX_POSTCARD_LENGTH,
     PaymentMethod,
     PaymentStatus,
     TIP_PERCENTAGES,
@@ -50,6 +55,23 @@ from app.permissions import (
     is_owner,
 )
 from app.config import get_session
+from app import liqpay
+from app.product_info import (
+    KITCHEN_NOTE,
+    STORAGE_NOTE,
+    allergens_for,
+    bestseller_ids,
+    related_products,
+)
+from app.order_extras import (
+    kyiv_now,
+    manager_status_view,
+    new_status_after,
+    order_progress,
+    parse_extras,
+    parse_schedule,
+    schedule_options,
+)
 from app.security import hash_password, verify_password
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -294,6 +316,7 @@ _MANAGER_NOTICES = {
     "ingredient-updated": "Ingredient availability updated.",
     "ingredient-removed": "Ingredient removed from this branch.",
     "order-refunded": "Payment refunded. The order is marked as refunded.",
+    "order-status": "Order status updated. The guest sees it on their receipt.",
 }
 
 
@@ -427,6 +450,9 @@ def manager_panel(
         "manager_dashboard.html",
         {
             "recent_orders": recent_orders,
+            "order_status_views": {
+                order.id: manager_status_view(order) for order in recent_orders
+            },
             "qr_base_url": str(request.base_url).rstrip("/"),
             "managed_branches": managed_branches,
             "selected_branch": selected_branch,
@@ -1090,11 +1116,24 @@ def home(
     branches = session.scalars(
         select(Branch).order_by(Branch.city, Branch.name)
     ).all()
+    seasonal = session.scalars(
+        select(Product)
+        .where(
+            Product.is_active.is_(True),
+            Product.name.in_(LIMITED_EDITION_PRODUCTS),
+        )
+        .order_by(Product.id)
+    ).all()
 
     return templates.TemplateResponse(
         request,
         "home.html",
-        {"featured": featured, "branches": branches},
+        {
+            "featured": featured,
+            "branches": branches,
+            "seasonal": seasonal,
+            "bestsellers": bestseller_ids(session),
+        },
     )
 
 @app.get("/store")
@@ -1127,6 +1166,7 @@ def store(
             .order_by(Product.id)
         ).all()
 
+    bestsellers = bestseller_ids(session)
     products = []
     for product, branch_product in product_rows:
         effective_price = (
@@ -1141,6 +1181,7 @@ def store(
                 "description": product.description,
                 "image_url": product.image_url,
                 "is_limited": is_limited_edition(product),
+                "is_bestseller": product.id in bestsellers,
                 "base_price": float(product.base_price),
                 "price": float(effective_price),
                 "is_available": (
@@ -1252,12 +1293,55 @@ def product_detail(
             }
         )
 
+    allergens = allergens_for(
+        recipe_item.ingredient.name
+        for recipe_item in product.recipe
+        if recipe_item.default_quantity > 0
+    )
+
+    if branch is not None:
+        branch_offers = {
+            offer.product_id: offer
+            for offer in session.scalars(
+                select(BranchProduct).where(
+                    BranchProduct.branch_id == branch.id,
+                    BranchProduct.is_available.is_(True),
+                )
+            ).all()
+        }
+        related = related_products(
+            session,
+            product,
+            allowed_ids=set(branch_offers),
+        )
+    else:
+        branch_offers = {}
+        related = related_products(session, product)
+
+    related_data = [
+        {
+            "id": item.id,
+            "name": item.name,
+            "image_url": item.image_url,
+            "is_limited": is_limited_edition(item),
+            "price": float(
+                branch_offers[item.id].price
+                if item.id in branch_offers
+                and branch_offers[item.id].price is not None
+                else item.base_price
+            ),
+        }
+        for item in related
+    ]
+
     product_data = {
         "id": product.id,
         "name": product.name,
         "description": product.description,
         "image_url": product.image_url,
         "is_limited": is_limited_edition(product),
+        "is_bestseller": product.id in bestseller_ids(session),
+        "allergens": allergens,
         "price": float(effective_price),
         "base_price": float(product.base_price),
         "branch_id": branch.id if branch is not None else None,
@@ -1294,7 +1378,13 @@ def product_detail(
     return templates.TemplateResponse(
         request,
         "product.html",
-        {"product": product_data, "product_data": product_data},
+        {
+            "product": product_data,
+            "product_data": product_data,
+            "related": related_data,
+            "storage_note": STORAGE_NOTE,
+            "kitchen_note": KITCHEN_NOTE,
+        },
     )
 
 @app.get("/order")
@@ -1327,6 +1417,14 @@ def order_page(
         {
             "branches": branches,
             "products_data": products_data,
+            "extras_config": {
+                "gift_box_price": float(GIFT_BOX_PRICE),
+                "candle_price": float(CANDLE_PRICE),
+                "max_candles": MAX_CANDLES,
+                "max_postcard_length": MAX_POSTCARD_LENGTH,
+                "schedule": schedule_options(),
+                "today": kyiv_now().date().isoformat(),
+            },
             "customer": (
                 {
                     "name": " ".join(
@@ -1388,6 +1486,7 @@ def order_receipt(
         {
             "order": order,
             "just_paid": paid and order.payment_status == PaymentStatus.PAID,
+            "progress": order_progress(order),
         },
     )
 
@@ -1404,11 +1503,23 @@ async def create_order(
     tip_percent: Annotated[int, Form()] = 0,
     payment_method: Annotated[str, Form()] = PaymentMethod.ON_RECEIPT,
     table_number: Annotated[int | None, Form()] = None,
+    gift_box: Annotated[bool, Form()] = False,
+    candles: Annotated[int, Form()] = 0,
+    postcard_message: Annotated[str | None, Form()] = None,
+    scheduled_date: Annotated[str | None, Form()] = None,
+    time_slot: Annotated[str | None, Form()] = None,
     session: Session = Depends(get_session),
     user: User | None = Depends(get_current_user),
 ):
     if tip_percent not in TIP_PERCENTAGES:
         raise HTTPException(400, "Invalid tip")
+
+    extras = parse_extras(gift_box, candles, postcard_message)
+    scheduled_day, time_slot = parse_schedule(
+        scheduled_date,
+        time_slot,
+        is_table_order=table_number is not None,
+    )
 
     if payment_method not in PaymentMethod.ALL:
         raise HTTPException(400, "Invalid payment method")
@@ -1676,7 +1787,9 @@ async def create_order(
             Decimal("0.01"),
             rounding=ROUND_HALF_UP,
         )
+        # The tip is a share of the donuts only, not of the add-ons.
         tip_amount = _tip_for(total_price, tip_percent)
+        total_price += extras.amount
         order = Order(
             user_id=user.id if user is not None else None,
             branch_id=branch_id,
@@ -1689,6 +1802,12 @@ async def create_order(
             total_price=total_price,
             table_number=table_number,
             tip_amount=tip_amount,
+            gift_box=extras.gift_box,
+            candles=extras.candles,
+            postcard_message=extras.postcard_message,
+            extras_amount=extras.amount,
+            scheduled_date=scheduled_day,
+            time_slot=time_slot,
             payment_method=payment_method,
             payment_status=(
                 PaymentStatus.PENDING
@@ -1812,21 +1931,38 @@ def order_payment_page(
             "declined": declined,
             "tip_options": tip_options,
             "current_tip": current_tip,
+            "provider_label": (
+                "LiqPay · demo" if liqpay.is_demo()
+                else "LiqPay · sandbox" if liqpay.is_sandbox()
+                else "LiqPay"
+            ),
+            "provider_demo": liqpay.is_demo(),
         },
     )
 
 
+def _public_base(request: Request) -> str:
+    return liqpay.PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
+
+
+def _callback_url(request: Request) -> str | None:
+    base = _public_base(request)
+    # The real LiqPay can't reach a laptop: without a public address the
+    # result comes from the status request when the guest returns instead.
+    if not liqpay.is_demo() and ("localhost" in base or "127.0.0.1" in base):
+        return None
+    return f"{base}/payments/liqpay/callback"
+
+
 @app.post("/orders/{order_id}/pay")
 def order_payment_submit(
+    request: Request,
     order_id: int,
-    outcome: Annotated[str, Form()],
     tip_percent: Annotated[int | None, Form()] = None,
     session: Session = Depends(get_session),
 ):
-    """Test-mode payment: no card data and no real money, the button picks the outcome.
-    The guest can still change the tip on the payment screen."""
-    if outcome not in ("success", "decline"):
-        raise HTTPException(400, "Invalid payment outcome")
+    """Starts a LiqPay payment for the amount due and sends the guest to the
+    LiqPay checkout. The guest can still change the tip on our screen."""
     if tip_percent is not None and tip_percent not in TIP_PERCENTAGES:
         raise HTTPException(400, "Invalid tip")
 
@@ -1836,22 +1972,166 @@ def order_payment_submit(
     if order.payment_status not in _PAYABLE_STATUSES:
         return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
 
+    if tip_percent is not None:
+        order.tip_amount = _tip_for(order.total_price, tip_percent)
+
+    # LiqPay wants a new order_id for every attempt (a retry after a decline
+    # or a changed tip is a new payment).
+    order.payment_reference = f"donnie-{order.id}-{secrets.token_hex(4)}"
+    order.payment_amount = order.amount_due
+    order.payment_provider_id = None
+    order.payment_status = PaymentStatus.PENDING
+    base = _public_base(request)
+    checkout = liqpay.get_client().checkout(
+        order_id=order.payment_reference,
+        amount=order.payment_amount,
+        description=f"Donnie order #{order.id}, {order.branch.name}",
+        result_url=f"{base}/orders/{order.id}/payment-return",
+        server_url=_callback_url(request),
+    )
     try:
-        if tip_percent is not None:
-            order.tip_amount = _tip_for(order.total_price, tip_percent)
-        if outcome == "success":
-            order.payment_status = PaymentStatus.PAID
-            order.paid_at = datetime.now(timezone.utc)
-        else:
-            order.payment_status = PaymentStatus.FAILED
         session.commit()
     except SQLAlchemyError:
         session.rollback()
-        raise HTTPException(500, "Could not update the payment")
+        raise HTTPException(500, "Could not start the payment")
 
-    if outcome == "success":
+    # The animated Pay button asks for JSON and posts the form itself.
+    if "application/json" in request.headers.get("accept", ""):
+        return {"checkout": {"url": checkout.url, "data": checkout.data,
+                             "signature": checkout.signature}}
+    return templates.TemplateResponse(request, "liqpay_redirect.html", {"checkout": checkout})
+
+
+@app.api_route("/orders/{order_id}/payment-return", methods=["GET", "POST"])
+def order_payment_return(
+    order_id: int,
+    session: Session = Depends(get_session),
+):
+    """LiqPay sends the guest back here (result_url). We ask LiqPay for the
+    payment status ourselves, so it works even when no callback reached us."""
+    order = _get_order(session, order_id)
+    if order.payment_reference:
+        try:
+            result = liqpay.get_client().status(session, order.payment_reference)
+            liqpay.apply_payment(order, result)
+            session.commit()
+        except liqpay.LiqpayError:
+            session.rollback()
+
+    if order.payment_status == PaymentStatus.PAID:
         return RedirectResponse(url=f"/orders/{order.id}/receipt?paid=1", status_code=303)
-    return RedirectResponse(url=f"/orders/{order.id}/pay?declined=1", status_code=303)
+    if order.payment_status == PaymentStatus.FAILED:
+        return RedirectResponse(url=f"/orders/{order.id}/pay?declined=1", status_code=303)
+    if order.payment_status == PaymentStatus.PENDING:
+        return RedirectResponse(url=f"/orders/{order.id}/pay", status_code=303)
+    return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
+
+
+@app.post("/payments/liqpay/callback")
+def liqpay_callback(
+    data: Annotated[str, Form()],
+    signature: Annotated[str, Form()],
+    session: Session = Depends(get_session),
+):
+    """LiqPay's server_url: data + signature, signed with our private key."""
+    if not liqpay.handle_callback(session, data, signature):
+        session.rollback()
+        return JSONResponse({"ok": False}, status_code=400)
+    session.commit()
+    return {"ok": True}
+
+
+# ---------- built-in LiqPay emulator (PAYMENT_PROVIDER=demo) ----------
+
+
+def _demo_liqpay():
+    client = liqpay.get_client()
+    if not isinstance(client, liqpay.DemoLiqpayClient):
+        raise HTTPException(404, "The demo checkout is off")
+    return client
+
+
+@app.post("/demo-liqpay/checkout")
+def demo_liqpay_checkout(
+    data: Annotated[str, Form()],
+    signature: Annotated[str, Form()],
+    session: Session = Depends(get_session),
+):
+    """Where the browser POSTs the checkout form, like LiqPay's /api/3/checkout."""
+    client = _demo_liqpay()
+    try:
+        payment = client.open_checkout(session, data, signature)
+    except (liqpay.LiqpayError, ValueError, KeyError):
+        session.rollback()
+        raise HTTPException(400, "Invalid LiqPay checkout data")
+    session.commit()
+    return RedirectResponse(url=f"/demo-liqpay/pay/{payment.order_id}", status_code=303)
+
+
+@app.get("/demo-liqpay/pay/{reference}")
+def demo_liqpay_page(
+    request: Request,
+    reference: str,
+    session: Session = Depends(get_session),
+    user: User | None = Depends(get_current_user),
+):
+    payment = _demo_liqpay().get_payment(session, reference)
+    if payment is None:
+        raise HTTPException(404, "Payment not found")
+    return templates.TemplateResponse(request, "demo_liqpay.html", {"payment": payment})
+
+
+@app.post("/demo-liqpay/pay/{reference}")
+def demo_liqpay_pay(
+    reference: str,
+    card: Annotated[str, Form()],
+    session: Session = Depends(get_session),
+):
+    """The demo checkout's buttons: one of LiqPay's test cards, or cancel."""
+    client = _demo_liqpay()
+    payment = client.get_payment(session, reference)
+    if payment is None:
+        raise HTTPException(404, "Payment not found")
+    if card not in ("4242424242424242", "4000000000000002", "cancel"):
+        raise HTTPException(400, "Unknown test card")
+    if payment.status == "created" and card != "cancel":
+        client.pay(session, payment, card)
+        session.commit()
+    return RedirectResponse(url=payment.result_url, status_code=303)
+
+
+@app.get("/orders/{order_id}/status")
+def order_status(
+    order_id: int,
+    session: Session = Depends(get_session),
+):
+    """Current tracker state, polled by the open receipt page."""
+    order = _get_order(session, order_id)
+    return {
+        "status": order.status.value,
+        "progress": order_progress(order),
+    }
+
+
+@app.post("/manager/orders/{order_id}/status")
+def change_order_status(
+    order_id: int,
+    branch_id: Annotated[int, Form(gt=0)],
+    action: Annotated[str, Form()],
+    session: Session = Depends(get_session),
+    user: User = Depends(require_profile_user),
+):
+    branch = _require_manager_branch(user, branch_id, Permission.MANAGER_PANEL)
+    order = _get_order(session, order_id)
+    if order.branch_id != branch.id:
+        raise HTTPException(403, "This order belongs to another branch")
+
+    order.status = OrderStatus(new_status_after(order, action))
+    _commit_manager_change(session)
+    return RedirectResponse(
+        url=f"/manager?branch_id={branch.id}&notice=order-status#order-{order.id}",
+        status_code=303,
+    )
 
 
 @app.post("/manager/orders/{order_id}/refund")
@@ -1871,8 +2151,19 @@ def refund_order(
     ):
         raise HTTPException(400, "Only paid online orders can be refunded")
 
+    if order.payment_reference:
+        try:
+            result = liqpay.get_client().refund(
+                session, order.payment_reference, order.payment_amount
+            )
+        except liqpay.LiqpayError:
+            session.rollback()
+            raise HTTPException(502, "LiqPay could not refund this payment")
+        if result.get("status") in liqpay.FAILED_STATUSES:
+            raise HTTPException(502, "LiqPay declined the refund")
+
     order.payment_status = PaymentStatus.REFUNDED
-    order.refunded_at = datetime.now(timezone.utc)
+    order.refunded_at = order.refunded_at or datetime.now(timezone.utc)
     _commit_manager_change(session)
     return RedirectResponse(
         url=f"/manager?branch_id={branch.id}&notice=order-refunded#orders",

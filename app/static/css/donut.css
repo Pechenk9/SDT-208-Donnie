@@ -359,3 +359,120 @@
   font-size: 14px;
   font-weight: 700;
 }
+
+/* ---------- allergens and storage ---------- */
+
+.product-facts {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+
+.product-facts__row {
+  display: grid;
+  gap: 4px;
+}
+
+.product-facts dt {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.product-facts dd {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.allergen-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allergen-list li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--warning-tint);
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ---------- you may also like ---------- */
+
+.related {
+  margin-top: clamp(32px, 5vw, 56px);
+}
+
+.related__title {
+  margin: 0 0 16px;
+  font: 800 clamp(22px, 3vw, 30px)/1.2 var(--font-display);
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.related-card a {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 2px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.related-card a:hover {
+  border-color: var(--pink-tint);
+  transform: translateY(-2px);
+}
+
+.related-card__tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--tile, var(--pink-soft));
+}
+
+.related-card.is-limited .related-card__tile {
+  background: var(--limited-tile);
+}
+
+.related-card__tile img {
+  width: 75%;
+  height: auto;
+}
+
+.related-card__name {
+  font-weight: 800;
+}
+
+.related-card__price {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .related-card a {
+    transition: none;
+  }
+  .related-card a:hover {
+    transform: none;
+  }
+}

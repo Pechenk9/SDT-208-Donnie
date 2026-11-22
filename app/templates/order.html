@@ -37,6 +37,7 @@
     </div>
 
     <div id="checkout-content" class="checkout-layout" hidden>
+        <div class="checkout-main">
         <section class="checkout-lines" aria-labelledby="cart-title">
             <div class="section-head">
                 <h2 id="cart-title" class="section-title">Your cart</h2>
@@ -44,33 +45,6 @@
             </div>
             <ul class="cart-lines" id="cart-lines"></ul>
         </section>
-
-        <aside class="checkout-aside">
-            <section class="cart-summary" aria-labelledby="order-summary-title">
-                <h2 class="cart-summary__title" id="order-summary-title">Order summary</h2>
-
-                <div class="checkout-branch">
-                    <span class="checkout-branch__label">Branch</span>
-                    <strong id="checkout-branch-name">—</strong>
-                    <span id="checkout-branch-address"></span>
-                    <span class="checkout-branch__hint">Your order is prepared at this branch. Changing the branch empties the cart.</span>
-                </div>
-
-                <dl class="cart-summary__rows">
-                    <div class="cart-summary__row"><dt>Donuts</dt><dd id="summary-donuts">0</dd></div>
-                    <div class="cart-summary__row"><dt>Cart lines</dt><dd id="summary-lines">0</dd></div>
-                    <div class="cart-summary__row" id="summary-subtotal-row" hidden><dt>Donuts</dt><dd id="summary-subtotal">$0.00</dd></div>
-                    <div class="cart-summary__row" id="summary-tip-row" hidden><dt>Tip for the team</dt><dd id="summary-tip">$0.00</dd></div>
-                    <div class="cart-summary__row cart-summary__row--total"><dt id="summary-total-label">Estimated total</dt><dd id="summary-total">$0.00</dd></div>
-                </dl>
-
-                <div class="min-order" id="min-order">
-                    <span id="min-order-text"></span>
-                    <span class="min-order__bar" aria-hidden="true"><span class="min-order__fill" id="min-order-fill"></span></span>
-                </div>
-
-                <p class="cart-summary__note">Prices are estimates. Donnie confirms the final price when the order is placed.</p>
-            </section>
 
             <form id="order-form" class="checkout-form" method="post" action="/orders" novalidate aria-labelledby="details-title">
                 <h2 class="section-title" id="details-title">Your details</h2>
@@ -92,11 +66,11 @@
                            value="{{ customer.phone if customer else '' }}"
                            data-error="customer-phone-error" aria-invalid="false"
                            aria-describedby="customer-phone-hint">
-                    <span class="field__hint" id="customer-phone-hint">Ukrainian number, e.g. 0671234567 or +380671234567.</span>
+                    <span class="field__hint" id="customer-phone-hint">Ukrainian number, e.g. 0671234567.</span>
                     <span class="field__error" id="customer-phone-error"></span>
                 </div>
 
-                <div class="field">
+                <div class="field field--wide">
                     <label class="field__label" for="customer-email">Email <span class="field__optional">(optional)</span></label>
                     <input class="field__input" type="email" id="customer-email" name="customer_email"
                            autocomplete="email" maxlength="255"
@@ -125,7 +99,32 @@
                     <p class="field__hint" id="table-hint" hidden>You scanned the QR code on your table, so we'll bring the order to you.</p>
                 </fieldset>
 
-                <div class="field" id="address-group" hidden>
+                <fieldset class="field" id="schedule-group">
+                    <legend class="field__label">When?</legend>
+                    <div class="segmented">
+                        <label class="segmented__option">
+                            <input type="radio" name="schedule_mode" value="asap" checked>
+                            <span>Right away</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="schedule_mode" value="later">
+                            <span>Pre-order</span>
+                        </label>
+                    </div>
+                    <div class="schedule-pickers" id="schedule-pickers" hidden>
+                        <div class="field">
+                            <label class="field__label" for="scheduled-date">Day</label>
+                            <select class="field__input" id="scheduled-date" name="scheduled_date"></select>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="time-slot">Time window</label>
+                            <select class="field__input" id="time-slot" name="time_slot"></select>
+                        </div>
+                    </div>
+                    <span class="field__hint" id="schedule-hint">We start baking right after you order.</span>
+                </fieldset>
+
+                <div class="field field--wide" id="address-group" hidden>
                     <label class="field__label" for="delivery-address">Delivery address</label>
                     <input class="field__input" type="text" id="delivery-address" name="delivery_address"
                            autocomplete="street-address" maxlength="300"
@@ -134,37 +133,14 @@
                     <span class="field__error" id="delivery-address-error"></span>
                 </div>
 
-                <fieldset class="field">
-                    <legend class="field__label">Tip for the team <span class="field__optional">(optional)</span></legend>
-                    <div class="segmented segmented--tips" id="tip-options">
-                        <label class="segmented__option">
-                            <input type="radio" name="tip_percent" value="0" checked>
-                            <span>No tip</span>
-                        </label>
-                        <label class="segmented__option">
-                            <input type="radio" name="tip_percent" value="5">
-                            <span>5%</span>
-                        </label>
-                        <label class="segmented__option">
-                            <input type="radio" name="tip_percent" value="10">
-                            <span>10%</span>
-                        </label>
-                        <label class="segmented__option">
-                            <input type="radio" name="tip_percent" value="15">
-                            <span>15%</span>
-                        </label>
-                    </div>
-                    <span class="field__hint" id="tip-hint">Tips go to the bakers and staff of your Donnie.</span>
-                </fieldset>
-
-                <fieldset class="field">
+                <fieldset class="field field--wide">
                     <legend class="field__label">Payment</legend>
                     <div class="pay-options">
                         <label class="pay-option">
                             <input type="radio" name="payment_method" value="online" checked>
                             <span class="pay-option__body">
-                                <strong>Pay online now</strong>
-                                <span>Card, Apple Pay or Google Pay. Quick and contactless.</span>
+                                <strong>Pay online with LiqPay</strong>
+                                <span>Card, Apple Pay, Google Pay or Privat24 on LiqPay's secure page.</span>
                             </span>
                         </label>
                         <label class="pay-option">
@@ -176,20 +152,49 @@
                         </label>
                     </div>
                 </fieldset>
-
-                {% if not customer %}
-                <p class="checkout-guest">
-                    Ordering as a guest. <a href="/login">Log in</a> to fill in your details automatically.
-                </p>
-                {% endif %}
-
-                <div class="alert alert--warning" id="checkout-blocker" hidden></div>
-                <div class="alert alert--error" id="checkout-error" role="alert" hidden></div>
-
-                <button type="submit" class="btn btn--block place-order-btn" id="place-order-btn">
-                    Place order
-                </button>
             </form>
+        </div>
+
+        <aside class="checkout-aside">
+            <section class="cart-summary" aria-labelledby="order-summary-title">
+                <h2 class="cart-summary__title" id="order-summary-title">Order summary</h2>
+
+                <div class="checkout-branch">
+                    <span class="checkout-branch__label">Branch</span>
+                    <strong id="checkout-branch-name">—</strong>
+                    <span id="checkout-branch-address"></span>
+                    <span class="checkout-branch__hint">Your order is prepared at this branch. Changing the branch empties the cart.</span>
+                </div>
+
+                <dl class="cart-summary__rows">
+                    <div class="cart-summary__row"><dt>Donuts</dt><dd id="summary-donuts">0</dd></div>
+                    <div class="cart-summary__row"><dt>Cart lines</dt><dd id="summary-lines">0</dd></div>
+                    <div class="cart-summary__row cart-summary__row--total"><dt id="summary-total-label">Estimated total</dt><dd id="summary-total">$0.00</dd></div>
+                </dl>
+
+                <div class="min-order" id="min-order">
+                    <span id="min-order-text"></span>
+                    <span class="min-order__bar" aria-hidden="true"><span class="min-order__fill" id="min-order-fill"></span></span>
+                </div>
+
+                <p class="cart-summary__note">Prices are estimates. Donnie confirms the final price when the order is placed.</p>
+            </section>
+
+            <div class="checkout-actions">
+            {% if not customer %}
+            <p class="checkout-guest">
+                Ordering as a guest. <a href="/login">Log in</a> to fill in your details automatically.
+            </p>
+            {% endif %}
+
+            <div class="alert alert--warning" id="checkout-blocker" hidden></div>
+            <div class="alert alert--error" id="checkout-error" role="alert" hidden></div>
+
+            <button type="submit" form="order-form" class="btn btn--block place-order-btn" id="place-order-btn">
+                Place order
+            </button>
+            </div>
+
         </aside>
     </div>
 </div>
@@ -207,6 +212,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script id="checkout-data" type="application/json">{{ {"products": products_data}|tojson }}</script>
+<script id="checkout-data" type="application/json">{{ {"products": products_data, "extras": extras_config}|tojson }}</script>
 <script src="{{ static_url('js/order.js') }}" defer></script>
 {% endblock %}

@@ -325,3 +325,20 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ---------- order status buttons ---------- */
+
+.manager-order-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.manager-cancel-btn {
+  color: var(--danger);
+}
+
+/* Jumping to #order-N after a status change keeps the row below the sticky header. */
+.manager-item {
+  scroll-margin-top: calc(var(--header-height) + 16px);
+}

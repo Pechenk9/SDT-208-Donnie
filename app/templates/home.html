@@ -50,6 +50,7 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
             <li class="featured-card reveal" style="--tile: var(--tile-{{ (product.id % 6) + 1 }})">
                 <a class="featured-card__link" href="/product/{{ product.id }}">
                     <span class="featured-card__tile">
+                        {% if product.id in bestsellers %}<span class="bestseller-badge featured-card__badge">Bestseller</span>{% endif %}
                         <img
                             src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
                             alt="" loading="lazy" decoding="async" width="220" height="220"
@@ -69,6 +70,30 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
         </div>
     </section>
     {% endif %}
+
+    <!-- Seasonal collection (like the seasonal lines of Kyiv pastry shops) -->
+    {% for product in seasonal %}
+    <section class="feature feature--reverse reveal" aria-labelledby="seasonal-title-{{ product.id }}">
+        <div class="feature__media feature__media--limited">
+            <img
+                src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                alt="{{ product.name }} donut"
+                loading="lazy" width="600" height="600"
+            >
+        </div>
+        <div class="feature__copy">
+            <span class="limited-badge">Seasonal collection</span>
+            <h2 id="seasonal-title-{{ product.id }}" class="section-title">{{ product.name }}</h2>
+            {% if product.description %}
+            <p class="section-lead">{{ product.description }}</p>
+            {% endif %}
+            <p class="section-lead">We change part of the menu every season, so this one is only around for a short time.</p>
+            <div class="feature__actions">
+                <a class="btn" href="/product/{{ product.id }}">Try it before it's gone</a>
+            </div>
+        </div>
+    </section>
+    {% endfor %}
 
     <!-- Box of six -->
     <section class="feature reveal" id="how-it-works" aria-labelledby="box-title">
@@ -183,6 +208,18 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
             <details class="faq__item" name="faq">
                 <summary>Can I get my donuts delivered?</summary>
                 <p>Yes. At checkout choose pickup at your Donnie or delivery, and enter your address.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Can I order for a specific day and time?</summary>
+                <p>Yes. At checkout choose "Pre-order", then pick a day up to a week ahead and a time window. We bake your box to be ready within that window.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Is it a gift?</summary>
+                <p>Add a gift box with a ribbon, birthday candles and a free postcard with your own words at checkout.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>What about allergens?</summary>
+                <p>Every donut page lists the allergens of its original recipe and how long it stays fresh. All donuts are made in one kitchen, so traces of nuts, gluten, milk, eggs and soy are possible.</p>
             </details>
         </div>
     </section>
