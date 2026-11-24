@@ -215,7 +215,7 @@ def test_manager_dashboard_lists_only_associations_for_selected_branch(
     authenticate(ids["manager"])
 
     response = client.get(
-        "/manager",
+        "/en/manager",
         params={"branch_id": ids["branch_a"]},
     )
 
@@ -247,7 +247,7 @@ def test_manager_dashboard_shows_empty_states_and_single_branch_without_picker(
         session.commit()
 
     response = client.get(
-        "/manager",
+        "/en/manager",
         params={"branch_id": ids["branch_a"]},
     )
 
@@ -490,7 +490,7 @@ def test_global_deactivation_warnings_do_not_restrict_branch_management(
     authenticate(ids["manager"])
 
     active_response = client.get(
-        "/manager",
+        "/en/manager",
         params={"branch_id": ids["branch_a"]},
     )
     assert "Owner has deactivated this product globally." not in active_response.text
@@ -534,7 +534,7 @@ def test_global_deactivation_warnings_do_not_restrict_branch_management(
 
     authenticate(ids["manager"])
     inactive_response = client.get(
-        "/manager",
+        "/en/manager",
         params={"branch_id": ids["branch_a"]},
     )
     assert inactive_response.text.count(
@@ -624,7 +624,7 @@ def test_customer_and_owner_cannot_modify_manager_catalogue(manager_context, rol
     branch_id = ids["branch_a"]
 
     responses = [
-        client.get("/manager", params={"branch_id": branch_id}),
+        client.get("/en/manager", params={"branch_id": branch_id}),
         client.post(
             "/manager/products/add",
             data={
@@ -659,6 +659,6 @@ def test_customer_and_owner_cannot_modify_manager_catalogue(manager_context, rol
 
     assert all(response.status_code == 403 for response in responses)
     if role == "owner":
-        assert client.get("/owner").status_code == 200
+        assert client.get("/en/owner").status_code == 200
     else:
-        assert client.get("/store").status_code == 200
+        assert client.get("/en/store").status_code == 200

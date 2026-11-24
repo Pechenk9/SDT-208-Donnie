@@ -11,6 +11,29 @@
     const COOKIE_NAME = 'selected_branch';
     const LIST_CACHE_KEY = 'donnie_branches_v1';
     const RELOAD_GUARD_KEY = 'donnie_branch_sync_reload';
+    const ukrainian = document.documentElement.lang === 'uk';
+
+    function countPhrase(count, type) {
+        if (!ukrainian) {
+            return type === 'donut'
+                ? window.DonnieCart.plural(count, 'donut', 'donuts')
+                : window.DonnieCart.plural(count, 'line', 'lines');
+        }
+
+        const lastTwo = count % 100;
+        const last = count % 10;
+        const form = lastTwo >= 11 && lastTwo <= 14
+            ? 2
+            : last === 1
+                ? 0
+                : last >= 2 && last <= 4
+                    ? 1
+                    : 2;
+        const words = type === 'donut'
+            ? ['пончик', 'пончики', 'пончиків']
+            : ['позиція', 'позиції', 'позицій'];
+        return `${count} ${words[form]}`;
+    }
 
     const dialog = document.getElementById('branch-dialog');
     let branches = [];
@@ -36,7 +59,10 @@
             if (cached) return JSON.parse(cached);
         } catch (error) { /* ignore */ }
 
-        const response = await fetch('/api/branches', { headers: { Accept: 'application/json' } });
+        const languagePrefix = document.documentElement.lang.toLowerCase().startsWith('uk')
+            ? '/ua'
+            : '/en';
+        const response = await fetch(`${languagePrefix}/api/branches`, { headers: { Accept: 'application/json' } });
         if (!response.ok) throw new Error('Branches could not be loaded.');
         const list = await response.json();
         try { sessionStorage.setItem(LIST_CACHE_KEY, JSON.stringify(list)); } catch (error) { /* ignore */ }
@@ -100,12 +126,16 @@
     function renderLabels() {
         const branch = current();
         document.querySelectorAll('[data-branch-label]').forEach(node => {
-            node.textContent = branch ? branch.city : 'Choose branch';
+            node.textContent = branch ? branch.city : ukrainian ? 'Оберіть філію' : 'Choose branch';
         });
         document.querySelectorAll('[data-open-branch]').forEach(button => {
             button.setAttribute(
                 'aria-label',
-                branch ? `Branch: ${branch.name}, ${branch.city}. Change branch` : 'Choose a branch'
+                branch
+                    ? ukrainian
+                        ? `Філія: ${branch.name}, ${branch.city}. Змінити філію`
+                        : `Branch: ${branch.name}, ${branch.city}. Change branch`
+                    : ukrainian ? 'Оберіть філію' : 'Choose a branch'
             );
         });
     }
@@ -124,13 +154,17 @@
         const note = dialog.querySelector('[data-branch-note]');
         const selected = current();
 
-        note.textContent = message || 'Assortment, prices and availability depend on the branch you choose.';
+        note.textContent = message || (ukrainian
+            ? 'Асортимент, ціни та наявність залежать від обраної філії.'
+            : 'Assortment, prices and availability depend on the branch you choose.');
         list.replaceChildren();
 
         if (!branches.length) {
             const empty = document.createElement('p');
             empty.className = 'state-message state-message--error';
-            empty.textContent = 'Branches could not be loaded. Please refresh the page and try again.';
+            empty.textContent = ukrainian
+                ? 'Не вдалося завантажити філії. Оновіть сторінку та спробуйте ще раз.'
+                : 'Branches could not be loaded. Please refresh the page and try again.';
             list.appendChild(empty);
             return;
         }
@@ -161,7 +195,7 @@
             if (isCurrent) {
                 const badge = document.createElement('span');
                 badge.className = 'branch-option__badge';
-                badge.textContent = 'Selected';
+                badge.textContent = ukrainian ? 'Обрана' : 'Selected';
                 button.appendChild(badge);
             }
 
@@ -204,10 +238,13 @@
             pendingBranch = branch;
             const from = byId(cart.branch_id);
             dialog.querySelector('[data-confirm-text]').textContent =
-                `Your cart has ${window.DonnieCart.plural(donuts, 'donut', 'donuts')} ` +
-                `(${window.DonnieCart.plural(lines, 'line', 'lines')})` +
-                `${from ? ` from ${from.name}` : ''}. ` +
-                `Switching to ${branch.name} will empty your cart, because assortment and prices differ between branches.`;
+                ukrainian
+                    ? `У кошику ${countPhrase(donuts, 'donut')} (${countPhrase(lines, 'line')})` +
+                        `${from ? ` з філії ${from.name}` : ''}. Перехід до філії ${branch.name} очистить кошик, адже асортимент і ціни відрізняються між філіями.`
+                    : `Your cart has ${countPhrase(donuts, 'donut')} ` +
+                        `(${countPhrase(lines, 'line')})` +
+                        `${from ? ` from ${from.name}` : ''}. ` +
+                        `Switching to ${branch.name} will empty your cart, because assortment and prices differ between branches.`;
             showView('confirm');
             dialog.querySelector('[data-confirm-cancel]').focus();
             return;
@@ -265,7 +302,7 @@
         }
     });
 
-    /* ---------- QR codes: /qr/BRANCH?table=N lands on /store?branch=BRANCH&table=N ---------- */
+    /* ---------- QR codes: /qr/BRANCH?table=N lands on /en/store?branch=BRANCH&table=N ---------- */
 
     const TABLE_KEY = 'donnie_table';
     const WELCOME_KEY = 'donnie_qr_welcome';
@@ -278,7 +315,12 @@
             } else {
                 localStorage.removeItem(TABLE_KEY);
             }
-            sessionStorage.setItem(WELCOME_KEY, table ? `Welcome to ${branch.name} · Table ${table}` : `Welcome to ${branch.name}`);
+            sessionStorage.setItem(
+                WELCOME_KEY,
+                ukrainian
+                    ? table ? `Вітаємо у ${branch.name} · стіл ${table}` : `Вітаємо у ${branch.name}`
+                    : table ? `Welcome to ${branch.name} · Table ${table}` : `Welcome to ${branch.name}`
+            );
         } catch (error) { /* storage blocked: the QR still selects the branch */ }
     }
 

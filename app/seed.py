@@ -1,5 +1,5 @@
 from app.config import SessionLocal
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from decimal import Decimal
 
 from app.models import (
@@ -65,8 +65,9 @@ def seed_recipes(session, products, ingredients):
                 )
                 session.add(recipe_item)
             else:
-                for key, value in values.items():
-                    setattr(recipe_item, key, value)
+                # Existing recipes are business data. Re-running seeds must not
+                # overwrite a catalogue administrator's recipe customization.
+                continue
 
 
 def seed_catalog(session):
@@ -75,7 +76,11 @@ def seed_catalog(session):
     for data in INGREDIENT_GROUPS:
         group = session.scalar(
             select(IngredientGroup).where(
-                IngredientGroup.name == data["name"]
+                or_(
+                    IngredientGroup.name == data["name"],
+                    IngredientGroup.name == data["name_en"],
+                    IngredientGroup.name_en == data["name_en"],
+                )
             )
         )
 
@@ -83,9 +88,13 @@ def seed_catalog(session):
             group = IngredientGroup(**data)
             session.add(group)
         else:
-            group.max_selections = data["max_selections"]
+            if group.name == data["name_en"]:
+                group.name = data["name"]
+            if not group.name_en:
+                group.name_en = data["name_en"]
 
         groups[data["name"]] = group
+        groups[data["name_en"]] = group
 
     session.flush()
 
@@ -96,28 +105,37 @@ def seed_catalog(session):
 
         ingredient = session.scalar(
             select(Ingredient).where(
-                Ingredient.name == data["name"]
+                or_(
+                    Ingredient.name == data["name"],
+                    Ingredient.name == data["name_en"],
+                    Ingredient.name_en == data["name_en"],
+                )
             )
         )
-
-        values = {
-            "description": data["description"],
-            "group_id": group.id,
-            "extra_price": Decimal(data["extra_price"]),
-            "is_active": True,
-        }
 
         if ingredient is None:
             ingredient = Ingredient(
                 name=data["name"],
-                **values,
+                name_en=data["name_en"],
+                description=data["description"],
+                description_en=data["description_en"],
+                group_id=group.id,
+                extra_price=Decimal(data["extra_price"]),
+                is_active=True,
             )
             session.add(ingredient)
         else:
-            for key, value in values.items():
-                setattr(ingredient, key, value)
+            if ingredient.name == data["name_en"]:
+                ingredient.name = data["name"]
+            if ingredient.description == data["description_en"]:
+                ingredient.description = data["description"]
+            if not ingredient.name_en:
+                ingredient.name_en = data["name_en"]
+            if not ingredient.description_en:
+                ingredient.description_en = data["description_en"]
 
         ingredients[data["name"]] = ingredient
+        ingredients[data["name_en"]] = ingredient
 
     session.flush()
 
@@ -126,29 +144,38 @@ def seed_catalog(session):
     for data in PRODUCTS:
         product = session.scalar(
             select(Product).where(
-                Product.name == data["name"]
+                or_(
+                    Product.name == data["name"],
+                    Product.name == data["name_en"],
+                    Product.name_en == data["name_en"],
+                )
             )
         )
-
-        values = {
-            "description": data["description"],
-            "base_price": Decimal(data["base_price"]),
-            "calories": data["calories"],
-            "image_url": data["image_url"],
-            "is_active": True,
-        }
 
         if product is None:
             product = Product(
                 name=data["name"],
-                **values,
+                name_en=data["name_en"],
+                description=data["description"],
+                description_en=data["description_en"],
+                base_price=Decimal(data["base_price"]),
+                calories=data["calories"],
+                image_url=data["image_url"],
+                is_active=True,
             )
             session.add(product)
         else:
-            for key, value in values.items():
-                setattr(product, key, value)
+            if product.name == data["name_en"]:
+                product.name = data["name"]
+            if product.description == data["description_en"]:
+                product.description = data["description"]
+            if not product.name_en:
+                product.name_en = data["name_en"]
+            if not product.description_en:
+                product.description_en = data["description_en"]
 
         products[data["name"]] = product
+        products[data["name_en"]] = product
 
     session.flush()
 
@@ -162,18 +189,28 @@ def seed_branches(session):
 
         if branch is None:
             session.add(Branch(**data))
+        else:
+            if branch.city == data["city_en"]:
+                branch.city = data["city"]
+            if branch.address == data["address_en"]:
+                branch.address = data["address"]
+            if not branch.city_en:
+                branch.city_en = data["city_en"]
+            if not branch.address_en:
+                branch.address_en = data["address_en"]
 
 
 def seed_branch_products(session):
     branches = session.scalars(
         select(Branch).order_by(Branch.code)
     ).all()
-    active_products = {
-        product.name: product
-        for product in session.scalars(
-            select(Product).where(Product.is_active.is_(True))
-        ).all()
-    }
+    active_products = {}
+    for product in session.scalars(
+        select(Product).where(Product.is_active.is_(True))
+    ).all():
+        active_products[product.name] = product
+        if product.name_en:
+            active_products[product.name_en] = product
     existing_links = set(
         session.execute(
             select(BranchProduct.branch_id, BranchProduct.product_id)

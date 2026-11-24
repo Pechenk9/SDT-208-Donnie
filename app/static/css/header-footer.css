@@ -91,6 +91,31 @@
   gap: 10px;
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.language-switcher a {
+  min-width: 32px;
+  padding: 6px 7px;
+  border-radius: 999px;
+  color: inherit;
+  font: 800 12px/1 var(--font-ui);
+  text-align: center;
+  text-decoration: none;
+}
+
+.language-switcher a:hover,
+.language-switcher a[aria-current="true"] {
+  background: #fff;
+}
+
 .branch-chip {
   display: inline-flex;
   align-items: center;

@@ -12,7 +12,7 @@
 <div class="checkout-page">
     <div class="checkout-heading">
         <h1 class="page-title">Checkout</h1>
-        <a class="link-btn" href="/store">&larr; Continue shopping</a>
+        <a class="link-btn" href="/en/store">&larr; Continue shopping</a>
     </div>
 
     <div id="checkout-loading" class="checkout-layout" aria-busy="true">
@@ -27,13 +27,13 @@
         <img src="{{ url_for('static', path='assets/img/constructor-donut-store.png') }}" alt="" width="160" height="160">
         <p class="state-message__title">Your cart is empty</p>
         <p>Pick at least {{ 6 }} donuts to place an order.</p>
-        <a class="btn" href="/store">Browse donuts</a>
+        <a class="btn" href="/en/store">Browse donuts</a>
     </div>
 
     <div id="checkout-success" class="state-message checkout-success" hidden tabindex="-1">
         <p class="state-message__title" id="checkout-success-title">Order placed!</p>
         <p id="checkout-success-text">Thank you! Taking you to your receipt…</p>
-        <a class="btn" id="checkout-success-link" href="/store">View receipt</a>
+        <a class="btn" id="checkout-success-link" href="/en/store">View receipt</a>
     </div>
 
     <div id="checkout-content" class="checkout-layout" hidden>
@@ -46,7 +46,7 @@
             <ul class="cart-lines" id="cart-lines"></ul>
         </section>
 
-            <form id="order-form" class="checkout-form" method="post" action="/orders" novalidate aria-labelledby="details-title">
+            <form id="order-form" class="checkout-form" method="post" action="/en/orders" novalidate aria-labelledby="details-title">
                 <h2 class="section-title" id="details-title">Your details</h2>
 
                 <div class="field">
@@ -171,7 +171,7 @@
                 <dl class="cart-summary__rows">
                     <div class="cart-summary__row"><dt>Donuts</dt><dd id="summary-donuts">0</dd></div>
                     <div class="cart-summary__row"><dt>Cart lines</dt><dd id="summary-lines">0</dd></div>
-                    <div class="cart-summary__row cart-summary__row--total"><dt id="summary-total-label">Estimated total</dt><dd id="summary-total">$0.00</dd></div>
+                    <div class="cart-summary__row cart-summary__row--total"><dt id="summary-total-label">Estimated total</dt><dd id="summary-total">₴0.00</dd></div>
                 </dl>
 
                 <div class="min-order" id="min-order">
@@ -185,7 +185,7 @@
             <div class="checkout-actions">
             {% if not customer %}
             <p class="checkout-guest">
-                Ordering as a guest. <a href="/login">Log in</a> to fill in your details automatically.
+                Ordering as a guest. <a href="/en/login">Log in</a> to fill in your details automatically.
             </p>
             {% endif %}
 

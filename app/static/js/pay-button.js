@@ -23,6 +23,22 @@
     const button = document.getElementById('pay-button');
     const form = button && button.closest('form');
     if (!form || !button || !window.DonnieMotion) return;
+    const ukrainian = document.documentElement.lang === 'uk';
+    const text = ukrainian ? {
+        processing: 'Обробляємо платіж…',
+        complete: 'Платіж завершено. Дякуємо!',
+        opening: 'Відкриваємо LiqPay…',
+        failed: 'Не вдалося провести платіж. Кошти не списано — спробуйте ще раз.',
+        offline: 'Не вдалося зв’язатися з Donnie. Перевірте з’єднання й спробуйте ще раз.',
+        pay: amount => `Сплатити ₴${amount.toFixed(2)}`,
+    } : {
+        processing: 'Processing your payment…',
+        complete: 'Payment complete. Thank you!',
+        opening: 'Opening LiqPay…',
+        failed: 'The payment could not be completed. Nothing was charged, please try again.',
+        offline: 'We could not reach Donnie. Check your connection and try again.',
+        pay: amount => `Pay ₴${amount.toFixed(2)}`,
+    };
 
     const label = button.querySelector('.pay-btn__label');
     const spin = button.querySelector('.pay-btn__spin');
@@ -36,7 +52,7 @@
 
     // Same values as the original component.
     const W = spring(1, 300, 22); // width, as a share of the full button
-    const T = spring(1, 400, 30); // "Pay $…" label
+    const T = spring(1, 400, 30); // "Pay ₴…" label
     const P = spring(0, 300, 28); // spinner
     const D = spring(0, 220, 20); // "Paid" row
     const G = spring(0, 200, 30); // green fill
@@ -107,7 +123,7 @@
         button.setAttribute('aria-disabled', 'true');
         otherButtons.forEach(b => { b.disabled = true; });
         if (errorBox) errorBox.hidden = true;
-        status.textContent = 'Processing your payment…';
+        status.textContent = text.processing;
         T.t = 0;
         W.t = height / fullWidth;
         P.t = 1;
@@ -121,7 +137,7 @@
         G.t = 1;
         D.t = 1;
         setTimeout(() => { K.t = 1; }, 150);
-        status.textContent = 'Payment complete. Thank you!';
+        status.textContent = text.complete;
         start();
     }
 
@@ -174,7 +190,7 @@
         if (response && response.ok && (response.headers.get('content-type') || '').includes('application/json')) {
             const data = await response.json().catch(() => null);
             if (data && data.checkout) {
-                status.textContent = 'Opening LiqPay…';
+                status.textContent = text.opening;
                 postCheckout(data.checkout);
                 return;
             }
@@ -194,8 +210,8 @@
         }
 
         toIdle(response
-            ? 'The payment could not be completed. Nothing was charged, please try again.'
-            : 'We could not reach Donnie. Check your connection and try again.');
+            ? text.failed
+            : text.offline);
     });
 
     function postCheckout({ url, data, signature }) {
@@ -219,6 +235,6 @@
     form.addEventListener('change', event => {
         if (event.target.name !== 'tip_percent' || !form.dataset.total) return;
         const due = Number(form.dataset.total) + Number(event.target.dataset.amount);
-        label.textContent = `Pay $${due.toFixed(2)}`;
+        label.textContent = text.pay(due);
     });
 })();

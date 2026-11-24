@@ -188,7 +188,7 @@ def test_creates_order_for_one_product_and_persists_customizations(client, datab
 
     assert response.status_code == 303
     order, items, ingredients = order_rows(database)
-    assert response.headers["location"] == f"/orders/{order.id}/receipt"
+    assert response.headers["location"] == f"/en/orders/{order.id}/receipt"
     assert order.total_price == Decimal("18.96")
     assert len(items) == 1
     assert items[0].unit_price == Decimal("3.16")

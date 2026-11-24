@@ -10,6 +10,7 @@
     const ticket = document.getElementById('ticket');
     const glare = document.getElementById('ticket-glare');
     const layers = [...ticket.querySelectorAll('.t-layer')].map(el => ({ el, depth: parseFloat(el.dataset.depth) }));
+    const ukrainian = document.documentElement.lang === 'uk';
 
     /* ---------- tiny spring engine (same maths as the original shared motion.js) ---------- */
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -31,7 +32,12 @@
     function drawQr() {
         const url = qrBox.dataset.url;
         if (typeof window.qrcode !== 'function') {
-            qrBox.innerHTML = `<span class="t-qr__fallback">Show order #${qrBox.dataset.order} at the counter</span>`;
+            const fallback = document.createElement('span');
+            fallback.className = 't-qr__fallback';
+            fallback.textContent = ukrainian
+                ? `Покажіть замовлення №${qrBox.dataset.order} на касі`
+                : `Show order #${qrBox.dataset.order} at the counter`;
+            qrBox.replaceChildren(fallback);
             return;
         }
         const qr = window.qrcode(0, 'M');
@@ -60,7 +66,12 @@
         F.t = flipped ? 180 : 0;
         LIFT.v += 1.5;
         ticket.setAttribute('aria-pressed', String(flipped));
-        ticket.setAttribute('aria-label', flipped ? `${label}. QR code shown, press to flip back` : label);
+        ticket.setAttribute(
+            'aria-label',
+            flipped
+                ? `${label}. ${ukrainian ? 'QR-код показано, натисніть, щоб повернути' : 'QR code shown, press to flip back'}`
+                : label
+        );
     }
     ticket.addEventListener('click', flip);
     ticket.addEventListener('keydown', e => {

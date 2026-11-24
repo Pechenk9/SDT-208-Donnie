@@ -1,0 +1,319 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Квитанція до замовлення | Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/receipt.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/ticket.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="receipt-page">
+    <div class="receipt{% if just_paid %} receipt--paid{% endif %}">
+        <div class="receipt-col receipt-col--main">
+        {% if scanned %}
+        {#- Scanned from the ticket's QR: answer "is it paid?" before anything else. -#}
+        {% if order.status.value == 'cancelled' %}
+            {% set check = ('stop', 'Скасовано', 'Це замовлення скасовано. Не видавайте його.') %}
+        {% elif order.payment_status == 'paid' %}
+            {% set check = ('ok', 'Оплачено', 'Оплачено онлайн через LiqPay' ~ (' · ' ~ paid_at_text ~ ' за київським часом' if paid_at_text else '') ~ '.') %}
+        {% elif order.payment_status == 'refunded' %}
+            {% set check = ('stop', 'Повернено', 'Кошти повернено покупцю. Не видавайте замовлення.') %}
+        {% elif order.payment_status == 'unpaid' %}
+            {% set check = ('due', 'Ще не оплачено', 'Прийміть оплату ' ~ ('за столиком' if order.table_number else 'під час доставки' if order.fulfillment_type.value == 'delivery' else 'під час самовивозу') ~ ': готівкою або карткою.') %}
+        {% elif order.payment_status == 'failed' %}
+            {% set check = ('stop', 'Не оплачено', 'Онлайн-платіж відхилено.') %}
+        {% else %}
+            {% set check = ('stop', 'Не оплачено', 'Онлайн-платіж ще не завершено.') %}
+        {% endif %}
+        <section class="scan-check scan-check--{{ check[0] }}" aria-labelledby="scan-check-verdict">
+            <p class="scan-check__eyebrow">Замовлення №{{ order.id }} · {{ order.customer_name }}</p>
+            <div class="scan-check__verdict" id="scan-check-verdict">
+                <span class="scan-check__icon" aria-hidden="true">{{ '✓' if check[0] == 'ok' else '!' if check[0] == 'due' else '✕' }}</span>
+                {{ check[1] }}
+            </div>
+            <p class="scan-check__amount">₴{{ "%.2f"|format(order.amount_due) }}</p>
+            <p class="scan-check__note">{{ check[2] }}</p>
+            <dl class="scan-check__facts">
+                <div><dt>Статус замовлення</dt><dd>{{ {'pending': 'Очікує підтвердження', 'confirmed': 'Підтверджено', 'preparing': 'Готується', 'ready': 'Готове', 'completed': 'Завершене', 'cancelled': 'Скасоване'}.get(order.status.value, order.status.value | title) }}</dd></div>
+                <div><dt>Отримання</dt><dd>{% if order.table_number %}Столик {{ order.table_number }}{% else %}{{ {'pickup': 'Самовивіз', 'delivery': 'Доставка'}.get(order.fulfillment_type.value, order.fulfillment_type.value | title) }}{% endif %}</dd></div>
+                <div><dt>Пончики</dt><dd>{{ order.items|sum(attribute='quantity') }}</dd></div>
+            </dl>
+        </section>
+        <div class="receipt-divider"></div>
+        {% endif %}
+        {% if just_paid %}
+        <section class="paid-hero" aria-labelledby="paid-title">
+            <div class="paid-hero__check" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19 7"/></svg>
+            </div>
+            <h1 id="paid-title" class="paid-hero__title">Оплату успішно проведено</h1>
+            <p class="paid-hero__amount">₴{{ "%.2f"|format(order.amount_due) }}</p>
+            <p class="paid-hero__text">
+                {% if order.tip_amount > 0 %}
+                У суму входять чайові команді — ₴{{ "%.2f"|format(order.tip_amount) }}. Дякуємо!
+                {% else %}
+                Дякуємо! Ваше замовлення №{{ order.id }} вже в дорозі{% if order.table_number %} до столика {{ order.table_number }}{% endif %}.
+                {% endif %}
+            </p>
+            <a class="btn btn--large btn--block" href="{{ '/ua/table' if order.table_number else '/ua/store' }}">
+                {{ 'Повернутися до столика' if order.table_number else 'Повернутися до меню' }}
+            </a>
+        </section>
+        <div class="receipt-divider"></div>
+        {% endif %}
+
+        <div class="receipt-header">
+            <div class="receipt-logo">DONNIE</div>
+            <div class="receipt-subtitle">КРАМНИЦЯ ПОНЧИКІВ</div>
+
+            {% if not just_paid and not scanned %}
+            <div class="success-icon">✓</div>
+            <h1>Дякуємо за замовлення!</h1>
+            {% if order.payment_status == 'paid' %}
+            <p>Замовлення оформлено й оплачено.</p>
+            {% elif order.payment_status == 'refunded' %}
+            <p>Кошти за цей платіж повернено.</p>
+            {% else %}
+            <p>Ваше замовлення успішно оформлено.</p>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        {% if progress %}
+        {% set last_index = progress.steps|length - 1 %}
+        <section class="order-track" id="order-track" aria-labelledby="order-track-title"
+                 data-status-url="/ua/orders/{{ order.id }}/status?t={{ order.access_token }}"
+                 data-current="{{ progress.current }}" data-complete="{{ 'true' if progress.complete else 'false' }}">
+            <h2 class="order-track__title" id="order-track-title">Статус замовлення</h2>
+            <div class="order-track__track">
+                <span class="order-track__bar" style="--progress: {{ (progress.current / last_index * 100)|round(3) }}%"></span>
+                <ol class="order-track__dots">
+                    {% for name in progress.steps %}
+                    {% set is_done = loop.index0 < progress.current or progress.complete %}
+                    {% set is_current = loop.index0 == progress.current and not progress.complete %}
+                    <li class="order-track__dot{% if is_done %} is-done{% elif is_current %} is-current{% endif %}"
+                        style="left: {{ (loop.index0 / last_index * 100)|round(3) }}%"
+                        {% if is_current %}aria-current="step"{% endif %}>
+                        <b aria-hidden="true">{{ loop.index }}</b>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                        <span class="visually-hidden">{{ {'Placed': 'Оформлено', 'Baking': 'Готується', 'Ready': 'Готове', 'Served': 'Подано', 'On the way': 'У дорозі', 'Delivered': 'Доставлено', 'Picked up': 'Забрано'}.get(name, name) }}: {{ 'виконано' if is_done else ('у процесі' if is_current else 'далі') }}</span>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+            <div class="order-track__names" aria-hidden="true">
+                {% for name in progress.steps %}
+                <span class="{% if loop.index0 <= progress.current %}is-on{% endif %}"
+                      style="left: {{ (loop.index0 / last_index * 100)|round(3) }}%">{{ {'Placed': 'Оформлено', 'Baking': 'Готується', 'Ready': 'Готове', 'Served': 'Подано', 'On the way': 'У дорозі', 'Delivered': 'Доставлено', 'Picked up': 'Забрано'}.get(name, name) }}</span>
+                {% endfor %}
+            </div>
+            <p class="order-track__hint" aria-live="polite">{{ progress.hint }}</p>
+        </section>
+        {% elif order.status.value == 'cancelled' %}
+        <p class="order-track__cancelled">Це замовлення скасовано.</p>
+        {% endif %}
+
+        {% set donut_count = order.items|sum(attribute='quantity') %}
+        {% if order.table_number %}{% set where = 'Столик ' ~ order.table_number %}{% elif order.fulfillment_type.value == 'delivery' %}{% set where = 'Доставка' %}{% else %}{% set where = 'Самовивіз' %}{% endif %}
+        {% set pay_label = {'paid': 'Оплачено', 'pending': 'Ще не оплачено', 'failed': 'Ще не оплачено', 'refunded': 'Повернено', 'unpaid': 'Оплата під час отримання'}[order.payment_status] %}
+        <section class="t-wrap" aria-label="Квиток для отримання">
+            <div class="t-stage" id="ticket-stage">
+                <div class="ticket" id="ticket" role="button" tabindex="0" aria-pressed="false"
+                     aria-label="Квиток до замовлення {{ order.id }}, {{ where }}. Натисніть, щоб показати QR-код">
+                    <div class="t-side t-front">
+                        <div class="t-layer t-bg" data-depth=".25"></div>
+                        <div class="t-layer t-donut" data-depth=".55">
+                            <img src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}" alt="" width="190" height="231">
+                        </div>
+                        <div class="t-shade"></div>
+                        <div class="t-layer t-text" data-depth=".9">
+                            <span class="t-eyebrow">Квиток для отримання</span>
+                            <div class="t-title">Замовлення<br>№{{ order.id }}</div>
+                            <div class="t-meta">
+                                <span>{{ localized(order.branch, 'name', language) }} · {{ where }}</span>
+                                <b>{{ pay_label }}</b>
+                            </div>
+                        </div>
+                        <div class="t-glare" id="ticket-glare"></div>
+                    </div>
+                    <div class="t-side t-back">
+                        <div class="t-qr" id="ticket-qr" data-order="{{ order.id }}"
+                             data-url="{{ qr_url }}"></div>
+                        <div class="t-facts">
+                            <div>Замовлення<b>№{{ order.id }}</b></div>
+                            <div>{{ 'Столик' if order.table_number else 'Отримання' }}<b>{{ order.table_number if order.table_number else where }}</b></div>
+                            <div>Пончики<b>{{ donut_count }}</b></div>
+                        </div>
+                        <span class="t-hint">Покажіть квиток на касі · торкніться, щоб повернути</span>
+                    </div>
+                </div>
+            </div>
+            <p class="t-hint">Торкніться квитка, щоб показати QR-код для отримання</p>
+        </section>
+        </div>
+
+        <div class="receipt-col receipt-col--side">
+        <div class="receipt-divider receipt-divider--between"></div>
+
+        <div class="receipt-info">
+            <div>
+                <span>Номер замовлення</span>
+                <strong>№{{ order.id }}</strong>
+            </div>
+
+            <div>
+                <span>Статус</span>
+                <strong class="status">{{ {'pending': 'Очікує підтвердження', 'confirmed': 'Підтверджено', 'preparing': 'Готується', 'ready': 'Готове', 'completed': 'Завершене', 'cancelled': 'Скасоване'}.get(order.status.value, order.status.value | title) }}</strong>
+            </div>
+
+            <div>
+                <span>Покупець</span>
+                <strong>{{ order.customer_name }}</strong>
+            </div>
+
+            <div>
+                <span>Телефон</span>
+                <strong>{{ order.customer_phone }}</strong>
+            </div>
+
+            <div>
+                <span>Філія</span>
+                <strong>{{ localized(order.branch, 'name', language) }}, {{ localized(order.branch, 'city', language) }}</strong>
+            </div>
+
+            <div>
+                <span>Отримання</span>
+                <strong>
+                    {% if order.table_number %}За столиком · столик {{ order.table_number }}{% else %}{{ {'pickup': 'Самовивіз', 'delivery': 'Доставка'}.get(order.fulfillment_type.value, order.fulfillment_type.value | title) }}{% endif %}
+                </strong>
+            </div>
+
+            {% if order.delivery_address %}
+            <div>
+                <span>Адреса доставки</span>
+                <strong>{{ order.delivery_address }}</strong>
+            </div>
+            {% endif %}
+
+            {% if not order.table_number %}
+            <div>
+                <span>{{ 'Час доставки' if order.fulfillment_type.value == 'delivery' else 'Час самовивозу' }}</span>
+                <strong>
+                    {% if order.scheduled_date %}
+                    {{ short_date(order.scheduled_date, language) }} · {{ order.time_slot | replace('-', ' – ') }}
+                    {% else %}
+                    Якнайшвидше
+                    {% endif %}
+                </strong>
+            </div>
+            {% endif %}
+
+            {% if order.postcard_message %}
+            <div>
+                <span>Листівка</span>
+                <strong class="receipt-postcard">“{{ order.postcard_message }}”</strong>
+            </div>
+            {% endif %}
+
+            <div>
+                <span>Оплата</span>
+                <strong>
+                    {% if order.payment_method == 'online' %}LiqPay{% elif order.table_number %}За столиком{% elif order.fulfillment_type.value == 'delivery' %}Кур’єру{% else %}Під час самовивозу{% endif %}
+                    {% set pay_pill = {
+                        'paid': ('pill--ok', 'Оплачено'),
+                        'pending': ('pill--unknown', 'Очікує оплати'),
+                        'failed': ('pill--no', 'Платіж відхилено'),
+                        'refunded': ('pill--unknown', 'Повернено'),
+                        'unpaid': ('pill--unknown', 'Оплата під час отримання'),
+                    }[order.payment_status] %}
+                    <span class="pill {{ pay_pill[0] }}">{{ pay_pill[1] }}</span>
+                </strong>
+            </div>
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <h2>Деталі замовлення</h2>
+
+        <div class="receipt-items">
+            {% for item in order.items %}
+            <div class="receipt-item">
+                <div class="item-description">
+                    <strong>{{ localized(item.product, 'name', language, item.name_snapshot) if item.product else item.name_snapshot }}</strong>
+                    <span>× {{ item.quantity }}</span>
+                </div>
+
+                <strong>
+                    ₴{{ "%.2f"|format(item.unit_price * item.quantity) }}
+                </strong>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        {% if order.tip_amount > 0 or order.extras_amount > 0 %}
+        <div class="receipt-item receipt-subtotal">
+            <span>Пончики</span>
+            <strong>₴{{ "%.2f"|format(order.donuts_amount) }}</strong>
+        </div>
+        {% endif %}
+        {% if order.has_extras %}
+        {% set extras_parts = [] %}
+        {% if order.gift_box %}{% set _ = extras_parts.append('подарункова коробка') %}{% endif %}
+        {% if order.candles %}{% set _ = extras_parts.append(order.candles ~ (' свічка' if order.candles == 1 else ' свічок')) %}{% endif %}
+        {% if order.postcard_message %}{% set _ = extras_parts.append('листівка') %}{% endif %}
+        <div class="receipt-item receipt-subtotal">
+            <span>Додатково: {{ extras_parts | join(', ') }}</span>
+            <strong>{{ "₴%.2f"|format(order.extras_amount) if order.extras_amount > 0 else 'Безкоштовно' }}</strong>
+        </div>
+        {% endif %}
+        {% if order.tip_amount > 0 %}
+        <div class="receipt-item receipt-subtotal">
+            <span>Чайові для команди</span>
+            <strong>₴{{ "%.2f"|format(order.tip_amount) }}</strong>
+        </div>
+        {% endif %}
+
+        <div class="receipt-total">
+            <span>Усього</span>
+            <strong>₴{{ "%.2f"|format(order.amount_due) }}</strong>
+        </div>
+
+        {% if order.payment_method == 'online' and order.payment_status in ('pending', 'failed') %}
+        <a href="/ua/orders/{{ order.id }}/pay?t={{ order.access_token }}" class="btn btn--block receipt-pay-btn">
+            Сплатити ₴{{ "%.2f"|format(order.amount_due) }} зараз
+        </a>
+        {% endif %}
+
+        <div class="receipt-footer">
+            <p>Дякуємо, що обрали Donnie!</p>
+            <p>Свіжі пончики, приготовані з любов’ю.</p>
+
+            <a href="/ua/store" class="back-button">
+                Повернутися до магазину
+            </a>
+        </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+<script src="{{ static_url('js/ticket.js') }}" defer></script>
+<script src="{{ static_url('js/springs.js') }}" defer></script>
+<script src="{{ static_url('js/order-track.js') }}" defer></script>
+<noscript>
+    <style>
+        /* Without JavaScript the tracker shows its final state right away. */
+        .order-track__bar { width: var(--progress); }
+        .order-track__dot.is-done { background: var(--success); }
+        .order-track__dot.is-done b { opacity: 0; }
+        .order-track__dot.is-done path { stroke-dashoffset: 0; }
+        .order-track__dot.is-current { background: var(--cta); color: #fff; }
+    </style>
+</noscript>
+{% endblock %}

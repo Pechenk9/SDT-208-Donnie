@@ -1,0 +1,231 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Магазин пончиків — Donnie{% endblock %}
+
+{% block description %}
+Купуйте свіжі пончики та каву в Україні в Donnie. Створіть власний пончик або оберіть готовий у нашому магазині.
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/home-page.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="home">
+
+    <!-- Hero -->
+    <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__card">
+            <div class="hero__copy">
+                <span class="eyebrow eyebrow--light">Щоранку — свіжоспечені</span>
+                <h1 id="hero-title" class="hero__title">Створіть власний пончик</h1>
+                <p class="hero__lead">Оберіть глазур, додайте улюблені інгредієнти або приберіть ті, які вам не до смаку. Замовте коробку із шести пончиків із самовивозом або доставкою.</p>
+                <div class="hero__actions">
+                    <a class="btn btn--large" href="/ua/store">Замовити зараз</a>
+                    <a class="btn btn--large btn--ghost" href="#how-it-works">Як це працює</a>
+                </div>
+            </div>
+            <div class="hero__media">
+                <img
+                    class="hero__img"
+                    src="{{ url_for('static', path='assets/img/constructor-donut-cta-nohand.png') }}"
+                    alt="Пончик із цукром, рожевою глазур’ю та посипкою"
+                    width="1986" height="2418"
+                    fetchpriority="high"
+                >
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured donuts -->
+    {% if featured %}
+    <section class="home-section" aria-labelledby="featured-title">
+        <div class="section-head section-head--center reveal">
+            <h2 id="featured-title" class="section-title">Наші пончики</h2>
+            <p class="section-lead">Класичні й улюблені, щоранку вкриті глазур’ю. Ціни та наявність залежать від обраної філії Donnie.</p>
+        </div>
+
+        <ul class="featured-grid">
+            {% for product in featured %}
+            <li class="featured-card reveal" style="--tile: var(--tile-{{ (product.id % 6) + 1 }})">
+                <a class="featured-card__link" href="/ua/product/{{ product.id }}">
+                    <span class="featured-card__tile">
+                        {% if product.id in bestsellers %}<span class="bestseller-badge featured-card__badge">Хіт продажу</span>{% endif %}
+                        <img
+                            src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                            alt="" loading="lazy" decoding="async" width="220" height="220"
+                        >
+                    </span>
+                    <span class="featured-card__name">{{ localized(product, 'name', language) }}</span>
+                </a>
+                {% if localized(product, 'description', language) %}
+                <p class="featured-card__desc">{{ localized(product, 'description', language) }}</p>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="section-cta reveal">
+            <a class="btn btn--ghost" href="/ua/store">Переглянути всі пончики</a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Seasonal collection (like the seasonal lines of Kyiv pastry shops) -->
+    {% for product in seasonal %}
+    <section class="feature feature--reverse reveal" aria-labelledby="seasonal-title-{{ product.id }}">
+        <div class="feature__media feature__media--limited">
+            <img
+                src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                alt="Пончик {{ localized(product, 'name', language) }}"
+                loading="lazy" width="600" height="600"
+            >
+        </div>
+        <div class="feature__copy">
+            <span class="limited-badge">Сезонна колекція</span>
+            <h2 id="seasonal-title-{{ product.id }}" class="section-title">{{ localized(product, 'name', language) }}</h2>
+            {% if localized(product, 'description', language) %}
+            <p class="section-lead">{{ localized(product, 'description', language) }}</p>
+            {% endif %}
+            <p class="section-lead">Щосезону ми змінюємо частину меню, тож цей смак доступний лише обмежений час.</p>
+            <div class="feature__actions">
+                <a class="btn" href="/ua/product/{{ product.id }}">Спробуйте, поки він є</a>
+            </div>
+        </div>
+    </section>
+    {% endfor %}
+
+    <!-- Box of six -->
+    <section class="feature reveal" id="how-it-works" aria-labelledby="box-title">
+        <div class="feature__media feature__media--pink">
+            <img
+                src="{{ url_for('static', path='assets/img/store-donut-cta.png') }}"
+                alt="Стос пончиків Donnie з глазур’ю"
+                loading="lazy" width="705" height="778"
+            >
+        </div>
+        <div class="feature__copy">
+            <span class="eyebrow">Коробка із 6 пончиків</span>
+            <h2 id="box-title" class="section-title">Шість — саме те</h2>
+            <p class="section-lead">Кожне замовлення — це коробка щонайменше із шести пончиків. Змішуйте будь-які смаки: кошик покаже, скільки ще потрібно додати, а оформлення замовлення стане доступним, щойно коробка буде повною.</p>
+            <ol class="steps">
+                <li><span class="steps__num">1</span> Оберіть свою філію Donnie</li>
+                <li><span class="steps__num">2</span> Наповніть коробку шістьма чи більше пончиками</li>
+                <li><span class="steps__num">3</span> Заберіть замовлення або отримайте доставку</li>
+            </ol>
+            <div class="feature__actions">
+                <a class="btn" href="/ua/store">Наповнити коробку</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Customise -->
+    <section class="feature feature--reverse reveal" aria-labelledby="custom-title">
+        <div class="feature__media feature__media--blue">
+            <img
+                src="{{ url_for('static', path='assets/img/constructor-donut-store.png') }}"
+                alt="Пончик із додатковою посипкою"
+                loading="lazy" width="1722" height="1724"
+            >
+        </div>
+        <div class="feature__copy">
+            <span class="eyebrow">Ваш рецепт</span>
+            <h2 id="custom-title" class="section-title">Створіть свій смак</h2>
+            <p class="section-lead">На сторінці кожного пончика можна додати крему, замінити посипку або прибрати якийсь інгредієнт. Додаткові інгредієнти коштують трохи більше, а вилучення інгредієнта нічого не коштує.</p>
+            <div class="feature__actions">
+                <a class="btn" href="/ua/store">Налаштувати пончик</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="home-section" aria-labelledby="reviews-title">
+        <div class="section-head section-head--center reveal">
+            <h2 id="reviews-title" class="section-title">Що кажуть покупці</h2>
+        </div>
+
+        <div class="reviews">
+            <figure class="review reveal">
+                <blockquote>«Це найкращі пончики, які я куштував в Україні. Свіжі, м’які, а начинки на вибір — неймовірні».</blockquote>
+                <figcaption>Daniel</figcaption>
+            </figure>
+            <figure class="review reveal">
+                <blockquote>«Обожнюю створювати тут власні пончики. Це легко, весело, а кава неймовірно смачна».</blockquote>
+                <figcaption>Sofia</figcaption>
+            </figure>
+            <figure class="review reveal">
+                <blockquote>«Чудове місце, щоб поласувати солодким пізно ввечері. Donnie ніколи не розчаровує».</blockquote>
+                <figcaption>Marcus</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- Branches -->
+    {% if branches %}
+    <section class="home-section" aria-labelledby="branches-title">
+        <div class="branches-card reveal">
+            <div class="branches-card__head">
+                <h2 id="branches-title" class="section-title">Знайдіть Donnie поруч</h2>
+                <p class="section-lead">У кожної філії Donnie — власне меню та ціни. Оберіть філію, і ми покажемо, що сьогодні готуємо.</p>
+            </div>
+            <ul class="branch-cards">
+                {% for branch in branches %}
+                <li class="branch-card">
+                    <span class="branch-card__city">{{ localized(branch, 'city', language) }}</span>
+                    <span class="branch-card__name">{{ localized(branch, 'name', language) }}</span>
+                    <span class="branch-card__address">{{ localized(branch, 'address', language) }}</span>
+                    <button type="button" class="btn btn--small" data-choose-branch="{{ branch.id }}">Замовити звідси</button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- FAQ -->
+    <section class="home-section home-section--narrow" aria-labelledby="faq-title">
+        <div class="section-head section-head--center reveal">
+            <h2 id="faq-title" class="section-title">Поширені запитання</h2>
+        </div>
+
+        <div class="faq reveal">
+            <details class="faq__item" name="faq">
+                <summary>Чому потрібно щонайменше шість пончиків?</summary>
+                <p>Ми випікаємо й пакуємо пончики в коробки по шість, тому кожне замовлення починається з повної коробки. Ви можете змішувати будь-які смаки.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Чому ціни змінюються, коли я обираю іншу філію?</summary>
+                <p>У кожної філії Donnie — власне меню, ціни та наявність. Коли ви змінюєте філію, кошик очищується, щоб ви завжди бачили правильні ціни.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Скільки коштує змінити склад пончика?</summary>
+                <p>Якщо додати інгредієнта більше, ніж передбачає рецепт, його додаткова вартість стягується один раз. Прибрати інгредієнт можна безкоштовно, але ціна пончика не зменшиться.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Чи потрібен обліковий запис для замовлення?</summary>
+                <p>Ні, можна замовити й без нього. Якщо у вас є обліковий запис, ім’я, електронна пошта й телефон автоматично заповняться під час оформлення замовлення.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Чи можна замовити доставку пончиків?</summary>
+                <p>Так. Під час оформлення оберіть самовивіз у Donnie або доставку та вкажіть адресу.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Чи можна замовити на певний день і час?</summary>
+                <p>Так. Під час оформлення оберіть «Передзамовлення», вкажіть день — не далі ніж за тиждень — і часовий проміжок. Ми приготуємо коробку так, щоб вона була готова в цей час.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>Це подарунок?</summary>
+                <p>Під час оформлення можна додати подарункову коробку зі стрічкою, свічки для торта та безкоштовну листівку з вашим текстом.</p>
+            </details>
+            <details class="faq__item" name="faq">
+                <summary>А що щодо алергенів?</summary>
+                <p>На сторінці кожного пончика вказані алергени в оригінальному рецепті та термін свіжості. Усі пончики готують на одній кухні, тому можливі сліди горіхів, глютену, молока, яєць і сої.</p>
+            </details>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/home.js') }}" defer></script>
+{% endblock %}

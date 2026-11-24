@@ -33,7 +33,7 @@
                 <span class="scan-check__icon" aria-hidden="true">{{ '✓' if check[0] == 'ok' else '!' if check[0] == 'due' else '✕' }}</span>
                 {{ check[1] }}
             </div>
-            <p class="scan-check__amount">${{ "%.2f"|format(order.amount_due) }}</p>
+            <p class="scan-check__amount">₴{{ "%.2f"|format(order.amount_due) }}</p>
             <p class="scan-check__note">{{ check[2] }}</p>
             <dl class="scan-check__facts">
                 <div><dt>Order status</dt><dd>{{ order.status.value | title }}</dd></div>
@@ -49,15 +49,15 @@
                 <svg viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19 7"/></svg>
             </div>
             <h1 id="paid-title" class="paid-hero__title">Payment successful</h1>
-            <p class="paid-hero__amount">${{ "%.2f"|format(order.amount_due) }}</p>
+            <p class="paid-hero__amount">₴{{ "%.2f"|format(order.amount_due) }}</p>
             <p class="paid-hero__text">
                 {% if order.tip_amount > 0 %}
-                Including a ${{ "%.2f"|format(order.tip_amount) }} tip for the team. Thank you!
+                Including a ₴{{ "%.2f"|format(order.tip_amount) }} tip for the team. Thank you!
                 {% else %}
                 Thank you! Your order #{{ order.id }} is on its way{% if order.table_number %} to table {{ order.table_number }}{% endif %}.
                 {% endif %}
             </p>
-            <a class="btn btn--large btn--block" href="{{ '/table' if order.table_number else '/store' }}">
+            <a class="btn btn--large btn--block" href="{{ '/en/table' if order.table_number else '/en/store' }}">
                 {{ 'Back to my table' if order.table_number else 'Back to the menu' }}
             </a>
         </section>
@@ -132,7 +132,7 @@
                             <span class="t-eyebrow">Pickup ticket</span>
                             <div class="t-title">Order<br>#{{ order.id }}</div>
                             <div class="t-meta">
-                                <span>{{ order.branch.name }} · {{ where }}</span>
+                                <span>{{ localized(order.branch, 'name', language) }} · {{ where }}</span>
                                 <b>{{ pay_label }}</b>
                             </div>
                         </div>
@@ -180,7 +180,7 @@
 
             <div>
                 <span>Branch</span>
-                <strong>{{ order.branch.name }}, {{ order.branch.city }}</strong>
+                <strong>{{ localized(order.branch, 'name', language) }}, {{ localized(order.branch, 'city', language) }}</strong>
             </div>
 
             <div>
@@ -241,12 +241,12 @@
             {% for item in order.items %}
             <div class="receipt-item">
                 <div class="item-description">
-                    <strong>{{ item.name_snapshot }}</strong>
+                    <strong>{{ localized(item.product, 'name', language, item.name_snapshot) if item.product else item.name_snapshot }}</strong>
                     <span>× {{ item.quantity }}</span>
                 </div>
 
                 <strong>
-                    ${{ "%.2f"|format(item.unit_price * item.quantity) }}
+                    ₴{{ "%.2f"|format(item.unit_price * item.quantity) }}
                 </strong>
             </div>
             {% endfor %}
@@ -257,7 +257,7 @@
         {% if order.tip_amount > 0 or order.extras_amount > 0 %}
         <div class="receipt-item receipt-subtotal">
             <span>Donuts</span>
-            <strong>${{ "%.2f"|format(order.donuts_amount) }}</strong>
+            <strong>₴{{ "%.2f"|format(order.donuts_amount) }}</strong>
         </div>
         {% endif %}
         {% if order.has_extras %}
@@ -267,24 +267,24 @@
         {% if order.postcard_message %}{% set _ = extras_parts.append('postcard') %}{% endif %}
         <div class="receipt-item receipt-subtotal">
             <span>Extras: {{ extras_parts | join(', ') }}</span>
-            <strong>{{ "$%.2f"|format(order.extras_amount) if order.extras_amount > 0 else 'Free' }}</strong>
+            <strong>{{ "₴%.2f"|format(order.extras_amount) if order.extras_amount > 0 else 'Free' }}</strong>
         </div>
         {% endif %}
         {% if order.tip_amount > 0 %}
         <div class="receipt-item receipt-subtotal">
             <span>Tip for the team</span>
-            <strong>${{ "%.2f"|format(order.tip_amount) }}</strong>
+            <strong>₴{{ "%.2f"|format(order.tip_amount) }}</strong>
         </div>
         {% endif %}
 
         <div class="receipt-total">
             <span>Total</span>
-            <strong>${{ "%.2f"|format(order.amount_due) }}</strong>
+            <strong>₴{{ "%.2f"|format(order.amount_due) }}</strong>
         </div>
 
         {% if order.payment_method == 'online' and order.payment_status in ('pending', 'failed') %}
-        <a href="/orders/{{ order.id }}/pay?t={{ order.access_token }}" class="btn btn--block receipt-pay-btn">
-            Pay ${{ "%.2f"|format(order.amount_due) }} now
+        <a href="/en/orders/{{ order.id }}/pay?t={{ order.access_token }}" class="btn btn--block receipt-pay-btn">
+            Pay ₴{{ "%.2f"|format(order.amount_due) }} now
         </a>
         {% endif %}
 
@@ -292,7 +292,7 @@
             <p>Thank you for choosing Donnie!</p>
             <p>Fresh donuts, made with love.</p>
 
-            <a href="/store" class="back-button">
+            <a href="/en/store" class="back-button">
                 Back to store
             </a>
         </div>

@@ -1,0 +1,56 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Вхід — Donnie{% endblock %}
+
+{% block description %}Увійдіть до свого облікового запису Donnie.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="login-page">
+    <div class="login-card">
+        <h1 class="login-title">З поверненням!</h1>
+        <p class="login-intro">Увійдіть, щоб швидше заповнювати дані замовлення.</p>
+
+        {% if error %}
+        <p class="alert alert--error login-alert" role="alert" id="login-error">{{ error }}</p>
+        {% endif %}
+
+        <form class="login-form" method="post" action="/ua/login" novalidate data-auth-form>
+            <div class="field">
+                <label class="field__label" for="email">Електронна пошта</label>
+                <input class="field__input" id="email" name="email" type="email"
+                       autocomplete="email" value="{{ email }}" required
+                       {% if error %}aria-invalid="true" aria-describedby="login-error"{% else %}aria-invalid="false"{% endif %}
+                       data-error="email-error" {% if not email %}autofocus{% endif %}>
+                <span class="field__error" id="email-error"></span>
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="password">Пароль</label>
+                <div class="password-field">
+                    <input class="field__input" id="password" name="password" type="password"
+                           autocomplete="current-password" required aria-invalid="false"
+                           data-error="password-error" {% if email %}autofocus{% endif %}>
+                    <button type="button" class="password-toggle" data-password-toggle aria-controls="password" aria-pressed="false">Показати</button>
+                </div>
+                <span class="field__error" id="password-error"></span>
+            </div>
+
+            <button class="btn btn--block login-submit" type="submit">Увійти</button>
+        </form>
+
+        <p class="login-register-link">
+            Вперше в Donnie? <a href="/ua/register">Створити обліковий запис</a>
+        </p>
+        <p class="login-guest-note">Також можна замовити без облікового запису — ваш кошик збережеться.</p>
+        <a class="login-store-link" href="/ua/store">&larr; Повернутися до магазину</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/auth.js') }}" defer></script>
+{% endblock %}

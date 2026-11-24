@@ -21,7 +21,7 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
                 <h1 id="hero-title" class="hero__title">Create your own donut</h1>
                 <p class="hero__lead">Pick a glaze, add more of what you love, leave out what you don't. Order a box of six for pickup or delivery.</p>
                 <div class="hero__actions">
-                    <a class="btn btn--large" href="/store">Order now</a>
+                    <a class="btn btn--large" href="/en/store">Order now</a>
                     <a class="btn btn--large btn--ghost" href="#how-it-works">How it works</a>
                 </div>
             </div>
@@ -48,7 +48,7 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
         <ul class="featured-grid">
             {% for product in featured %}
             <li class="featured-card reveal" style="--tile: var(--tile-{{ (product.id % 6) + 1 }})">
-                <a class="featured-card__link" href="/product/{{ product.id }}">
+                <a class="featured-card__link" href="/en/product/{{ product.id }}">
                     <span class="featured-card__tile">
                         {% if product.id in bestsellers %}<span class="bestseller-badge featured-card__badge">Bestseller</span>{% endif %}
                         <img
@@ -56,17 +56,17 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
                             alt="" loading="lazy" decoding="async" width="220" height="220"
                         >
                     </span>
-                    <span class="featured-card__name">{{ product.name }}</span>
+                    <span class="featured-card__name">{{ localized(product, 'name', language) }}</span>
                 </a>
-                {% if product.description %}
-                <p class="featured-card__desc">{{ product.description }}</p>
+                {% if localized(product, 'description', language) %}
+                <p class="featured-card__desc">{{ localized(product, 'description', language) }}</p>
                 {% endif %}
             </li>
             {% endfor %}
         </ul>
 
         <div class="section-cta reveal">
-            <a class="btn btn--ghost" href="/store">See all donuts</a>
+            <a class="btn btn--ghost" href="/en/store">See all donuts</a>
         </div>
     </section>
     {% endif %}
@@ -77,19 +77,19 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
         <div class="feature__media feature__media--limited">
             <img
                 src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
-                alt="{{ product.name }} donut"
+                alt="{{ localized(product, 'name', language) }} donut"
                 loading="lazy" width="600" height="600"
             >
         </div>
         <div class="feature__copy">
             <span class="limited-badge">Seasonal collection</span>
-            <h2 id="seasonal-title-{{ product.id }}" class="section-title">{{ product.name }}</h2>
-            {% if product.description %}
-            <p class="section-lead">{{ product.description }}</p>
+            <h2 id="seasonal-title-{{ product.id }}" class="section-title">{{ localized(product, 'name', language) }}</h2>
+            {% if localized(product, 'description', language) %}
+            <p class="section-lead">{{ localized(product, 'description', language) }}</p>
             {% endif %}
             <p class="section-lead">We change part of the menu every season, so this one is only around for a short time.</p>
             <div class="feature__actions">
-                <a class="btn" href="/product/{{ product.id }}">Try it before it's gone</a>
+                <a class="btn" href="/en/product/{{ product.id }}">Try it before it's gone</a>
             </div>
         </div>
     </section>
@@ -114,7 +114,7 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
                 <li><span class="steps__num">3</span> Pick up or get it delivered</li>
             </ol>
             <div class="feature__actions">
-                <a class="btn" href="/store">Start a box</a>
+                <a class="btn" href="/en/store">Start a box</a>
             </div>
         </div>
     </section>
@@ -133,7 +133,7 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
             <h2 id="custom-title" class="section-title">Make it yours</h2>
             <p class="section-lead">On every donut page you can add more cream, swap out the sprinkles or leave something out. Extras cost a little more, and taking something away never costs extra.</p>
             <div class="feature__actions">
-                <a class="btn" href="/store">Customise a donut</a>
+                <a class="btn" href="/en/store">Customise a donut</a>
             </div>
         </div>
     </section>
@@ -171,9 +171,9 @@ Buy fresh donuts and coffee in Ukraine at Donnie. Create your own donut or order
             <ul class="branch-cards">
                 {% for branch in branches %}
                 <li class="branch-card">
-                    <span class="branch-card__city">{{ branch.city }}</span>
-                    <span class="branch-card__name">{{ branch.name }}</span>
-                    <span class="branch-card__address">{{ branch.address }}</span>
+                    <span class="branch-card__city">{{ localized(branch, 'city', language) }}</span>
+                    <span class="branch-card__name">{{ localized(branch, 'name', language) }}</span>
+                    <span class="branch-card__address">{{ localized(branch, 'address', language) }}</span>
                     <button type="button" class="btn btn--small" data-choose-branch="{{ branch.id }}">Order from here</button>
                 </li>
                 {% endfor %}

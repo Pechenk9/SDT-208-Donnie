@@ -1,0 +1,55 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Про нас — Donnie{% endblock %}
+
+{% block description %}Про Donnie — свіжі пончики, приготовані з любов’ю у Львові, Києві та Одесі.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/contacts.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="about-page">
+    <section class="about-hero">
+        <div class="about-hero__copy">
+            <h1 class="page-title">Про Donnie</h1>
+            <p class="about-lead">
+                Donnie — це невелика крамниця пончиків із великою любов’ю до солодкого. Щоранку ми смажимо свіже тісто,
+                вручну покриваємо його глазур’ю та дозволяємо вам обрати кількість крему, глазурі й посипки.
+            </p>
+            <a class="btn" href="/ua/store">Переглянути меню</a>
+        </div>
+        <img class="about-hero__img"
+             src="{{ url_for('static', path='assets/img/donnie-team.png') }}"
+             alt="Команда Donnie" width="520" height="400">
+    </section>
+
+    <section class="about-values" aria-label="Чим вирізняється Donnie">
+        <article class="about-value">
+            <h2>Щодня свіжі</h2>
+            <p>Пончики готують у кожній філії в день вашого замовлення.</p>
+        </article>
+        <article class="about-value">
+            <h2>На ваш смак</h2>
+            <p>Змінюйте начинку, глазур і посипку в кожному пончику.</p>
+        </article>
+        <article class="about-value">
+            <h2>Самовивіз або доставка</h2>
+            <p>Замовте онлайн і заберіть у своїй філії або замовте доставку.</p>
+        </article>
+    </section>
+
+    <section class="about-branches" aria-labelledby="branches-title">
+        <h2 id="branches-title" class="section-heading">Наші філії</h2>
+        <ul class="about-branch-list" id="about-branch-list">
+            <li class="skeleton about-branch-skeleton"></li>
+            <li class="skeleton about-branch-skeleton"></li>
+            <li class="skeleton about-branch-skeleton"></li>
+        </ul>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/about.js') }}" defer></script>
+{% endblock %}

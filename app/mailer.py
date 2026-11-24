@@ -128,7 +128,7 @@ def build_receipt(order: Order, receipt_url: str) -> EmailMessage:
 
 
 def _money(value) -> str:
-    return f"${value:.2f}"
+    return f"₴{value:.2f}"
 
 
 def kyiv_time(moment: datetime | None) -> str | None:

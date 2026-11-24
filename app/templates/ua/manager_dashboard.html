@@ -1,0 +1,309 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Панель менеджера — Donnie{% endblock %}
+
+{% block description %}Керуйте доступністю товарів і інгредієнтів для призначеної філії.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/manager.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="manager-page">
+    <div class="manager-dashboard">
+        <header class="manager-header">
+            <p class="manager-eyebrow">КЕРУВАННЯ DONNIE</p>
+            <h1>Панель менеджера</h1>
+            <p class="manager-current-branch">
+                Зараз керуєте філією <strong>{{ localized(selected_branch, 'name', language) }} - {{ localized(selected_branch, 'city', language) }}</strong>
+            </p>
+            <p class="manager-branch-notice" role="status">
+                Ви керуєте філією {{ localized(selected_branch, 'name', language) }}. Зміни стосуватимуться цієї філії.
+            </p>
+        </header>
+
+        {% if managed_branches|length > 1 %}
+        <form class="manager-branch-picker" method="get" action="/ua/manager">
+            <input type="hidden" name="notice" value="">
+            <label for="managed-branch">Перемкнути призначену філію</label>
+            <select id="managed-branch" name="branch_id">
+                {% for branch in managed_branches %}
+                <option value="{{ branch.id }}"{% if branch.id == selected_branch.id %} selected{% endif %}>
+                {{ localized(branch, 'name', language) }} - {{ localized(branch, 'city', language) }}
+                </option>
+                {% endfor %}
+            </select>
+            <button class="btn btn--blue btn--small" type="submit">Переглянути філію</button>
+        </form>
+        {% endif %}
+
+        {% if notice %}
+        {% set notice_text = {
+            'Product added to this branch.': 'Товар додано до цієї філії.',
+            'Product availability updated.': 'Доступність товару оновлено.',
+            'Product removed from this branch.': 'Товар видалено з цієї філії.',
+            'Ingredient added to this branch.': 'Інгредієнт додано до цієї філії.',
+            'Ingredient availability updated.': 'Доступність інгредієнта оновлено.',
+            'Ingredient removed from this branch.': 'Інгредієнт видалено з цієї філії.',
+            'Payment refunded. The order is marked as refunded.': 'Платіж повернено. Замовлення позначено як повернуте.',
+            'Order status updated. The guest sees it on their receipt.': 'Статус замовлення оновлено. Гість бачить його у чеку.'
+        }.get(notice, notice) %}
+        <p class="manager-success" role="status">{{ notice_text }}</p>
+        {% endif %}
+
+        <section class="manager-card manager-card--wide" id="orders" aria-labelledby="orders-title">
+            <header class="manager-card-header">
+                <div>
+                    <p class="manager-card-eyebrow">ОСТАННІ 20 ЗАМОВЛЕНЬ</p>
+                    <h2 id="orders-title">Замовлення та платежі</h2>
+                </div>
+            </header>
+
+            {% if recent_orders %}
+            <ul class="manager-item-list">
+                {% for order in recent_orders %}
+                {% set pay_pill = {
+                    'paid': ('pill--ok', 'Оплачено онлайн'),
+                    'pending': ('pill--unknown', 'Очікує онлайн-оплати'),
+                    'failed': ('pill--no', 'Онлайн-платіж відхилено'),
+                    'refunded': ('pill--no', 'Повернення коштів'),
+                    'unpaid': ('pill--unknown', 'Оплата за чеком'),
+                }[order.payment_status] %}
+                {% set sv = order_status_views[order.id] %}
+                {% set status_labels = {
+                    'Cancelled': 'Скасовано',
+                    'Placed': 'Оформлено',
+                    'Baking': 'Готується',
+                    'Ready': 'Готово',
+                    'Served': 'Подано',
+                    'On the way': 'В дорозі',
+                    'Delivered': 'Доставлено',
+                    'Picked up': 'Отримано'
+                } %}
+                <li class="manager-item" id="order-{{ order.id }}">
+                    <div class="manager-item-details">
+                        <h3>
+                            <a href="/ua/orders/{{ order.id }}/receipt">#{{ order.id }}</a>
+                            · {{ order.customer_name }}
+                        </h3>
+                        <span class="manager-order-meta">
+                            {% if order.table_number %}Стіл {{ order.table_number }}{% else %}{{ 'Доставка' if order.fulfillment_type.value == 'delivery' else 'Самовивіз' }}{% endif %}
+                            · ₴{{ "%.2f"|format(order.amount_due) }}
+                            {% if order.tip_amount > 0 %}(чайові ₴{{ "%.2f"|format(order.tip_amount) }}){% endif %}
+                            {% if order.created_at %}· {{ order.created_at.strftime('%d.%m %H:%M') }}{% endif %}
+                        </span>
+                        {% if order.scheduled_date or order.has_extras %}
+                        <span class="manager-order-meta manager-order-extras">
+                            {% if order.scheduled_date %}Попереднє замовлення {{ order.scheduled_date.strftime('%d.%m') }}, {{ order.time_slot | replace('-', '–') }}{% endif %}
+                            {% if order.gift_box %}· Подарункова коробка{% endif %}
+                            {% if order.candles %}· {{ order.candles }} свічок{% endif %}
+                            {% if order.postcard_message %}· Листівка: “{{ order.postcard_message }}”{% endif %}
+                        </span>
+                        {% endif %}
+                        <span class="manager-order-pills">
+                            <span class="pill {{ 'pill--no' if order.status.value == 'cancelled' else ('pill--ok' if order.status.value == 'completed' else 'pill--unknown') }}">{{ status_labels.get(sv.label, sv.label) }}</span>
+                            <span class="pill {{ pay_pill[0] }}">{{ pay_pill[1] }}</span>
+                        </span>
+                    </div>
+                    <div class="manager-item-actions">
+                        {% if sv.back %}
+                        <form method="post" action="/ua/manager/orders/{{ order.id }}/status">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--ghost btn--small" type="submit" name="action" value="back"
+                                    aria-label="Перемістити замовлення №{{ order.id }} на один крок назад">Назад</button>
+                        </form>
+                        {% endif %}
+                        {% if sv.next %}
+                        <form method="post" action="/ua/manager/orders/{{ order.id }}/status">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--small" type="submit" name="action" value="next"
+                                    aria-label="Перемістити замовлення №{{ order.id }} до {{ status_labels.get(sv.next, sv.next) }}">Далі: {{ status_labels.get(sv.next, sv.next) }}</button>
+                        </form>
+                        {% endif %}
+                        {% if sv.cancel %}
+                        <form method="post" action="/ua/manager/orders/{{ order.id }}/status"
+                              onsubmit="return confirm('Скасувати замовлення №{{ order.id }}?');">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--ghost btn--small manager-cancel-btn" type="submit" name="action" value="cancel">Скасувати</button>
+                        </form>
+                        {% endif %}
+                        {% if order.payment_method == 'online' and order.payment_status == 'paid' %}
+                        <form method="post" action="/ua/manager/orders/{{ order.id }}/refund"
+                              onsubmit="return confirm('Повернути ₴{{ "%.2f"|format(order.amount_due) }} за замовлення №{{ order.id }}?');">
+                            <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                            <button class="btn btn--danger btn--small" type="submit">Повернути кошти</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="manager-empty">У цій філії ще немає замовлень.</p>
+            {% endif %}
+        </section>
+
+        <section class="manager-card manager-card--wide qr-panel" id="qr-codes" aria-labelledby="qr-title"
+                 data-qr-base="{{ qr_base_url }}" data-branch-code="{{ selected_branch.code }}"
+                 data-branch-name="{{ localized(selected_branch, 'name', language) }}">
+            <header class="manager-card-header">
+                <div>
+                    <p class="manager-card-eyebrow">ДРУКУЙТЕ Й РОЗКЛАДАЙТЕ НА СТОЛИКИ</p>
+                    <h2 id="qr-title">QR-коди</h2>
+                </div>
+            </header>
+            <p class="manager-empty">
+                Гості сканують код — відкривається меню філії {{ localized(selected_branch, 'name', language) }}, обрана вже автоматично.
+                Коди столів також дозволяють замовляти до вашого столика.
+            </p>
+            <form class="manager-add-form qr-controls" id="qr-form">
+                <label for="qr-tables">Кількість столів</label>
+                <input id="qr-tables" type="number" min="0" max="99" value="6" class="field__input qr-controls__input">
+                <button class="btn btn--blue btn--small" type="submit">Створити коди</button>
+                <button class="btn btn--ghost btn--small" type="button" id="qr-print">Друк</button>
+            </form>
+            <div class="qr-sheet" id="qr-sheet" aria-live="polite"></div>
+            <p class="manager-empty" id="qr-error" hidden>Не вдалося створити QR-коди (QR-бібліотека недоступна без інтернету). Посилання: <code>{{ qr_base_url }}/qr/{{ selected_branch.code }}</code></p>
+        </section>
+
+        <div class="manager-sections">
+            <section class="manager-card" aria-labelledby="products-title">
+                <header class="manager-card-header">
+                    <div>
+                        <p class="manager-card-eyebrow">КАТАЛОГ ФІЛІЇ</p>
+                        <h2 id="products-title">Товари</h2>
+                    </div>
+                </header>
+
+                {% if branch_products %}
+                <ul class="manager-item-list">
+                    {% for item in branch_products %}
+                    <li class="manager-item">
+                        <div class="manager-item-details">
+                            <h3>{{ localized(item.product, 'name', language) }}</h3>
+                            {% if not item.product.is_active %}
+                            <span class="manager-owner-warning">
+                                Власник глобально деактивував цей товар.
+                            </span>
+                            {% endif %}
+                            <span class="pill {{ 'pill--ok' if item.association.is_available else 'pill--no' }}">
+                                {{ 'Доступно' if item.association.is_available else 'Недоступно' }}
+                            </span>
+                        </div>
+                        <div class="manager-item-actions">
+                            <form method="post" action="/ua/manager/products/{{ item.product.id }}/availability">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button
+                                    class="btn btn--blue btn--small"
+                                    type="submit"
+                                    name="is_available"
+                                    value="{{ 'false' if item.association.is_available else 'true' }}"
+                                >
+                                    {{ 'Позначити недоступним' if item.association.is_available else 'Зробити доступним' }}
+                                </button>
+                            </form>
+                            <form method="post" action="/ua/manager/products/{{ item.product.id }}/remove">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button class="btn btn--danger btn--small" type="submit">Видалити</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="manager-empty">З цією філією ще не пов’язані товари.</p>
+                {% endif %}
+
+                <div class="manager-add">
+                    <h3>Додати товар із каталогу</h3>
+                    {% if catalogue_products %}
+                    <form class="manager-add-form" method="post" action="/ua/manager/products/add">
+                        <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                        <label class="visually-hidden" for="catalogue-product">Товар</label>
+                        <select id="catalogue-product" name="product_id" required>
+                            {% for product in catalogue_products %}
+                            <option value="{{ product.id }}">{{ localized(product, 'name', language) }}{% if not product.is_active %} - Власник глобально деактивував цей товар.{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--small" type="submit">Додати товар</button>
+                    </form>
+                    {% else %}
+                    <p class="manager-empty">Усі товари каталогу вже пов’язані з цією філією.</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="manager-card" aria-labelledby="ingredients-title">
+                <header class="manager-card-header">
+                    <div>
+                        <p class="manager-card-eyebrow">КАТАЛОГ ФІЛІЇ</p>
+                        <h2 id="ingredients-title">Інгредієнти</h2>
+                    </div>
+                </header>
+
+                {% if branch_ingredients %}
+                <ul class="manager-item-list">
+                    {% for item in branch_ingredients %}
+                    <li class="manager-item">
+                        <div class="manager-item-details">
+                            <h3>{{ localized(item.ingredient, 'name', language) }}</h3>
+                            {% if not item.ingredient.is_active %}
+                            <span class="manager-owner-warning">
+                                Власник глобально деактивував цей інгредієнт.
+                            </span>
+                            {% endif %}
+                            <span class="pill {{ 'pill--ok' if item.association.is_available else 'pill--no' }}">
+                                {{ 'Доступно' if item.association.is_available else 'Недоступно' }}
+                            </span>
+                        </div>
+                        <div class="manager-item-actions">
+                            <form method="post" action="/ua/manager/ingredients/{{ item.ingredient.id }}/availability">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button
+                                    class="btn btn--blue btn--small"
+                                    type="submit"
+                                    name="is_available"
+                                    value="{{ 'false' if item.association.is_available else 'true' }}"
+                                >
+                                    {{ 'Позначити недоступним' if item.association.is_available else 'Зробити доступним' }}
+                                </button>
+                            </form>
+                            <form method="post" action="/ua/manager/ingredients/{{ item.ingredient.id }}/remove">
+                                <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                                <button class="btn btn--danger btn--small" type="submit">Видалити</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="manager-empty">З цією філією ще не пов’язані інгредієнти.</p>
+                {% endif %}
+
+                <div class="manager-add">
+                    <h3>Додати інгредієнт із каталогу</h3>
+                    {% if catalogue_ingredients %}
+                    <form class="manager-add-form" method="post" action="/ua/manager/ingredients/add">
+                        <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+                        <label class="visually-hidden" for="catalogue-ingredient">Інгредієнт</label>
+                        <select id="catalogue-ingredient" name="ingredient_id" required>
+                            {% for ingredient in catalogue_ingredients %}
+                            <option value="{{ ingredient.id }}">{{ localized(ingredient, 'name', language) }}{% if not ingredient.is_active %} - Власник глобально деактивував цей інгредієнт.{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--small" type="submit">Додати інгредієнт</button>
+                    </form>
+                    {% else %}
+                    <p class="manager-empty">Усі інгредієнти каталогу вже пов’язані з цією філією.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+<script src="{{ static_url('js/manager-qr.js') }}" defer></script>
+{% endblock %}

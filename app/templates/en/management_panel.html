@@ -63,8 +63,8 @@
                 <article class="owner-card">
                     <header class="owner-card-header">
                         <div>
-                            <h3>{{ item.branch.name }}</h3>
-                            <p>{{ item.branch.city }}</p>
+                            <h3>{{ localized(item.branch, 'name', language) }}</h3>
+                            <p>{{ localized(item.branch, 'city', language) }}</p>
                         </div>
                     </header>
 
@@ -76,7 +76,7 @@
                                 <strong>{{ manager.first_name }} {{ manager.last_name }}</strong>
                                 <span>{{ manager.email }}</span>
                             </div>
-                            <form method="post" action="/owner/staff/remove"
+                            <form method="post" action="/en/owner/staff/remove"
                                   onsubmit="return confirm('Remove this manager assignment?')">
                                 <input type="hidden" name="branch_id" value="{{ item.branch.id }}">
                                 <input type="hidden" name="user_id" value="{{ manager.id }}">
@@ -90,7 +90,7 @@
                     {% endif %}
 
                     {% if item.available_users %}
-                    <form class="owner-inline-form" method="post" action="/owner/staff/assign">
+                    <form class="owner-inline-form" method="post" action="/en/owner/staff/assign">
                         <input type="hidden" name="branch_id" value="{{ item.branch.id }}">
                         <label for="assign-user-{{ item.branch.id }}">Assign an existing user</label>
                         <select id="assign-user-{{ item.branch.id }}" name="user_id" required>
@@ -124,7 +124,7 @@
                         <span>
                             {% if manager.managed_branches %}
                             {% for branch in manager.managed_branches %}
-                            {{ branch.name }}{% if not loop.last %}, {% endif %}
+                            {{ localized(branch, 'name', language) }}{% if not loop.last %}, {% endif %}
                             {% endfor %}
                             {% else %}
                             No branch assignments
@@ -148,9 +148,11 @@
 
             <details class="owner-card owner-create" open>
                 <summary>Create a product</summary>
-                <form class="owner-form" method="post" action="/owner/products/create">
-                    <label>Name <input name="name" maxlength="150" required></label>
-                    <label>Description <textarea name="description" rows="2"></textarea></label>
+                <form class="owner-form" method="post" action="/en/owner/products/create">
+                    <label>Ukrainian name <input name="name" maxlength="150" required></label>
+                    <label>English name <input name="name_en" maxlength="150"></label>
+                    <label>Ukrainian description <textarea name="description" rows="2"></textarea></label>
+                    <label>English description <textarea name="description_en" rows="2"></textarea></label>
                     <div class="owner-form-row">
                         <label>Base price <input name="base_price" type="number" min="0" step="0.01" required></label>
                         <label>Calories <input name="calories" type="number" min="0" step="1"></label>
@@ -166,14 +168,16 @@
                 {% for product in products %}
                 <details class="owner-card owner-record">
                     <summary>
-                        <span>{{ product.name }}</span>
+                        <span>{{ localized(product, 'name', language) }}</span>
                         <span class="owner-record-meta">
-                            {{ "$%.2f"|format(product.base_price) }} · {{ "Active" if product.is_active else "Inactive" }}
+                            {{ "₴%.2f"|format(product.base_price) }} · {{ "Active" if product.is_active else "Inactive" }}
                         </span>
                     </summary>
-                    <form class="owner-form" method="post" action="/owner/products/{{ product.id }}/edit">
-                        <label>Name <input name="name" value="{{ product.name }}" maxlength="150" required></label>
-                        <label>Description <textarea name="description" rows="2">{{ product.description or "" }}</textarea></label>
+                    <form class="owner-form" method="post" action="/en/owner/products/{{ product.id }}/edit">
+                        <label>Ukrainian name <input name="name" value="{{ product.name }}" maxlength="150" required></label>
+                        <label>English name <input name="name_en" value="{{ product.name_en or '' }}" maxlength="150"></label>
+                        <label>Ukrainian description <textarea name="description" rows="2">{{ product.description or "" }}</textarea></label>
+                        <label>English description <textarea name="description_en" rows="2">{{ product.description_en or "" }}</textarea></label>
                         <div class="owner-form-row">
                             <label>Base price <input name="base_price" type="number" min="0" step="0.01" value="{{ product.base_price }}" required></label>
                             <label>Calories <input name="calories" type="number" min="0" step="1" value="{{ product.calories if product.calories is not none else "" }}"></label>
@@ -204,7 +208,7 @@
                 {% if ingredient_groups %}
                 <ul>
                     {% for group in ingredient_groups %}
-                    <li>{{ group.name }} <span>(up to {{ group.max_selections }} selections)</span></li>
+                    <li>{{ localized(group, 'name', language) }} <span>(up to {{ group.max_selections }} selections)</span></li>
                     {% endfor %}
                 </ul>
                 {% else %}
@@ -215,15 +219,17 @@
             <details class="owner-card owner-create" open>
                 <summary>Create an ingredient</summary>
                 {% if ingredient_groups %}
-                <form class="owner-form" method="post" action="/owner/ingredients/create">
-                    <label>Name <input name="name" maxlength="150" required></label>
-                    <label>Description <textarea name="description" rows="2"></textarea></label>
+                <form class="owner-form" method="post" action="/en/owner/ingredients/create">
+                    <label>Ukrainian name <input name="name" maxlength="150" required></label>
+                    <label>English name <input name="name_en" maxlength="150"></label>
+                    <label>Ukrainian description <textarea name="description" rows="2"></textarea></label>
+                    <label>English description <textarea name="description_en" rows="2"></textarea></label>
                     <div class="owner-form-row">
                         <label>Extra price <input name="extra_price" type="number" min="0" step="0.01" value="0.00" required></label>
                         <label>Ingredient group
                             <select name="group_id" required>
                                 {% for group in ingredient_groups %}
-                                <option value="{{ group.id }}">{{ group.name }}</option>
+                                <option value="{{ group.id }}">{{ localized(group, 'name', language) }}</option>
                                 {% endfor %}
                             </select>
                         </label>
@@ -239,22 +245,24 @@
                 {% for ingredient in ingredients %}
                 <details class="owner-card owner-record">
                     <summary>
-                        <span>{{ ingredient.name }}</span>
+                        <span>{{ localized(ingredient, 'name', language) }}</span>
                         <span class="owner-record-meta">
-                            {{ "$%.2f"|format(ingredient.extra_price) }} · {{ ingredient.group.name }} ·
+                            {{ "₴%.2f"|format(ingredient.extra_price) }} · {{ localized(ingredient.group, 'name', language) }} ·
                             {{ "Active" if ingredient.is_active else "Inactive" }}
                         </span>
                     </summary>
-                    <form class="owner-form" method="post" action="/owner/ingredients/{{ ingredient.id }}/edit">
-                        <label>Name <input name="name" value="{{ ingredient.name }}" maxlength="150" required></label>
-                        <label>Description <textarea name="description" rows="2">{{ ingredient.description or "" }}</textarea></label>
+                    <form class="owner-form" method="post" action="/en/owner/ingredients/{{ ingredient.id }}/edit">
+                        <label>Ukrainian name <input name="name" value="{{ ingredient.name }}" maxlength="150" required></label>
+                        <label>English name <input name="name_en" value="{{ ingredient.name_en or '' }}" maxlength="150"></label>
+                        <label>Ukrainian description <textarea name="description" rows="2">{{ ingredient.description or "" }}</textarea></label>
+                        <label>English description <textarea name="description_en" rows="2">{{ ingredient.description_en or "" }}</textarea></label>
                         <div class="owner-form-row">
                             <label>Extra price <input name="extra_price" type="number" min="0" step="0.01" value="{{ ingredient.extra_price }}" required></label>
                             <label>Ingredient group
                                 <select name="group_id" required>
                                     {% for group in ingredient_groups %}
                                     <option value="{{ group.id }}"{% if group.id == ingredient.group_id %} selected{% endif %}>
-                                        {{ group.name }}
+                                        {{ localized(group, 'name', language) }}
                                     </option>
                                     {% endfor %}
                                 </select>

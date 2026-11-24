@@ -171,7 +171,7 @@ def test_profile_shows_only_role_appropriate_panel_button(
     client, users, _ = access_context
     authenticate(users[role])
 
-    response = client.get("/profile")
+    response = client.get("/en/profile")
 
     assert response.status_code == 200
     if expected_button:
@@ -185,25 +185,25 @@ def test_profile_shows_only_role_appropriate_panel_button(
 def test_unauthenticated_users_are_redirected_from_both_panels(access_context):
     client, _, _ = access_context
 
-    manager_response = client.get("/manager")
-    owner_response = client.get("/owner")
+    manager_response = client.get("/en/manager")
+    owner_response = client.get("/en/owner")
 
     assert manager_response.status_code == 303
-    assert manager_response.headers["location"] == "/login"
+    assert manager_response.headers["location"] == "/en/login"
     assert owner_response.status_code == 303
-    assert owner_response.headers["location"] == "/login"
+    assert owner_response.headers["location"] == "/en/login"
 
 
 def test_customer_and_owner_cannot_access_manager_panel(access_context):
     client, users, _ = access_context
 
     authenticate(users["customer"])
-    assert client.get("/manager").status_code == 403
-    assert client.get("/owner").status_code == 403
+    assert client.get("/en/manager").status_code == 403
+    assert client.get("/en/owner").status_code == 403
 
     authenticate(users["owner"])
-    assert client.get("/manager").status_code == 403
-    assert client.get("/owner").status_code == 200
+    assert client.get("/en/manager").status_code == 403
+    assert client.get("/en/owner").status_code == 200
 
 
 def test_manager_panel_uses_only_assigned_branches(access_context):
@@ -211,13 +211,13 @@ def test_manager_panel_uses_only_assigned_branches(access_context):
     authenticate(users["manager"])
     client.cookies.set("selected_branch", "OTHER")
 
-    default_response = client.get("/manager")
+    default_response = client.get("/en/manager")
     selected_response = client.get(
-        "/manager",
+        "/en/manager",
         params={"branch_id": branch_ids["SOUTH"]},
     )
     unassigned_response = client.get(
-        "/manager",
+        "/en/manager",
         params={"branch_id": branch_ids["OTHER"]},
     )
 
@@ -229,11 +229,28 @@ def test_manager_panel_uses_only_assigned_branches(access_context):
     assert unassigned_response.status_code == 403
 
 
+def test_legacy_manager_redirect_preserves_query_and_selected_branch(access_context):
+    client, users, branch_ids = access_context
+    authenticate(users["manager"])
+    query = (
+        f"branch_id={branch_ids['SOUTH']}&notice=order-status"
+        "&tag=one&tag=two"
+    )
+
+    redirect = client.get(f"/manager?{query}")
+
+    assert redirect.status_code == 307
+    assert redirect.headers["location"] == f"/en/manager?{query}"
+    page = client.get(redirect.headers["location"])
+    assert page.status_code == 200
+    assert "You are managing South Branch." in page.text
+
+
 def test_single_branch_manager_is_assigned_automatically(access_context):
     client, users, _ = access_context
     authenticate(users["single_branch_manager"])
 
-    response = client.get("/manager")
+    response = client.get("/en/manager")
 
     assert response.status_code == 200
     assert "You are managing South Branch." in response.text
@@ -243,4 +260,4 @@ def test_manager_without_assigned_branches_is_denied(access_context):
     client, users, _ = access_context
     authenticate(users["unassigned_manager"])
 
-    assert client.get("/manager").status_code == 403
+    assert client.get("/en/manager").status_code == 403

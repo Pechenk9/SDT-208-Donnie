@@ -143,7 +143,7 @@ def test_gift_box_candles_and_postcard_are_priced_on_the_server(client, database
 
     assert response.status_code == 303
     order = saved_order(database)
-    # 6 × $3.00 donuts + $2.00 box + 5 × $0.20 candles
+    # 6 × ₴3.00 donuts + ₴2.00 box + 5 × ₴0.20 candles
     assert order.extras_amount == Decimal("3.00")
     assert order.total_price == Decimal("21.00")
     assert order.donuts_amount == Decimal("18.00")
@@ -191,7 +191,7 @@ def test_receipt_shows_extras_and_schedule(client, database):
         time_slot="12:00-15:00",
     )
     order = saved_order(database)
-    page = client.get(f"/orders/{order.id}/receipt")
+    page = client.get(f"/en/orders/{order.id}/receipt")
     assert page.status_code == 200
     assert "Extras: gift box, postcard" in page.text
     assert "12:00 – 15:00" in page.text
@@ -280,7 +280,7 @@ def test_allergens_follow_ingredient_names():
 
 def test_product_page_lists_allergens_of_the_default_recipe(client, database):
     _, ids = database
-    page = client.get(f"/product/{ids['products'][0]}")
+    page = client.get(f"/en/product/{ids['products'][0]}")
     assert page.status_code == 200
     # Pistachios are not in the default recipe (0 g), so no tree nuts.
     assert "<li>Gluten</li>" in page.text
@@ -346,7 +346,7 @@ def test_store_marks_bestsellers(client, database):
         )
         session.commit()
 
-    page = client.get("/store")
+    page = client.get("/en/store")
     data = json.loads(
         page.text.split('<script id="store-data" type="application/json">')[1].split("</script>")[0]
     )
@@ -392,7 +392,7 @@ def test_cancelled_order_has_no_tracker(client, database):
         session.commit()
         order_id = order.id
 
-    page = client.get(f"/orders/{order_id}/receipt")
+    page = client.get(f"/en/orders/{order_id}/receipt")
     assert 'id="order-track"' not in page.text
     assert "This order was cancelled." in page.text
 
@@ -401,7 +401,7 @@ def test_receipt_shows_tracker_for_new_order(client, database):
     _, ids = database
     submit(client, ids)
     order = saved_order(database)
-    page = client.get(f"/orders/{order.id}/receipt")
+    page = client.get(f"/en/orders/{order.id}/receipt")
     assert 'id="order-track"' in page.text
     assert 'data-current="0"' in page.text
     assert "Placed: in progress" in page.text

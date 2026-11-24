@@ -1,0 +1,71 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Ваш профіль — Donnie{% endblock %}
+
+{% block description %}Профіль вашого облікового запису Donnie.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+    <div class="profile-dashboard">
+        <header class="profile-header">
+            <div>
+                <p class="profile-eyebrow">ОБЛІКОВИЙ ЗАПИС DONNIE</p>
+                <h1>Вітаємо, {{ user.first_name }}!</h1>
+                <p class="profile-header-copy">Усе про ваш обліковий запис — в одному місці.</p>
+            </div>
+            <div class="profile-avatar" aria-hidden="true">
+                {{ user.first_name[0]|upper }}
+            </div>
+        </header>
+
+        <div class="profile-content">
+            <section class="profile-summary" aria-label="Загальна інформація облікового запису">
+                <h2>Обліковий запис</h2>
+                <p class="profile-summary-name">
+                    {{ user.first_name }} {{ user.last_name }}
+                </p>
+                <span class="profile-role">{{ user.role.value|title }}</span>
+            </section>
+
+            <section class="profile-information" aria-labelledby="profile-information-title">
+                <h2 id="profile-information-title">Особиста інформація</h2>
+                <dl class="profile-details">
+                    <div class="profile-detail">
+                        <dt>Електронна пошта</dt>
+                        <dd>{{ user.email }}</dd>
+                    </div>
+                    <div class="profile-detail">
+                        <dt>Роль облікового запису</dt>
+                        <dd>{{ user.role.value|title }}</dd>
+                    </div>
+                </dl>
+            </section>
+        </div>
+
+        <footer class="profile-actions">
+            <a class="profile-store-link" href="/ua/store">Продовжити покупки</a>
+            {% if can_access_manager_panel %}
+            <a class="profile-management-link" href="/ua/manager">Панель керування</a>
+            {% elif can_access_owner_panel %}
+            <a class="profile-management-link" href="/ua/owner">Панель власника</a>
+            {% endif %}
+            <form
+                class="profile-logout-form"
+                method="post"
+                action="/ua/logout"
+                onsubmit="return confirm('Ви впевнені, що хочете вийти?');"
+            >
+                <button class="profile-logout-button" type="submit">Вийти</button>
+            </form>
+        </footer>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/auth.js') }}" defer></script>
+{% endblock %}

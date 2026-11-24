@@ -22,24 +22,24 @@
 </head>
 
 {% set current_user = request.state.current_user %}
-{% set path = request.url.path %}
+{% set path = request.state.original_path %}
 
 <body {% block body_attrs %}{% endblock %}>
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="header">
-        <a class="donnie-logo" href="/" aria-label="Donnie home"></a>
+        <a class="donnie-logo" href="/en/" aria-label="Donnie home"></a>
 
         <nav class="navigation-container" aria-label="Main">
-            <a class="nav-item-container" href="/" {% if path == '/' %}aria-current="page"{% endif %}>
+            <a class="nav-item-container" href="/en/" {% if path == '/en/' %}aria-current="page"{% endif %}>
                 <span class="nav-item-text">Home</span>
             </a>
 
-            <a class="nav-item-container" href="/store" {% if path.startswith('/store') or path.startswith('/product') %}aria-current="page"{% endif %}>
+            <a class="nav-item-container" href="/en/store" {% if path.startswith('/en/store') or path.startswith('/en/product') %}aria-current="page"{% endif %}>
                 <span class="nav-item-text">Donuts</span>
             </a>
 
-            <a class="nav-item-container" href="/contacts" {% if path == '/contacts' %}aria-current="page"{% endif %}>
+            <a class="nav-item-container" href="/en/contacts" {% if path == '/en/contacts' %}aria-current="page"{% endif %}>
                 <span class="nav-item-text">About</span>
             </a>
         </nav>
@@ -52,22 +52,24 @@
                 <span class="branch-chip__label" data-branch-label>Branch</span>
             </button>
 
+            {% include "language_switcher.html" %}
+
             <div class="account-nav">
                 {% if current_user %}
-                <a class="account-link" href="/profile" {% if path == '/profile' %}aria-current="page"{% endif %}>
+                <a class="account-link" href="/en/profile" {% if path == '/en/profile' %}aria-current="page"{% endif %}>
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                     <span class="account-link__name">{{ current_user.first_name }}</span>
                 </a>
-                <form method="post" action="/logout" class="logout-form">
+                <form method="post" action="/en/logout" class="logout-form">
                     <button type="submit" class="header-text-btn">Log out</button>
                 </form>
                 {% else %}
-                <a class="header-text-btn" href="/login" {% if path == '/login' %}aria-current="page"{% endif %}>Log in</a>
-                <a class="header-text-btn header-text-btn--outline" href="/register" {% if path == '/register' %}aria-current="page"{% endif %}>Sign up</a>
+                <a class="header-text-btn" href="/en/login" {% if path == '/en/login' %}aria-current="page"{% endif %}>Log in</a>
+                <a class="header-text-btn header-text-btn--outline" href="/en/register" {% if path == '/en/register' %}aria-current="page"{% endif %}>Sign up</a>
                 {% endif %}
             </div>
 
-            <a class="cart-link" href="/order" data-cart-link {% if path == '/order' %}aria-current="page"{% endif %}>
+            <a class="cart-link" href="/en/order" data-cart-link {% if path == '/en/order' %}aria-current="page"{% endif %}>
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.2 11.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>
                 <span class="cart-link__text">Cart</span>
                 <span class="cart-link__count" data-cart-count hidden>0</span>
@@ -84,9 +86,9 @@
         <div class="site-footer__inner">
             <p>&copy; Donnie donuts. Fresh every day in Ukraine.</p>
             <ul class="site-footer__links">
-                <li><a href="/store">Donuts</a></li>
-                <li><a href="/contacts">About &amp; contacts</a></li>
-                <li><a href="/order">Cart</a></li>
+                <li><a href="/en/store">Donuts</a></li>
+                <li><a href="/en/contacts">About &amp; contacts</a></li>
+                <li><a href="/en/order">Cart</a></li>
             </ul>
         </div>
     </footer>
@@ -94,22 +96,22 @@
 
     <nav class="footer" aria-label="Mobile">
         <span class="tabbar-pill" aria-hidden="true"></span>
-        <a class="nav-item-container" href="/" {% if path == '/' %}aria-current="page"{% endif %}>
+        <a class="nav-item-container" href="/en/" {% if path == '/en/' %}aria-current="page"{% endif %}>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>
             <span class="nav-item-text">Home</span>
         </a>
 
-        <a class="nav-item-container" href="/store" {% if path.startswith('/store') or path.startswith('/product') %}aria-current="page"{% endif %}>
+        <a class="nav-item-container" href="/en/store" {% if path.startswith('/en/store') or path.startswith('/en/product') %}aria-current="page"{% endif %}>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
             <span class="nav-item-text">Donuts</span>
         </a>
 
-        <a class="nav-item-container" href="/contacts" {% if path == '/contacts' %}aria-current="page"{% endif %}>
+        <a class="nav-item-container" href="/en/contacts" {% if path == '/en/contacts' %}aria-current="page"{% endif %}>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-7 12-7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
             <span class="nav-item-text">About</span>
         </a>
 
-        <a class="nav-item-container" href="{{ '/profile' if current_user else '/login' }}" {% if path in ['/profile', '/login', '/register'] %}aria-current="page"{% endif %}>
+        <a class="nav-item-container" href="{{ '/en/profile' if current_user else '/en/login' }}" {% if path in ['/en/profile', '/en/login', '/en/register'] %}aria-current="page"{% endif %}>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             <span class="nav-item-text">{{ 'Account' if current_user else 'Log in' }}</span>
         </a>
