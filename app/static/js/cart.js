@@ -2,7 +2,7 @@
  * Donnie shared cart.
  *
  * The cart lives in localStorage under CART_STORAGE_KEY and has the shape
- *   { branch_id: number | null, items: [{ line_id, product_id, quantity, ingredients: [{ ingredient_id, quantity }] }] }
+ *   { branch_id: number | null, items: [{ line_id, product_id? | custom_donut?, quantity, ingredients: [{ ingredient_id, quantity }] }] }
  * Ingredient quantities are stored per donut. Prices are never stored here:
  * every price shown in the UI is an estimate, the backend calculates the real one.
  */
@@ -45,11 +45,21 @@
         return {
             branch_id: isPositiveInt(branchId) ? branchId : null,
             items: items
-                .filter(item => item && isPositiveInt(Number(item.product_id)) && isPositiveInt(Number(item.quantity)))
+                .filter(item => item
+                    && (item.custom_donut === true || isPositiveInt(Number(item.product_id)))
+                    && isPositiveInt(Number(item.quantity)))
                 .map(item => {
                     let lineId = typeof item.line_id === 'string' && item.line_id ? item.line_id : newLineId();
                     if (seenLineIds.has(lineId)) lineId = newLineId();
                     seenLineIds.add(lineId);
+                    if (item.custom_donut === true) {
+                        return {
+                            line_id: lineId,
+                            custom_donut: true,
+                            quantity: Math.min(Number(item.quantity), MAX_LINE_QUANTITY),
+                            ingredients: sanitizeIngredients(item.ingredients),
+                        };
+                    }
                     return {
                         line_id: lineId,
                         product_id: Number(item.product_id),
@@ -121,13 +131,15 @@
      * Adds donuts to the cart. A line with exactly the same product and ingredient
      * configuration is reused; any different configuration becomes its own line.
      */
-    function addLine({ productId, quantity, ingredients }) {
+    function addConfiguredLine({ productId, quantity, ingredients, customDonut = false }) {
         const cart = read();
         const cleanIngredients = sanitizeIngredients(ingredients);
         const amount = Math.max(1, Math.floor(Number(quantity) || 1));
 
         const existing = cart.items.find(item =>
-            item.product_id === Number(productId) && sameConfiguration(item.ingredients, cleanIngredients)
+            Boolean(item.custom_donut) === customDonut
+            && (customDonut || item.product_id === Number(productId))
+            && sameConfiguration(item.ingredients, cleanIngredients)
         );
 
         let lineId;
@@ -140,16 +152,26 @@
         } else {
             lineId = newLineId();
             capped = amount > MAX_LINE_QUANTITY;
-            cart.items.push({
+            const line = {
                 line_id: lineId,
-                product_id: Number(productId),
                 quantity: Math.min(amount, MAX_LINE_QUANTITY),
                 ingredients: cleanIngredients,
-            });
+            };
+            if (customDonut) line.custom_donut = true;
+            else line.product_id = Number(productId);
+            cart.items.push(line);
         }
 
         write(cart);
         return { lineId, merged: Boolean(existing), capped };
+    }
+
+    function addLine(options) {
+        return addConfiguredLine(options);
+    }
+
+    function addCustomDonut(options) {
+        return addConfiguredLine({ ...options, customDonut: true });
     }
 
     function setLineQuantity(lineId, quantity) {
@@ -266,6 +288,28 @@
         return productCache.get(id);
     }
 
+    let customDonutCache = null;
+    function loadCustomDonut() {
+        if (!customDonutCache) {
+            const languagePrefix = document.documentElement.lang.toLowerCase().startsWith('uk')
+                ? '/ua'
+                : '/en';
+            customDonutCache = fetch(`${languagePrefix}/api/custom-donut/ingredients`, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Custom donut details could not be loaded (${response.status}).`);
+                    return response.json();
+                })
+                .catch(error => {
+                    customDonutCache = null;
+                    throw error;
+                });
+        }
+        return customDonutCache;
+    }
+
     /**
      * Starting amounts for a new line. A changeable ingredient that the branch
      * does not have starts at 0, because the backend rejects any amount of an
@@ -365,6 +409,7 @@
         write,
         subscribe,
         addLine,
+        addCustomDonut,
         setLineQuantity,
         removeLine,
         clearItems,
@@ -374,6 +419,7 @@
         ingredientSurcharge,
         missingRequiredIngredients,
         loadProduct,
+        loadCustomDonut,
         defaultIngredients,
         formatPrice,
         formatQuantity,

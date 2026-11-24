@@ -275,6 +275,13 @@ class IngredientGroup(Base):
 
     max_selections: Mapped[int] = mapped_column(Integer)
 
+    is_mandatory: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+
     __table_args__ = (
         CheckConstraint(
             "max_selections > 0",

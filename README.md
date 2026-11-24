@@ -127,6 +127,7 @@ Configure cookie behavior with `SESSION_LIFETIME_SECONDS` and `SESSION_COOKIE_SE
 
 - Browse the donut catalogue with selected-branch prices and availability when a valid `selected_branch` cookie is present. Without a selected branch, show base prices and mark availability as unknown.
 - View product recipes and branch-specific prices and availability when a valid `selected_branch` cookie is present.
+- Build a custom donut from the selected branch's available ingredients; the server enforces mandatory ingredient groups and selection limits and fixes its price at ₴150.
 - Add products to the shopping cart and manage quantities.
 - Select a branch for an order.
 - Choose between pickup and delivery.
@@ -140,7 +141,7 @@ Configure cookie behavior with `SESSION_LIFETIME_SECONDS` and `SESSION_COOKIE_SE
 
 ## Project Goal
 
-Donnie aims to provide a convenient online ordering experience for a donut shop network operating across multiple cities. The project is being developed as a team prototype, with plans to expand its functionality with custom donut creation, customer accounts, and branch management.
+Donnie aims to provide a convenient online ordering experience for a donut shop network operating across multiple cities. The project is being developed as a team prototype, with customer accounts, custom donut creation, and branch management.
 
 ## Online payment (LiqPay)
 

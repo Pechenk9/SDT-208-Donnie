@@ -58,6 +58,11 @@ from app.permissions import (
 )
 from app.config import get_session
 from app import liqpay, mailer
+from app.custom_donut import (
+    CUSTOM_DONUT_PRICE,
+    custom_donut_catalog,
+    validate_custom_donut,
+)
 from app.product_info import (
     KITCHEN_NOTE,
     STORAGE_NOTE,
@@ -276,6 +281,7 @@ def _template_for_path(suffix: str) -> str:
         "/contacts": "contacts.html",
         "/store": "store.html",
         "/order": "order.html",
+        "/custom-donut": "custom_donut.html",
         "/table": "table.html",
     }
     return template_names.get(suffix, "")
@@ -409,6 +415,11 @@ def old_product_redirect(request: Request, product_id: int):
 @app.get("/order")
 def old_order_redirect(request: Request):
     return _legacy_page_redirect(request, "/en/order")
+
+
+@app.get("/custom-donut")
+def old_custom_donut_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/custom-donut")
 
 
 @app.get("/table")
@@ -1858,6 +1869,25 @@ def product_detail(
         },
     )
 
+@app.get("/en/custom-donut")
+def custom_donut_page(
+    request: Request,
+    branch: Branch | None = Depends(get_current_branch),
+    user: User | None = Depends(get_current_user),
+):
+    return _render_template(
+        request,
+        "en/custom_donut.html",
+        {
+            "branch": branch,
+            "branch_name": (
+                localized(branch, "name", request.state.language)
+                if branch is not None
+                else ""
+            ),
+        },
+    )
+
 @app.get("/en/order")
 def order_page(
     request: Request,
@@ -1931,6 +1961,52 @@ def list_branches(
     ]
 
 
+@app.get("/api/custom-donut/ingredients")
+def custom_donut_ingredients(
+    request: Request,
+    branch: Branch | None = Depends(get_current_branch),
+    session: Session = Depends(get_session),
+):
+    if branch is None:
+        raise HTTPException(409, "Choose a branch first")
+    return {
+        "price": str(CUSTOM_DONUT_PRICE),
+        "groups": custom_donut_catalog(session, branch, request.state.language),
+    }
+
+
+@app.post("/api/custom-donut/validate")
+async def validate_custom_donut_api(
+    request: Request,
+    branch: Branch | None = Depends(get_current_branch),
+    session: Session = Depends(get_session),
+):
+    if branch is None:
+        raise HTTPException(409, "Choose a branch first")
+    try:
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(400, "Invalid custom donut selections")
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Invalid custom donut selections")
+    try:
+        ingredients = validate_custom_donut(
+            session,
+            branch,
+            payload.get("ingredient_ids"),
+            request.state.language,
+        )
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    return {
+        "price": str(CUSTOM_DONUT_PRICE),
+        "ingredients": [
+            {"ingredient_id": ingredient.id, "quantity": 1}
+            for ingredient in ingredients
+        ],
+    }
+
+
 @app.get("/en/orders/{order_id}/receipt")
 def order_receipt(
     request: Request,
@@ -1996,6 +2072,7 @@ def order_receipt(
 
 @app.post("/orders")
 async def create_order(
+    request: Request,
     customer_name: Annotated[str, Form(min_length=1)],
     customer_phone: Annotated[str, Form(min_length=1)],
     branch_id: Annotated[int, Form(gt=0)],
@@ -2083,15 +2160,24 @@ async def create_order(
         if not isinstance(item, dict):
             raise HTTPException(400, "Invalid order item")
 
+        is_custom_donut = item.get("custom_donut", False)
+        if not isinstance(is_custom_donut, bool):
+            raise HTTPException(400, "Invalid order item")
+
         product_id = item.get("product_id")
         quantity = item.get("quantity")
         ingredients = item.get("ingredients")
-        if (
-            isinstance(product_id, bool)
-            or not isinstance(product_id, int)
-            or product_id <= 0
-        ):
-            raise HTTPException(400, "Invalid product ID")
+        if is_custom_donut:
+            if "product_id" in item:
+                raise HTTPException(400, "Invalid order item")
+        else:
+            if (
+                isinstance(product_id, bool)
+                or not isinstance(product_id, int)
+                or product_id <= 0
+            ):
+                raise HTTPException(400, "Invalid product ID")
+            item["product_id"] = product_id
         if (
             isinstance(quantity, bool)
             or not isinstance(quantity, int)
@@ -2101,9 +2187,10 @@ async def create_order(
         if not isinstance(ingredients, list):
             raise HTTPException(400, "Invalid ingredient selections")
 
-        item["product_id"] = product_id
         item["quantity"] = quantity
-        product_ids.add(product_id)
+        item["custom_donut"] = is_custom_donut
+        if not is_custom_donut:
+            product_ids.add(product_id)
         total_quantity += quantity
 
     if total_quantity < 6:
@@ -2207,6 +2294,47 @@ async def create_order(
         order_items = []
         total_price = Decimal("0.00")
         for item in items:
+            if item["custom_donut"]:
+                ingredient_ids = []
+                for selection in item["ingredients"]:
+                    if selection["quantity"] != Decimal("1"):
+                        raise HTTPException(
+                            400,
+                            "Custom donut ingredients must have quantity one",
+                        )
+                    ingredient_ids.append(selection["ingredient_id"])
+                try:
+                    custom_ingredients = validate_custom_donut(
+                        session,
+                        branch,
+                        ingredient_ids,
+                        request.state.language,
+                    )
+                except ValueError as error:
+                    raise HTTPException(400, str(error)) from error
+
+                order_item = OrderItem(
+                    product_id=None,
+                    name_snapshot=(
+                        "Власний пончик"
+                        if request.state.language == "ua"
+                        else "Custom donut"
+                    ),
+                    quantity=item["quantity"],
+                    unit_price=CUSTOM_DONUT_PRICE,
+                    ingredients=[
+                        OrderItemIngredient(
+                            ingredient_id=ingredient.id,
+                            quantity=Decimal("1"),
+                            unit="шт." if request.state.language == "ua" else "pcs",
+                        )
+                        for ingredient in custom_ingredients
+                    ],
+                )
+                order_items.append(order_item)
+                total_price += CUSTOM_DONUT_PRICE * item["quantity"]
+                continue
+
             product = products_by_id[item["product_id"]]
             branch_product = branch_products_by_id.get(product.id)
             if branch_product is None or not branch_product.is_available:

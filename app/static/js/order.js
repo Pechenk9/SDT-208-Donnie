@@ -20,6 +20,7 @@
         changedRecipe: 'Рецепт цього пончика змінився після додавання до кошика. Видаліть його й додайте знову.',
         missingIngredient: name => `${name} зараз немає в цій філії. Видаліть цей пончик і додайте його ще раз без цього інгредієнта.`,
         customizationUnavailable: 'Не вдалося завантажити дані про налаштування',
+        customDonutName: 'Власний пончик',
         noIngredient: name => `без ${name.toLowerCase()}`,
         originalRecipe: 'Оригінальний рецепт',
         ingredientTable: 'Інгредієнти на один пончик',
@@ -70,6 +71,7 @@
         changedRecipe: 'The recipe of this donut changed since you added it. Remove it and add it again.',
         missingIngredient: name => `${name} is not available at this branch right now. Remove this donut and add it again without it.`,
         customizationUnavailable: 'Customization details unavailable',
+        customDonutName: 'Custom donut',
         noIngredient: name => `no ${name.toLowerCase()}`,
         originalRecipe: 'Original recipe',
         ingredientTable: 'Ingredients per donut',
@@ -138,6 +140,8 @@
 
     const details = new Map(); // product id -> prepared product data from /product/{id}
     const failed = new Set();  // product ids whose details could not be loaded
+    let customDonutDetails = null;
+    let customDonutFailed = false;
     let branch = null;
     let submitting = false;
     let completed = false;
@@ -145,17 +149,54 @@
     /* ---------- product details ---------- */
 
     async function loadDetails(cart) {
-        const ids = [...new Set(cart.items.map(item => item.product_id))].filter(id => !details.has(id));
-        await Promise.all(ids.map(id =>
+        const ids = [...new Set(cart.items
+            .filter(item => !item.custom_donut)
+            .map(item => item.product_id))].filter(id => !details.has(id));
+        const requests = ids.map(id =>
             Cart.loadProduct(id)
                 .then(product => { details.set(id, product); failed.delete(id); })
                 .catch(() => { failed.add(id); })
-        ));
+        );
+        if (cart.items.some(item => item.custom_donut) && !customDonutDetails && !customDonutFailed) {
+            requests.push(
+                Cart.loadCustomDonut()
+                    .then(data => { customDonutDetails = data; customDonutFailed = false; })
+                    .catch(() => { customDonutFailed = true; })
+            );
+        }
+        await Promise.all(requests);
     }
 
     /* ---------- line validation ---------- */
 
     function lineProblem(item) {
+        if (item.custom_donut) {
+            if (!customDonutDetails) {
+                return customDonutFailed ? text.customizationUnavailable : null;
+            }
+            const groups = customDonutDetails.groups || [];
+            const chosen = new Map(item.ingredients.map(entry => [entry.ingredient_id, entry.quantity]));
+            if (!chosen.size || chosen.size !== item.ingredients.length) return text.changedRecipe;
+            const ingredientGroups = new Map();
+            groups.forEach(group => {
+                group.ingredients.forEach(ingredient => {
+                    ingredientGroups.set(ingredient.id, { group, ingredient });
+                });
+            });
+            for (const [ingredientId, amount] of chosen) {
+                const match = ingredientGroups.get(ingredientId);
+                if (!match || amount !== 1) return text.changedRecipe;
+                if (!match.ingredient.is_available) return text.missingIngredient(match.ingredient.name);
+            }
+            for (const group of groups) {
+                const count = group.ingredients.filter(ingredient => chosen.has(ingredient.id)).length;
+                if ((group.is_mandatory && count === 0) || count > group.max_selections) {
+                    return text.changedRecipe;
+                }
+            }
+            return null;
+        }
+
         const product = details.get(item.product_id);
         if (!product) {
             return failed.has(item.product_id)
@@ -187,6 +228,15 @@
     /* ---------- rendering ---------- */
 
     function customizationSummary(item, product) {
+        if (item.custom_donut) {
+            if (!customDonutDetails) return text.customizationUnavailable;
+            const names = new Map((customDonutDetails.groups || [])
+                .flatMap(group => group.ingredients)
+                .map(ingredient => [ingredient.id, ingredient.name]));
+            return item.ingredients
+                .map(entry => names.get(entry.ingredient_id) || text.ingredientFallback(entry.ingredient_id))
+                .join(' · ');
+        }
         if (!product) return text.customizationUnavailable;
         const byId = new Map((product.ingredients || []).map(ingredient => [ingredient.id, ingredient]));
         const changes = [];
@@ -208,7 +258,10 @@
         wrapper.appendChild(summary);
 
         const list = document.createElement('ul');
-        const byId = new Map(((product && product.ingredients) || []).map(ingredient => [ingredient.id, ingredient]));
+        const ingredients = item.custom_donut
+            ? (customDonutDetails && customDonutDetails.groups || []).flatMap(group => group.ingredients)
+            : ((product && product.ingredients) || []);
+        const byId = new Map(ingredients.map(ingredient => [ingredient.id, ingredient]));
         item.ingredients.forEach(entry => {
             const ingredient = byId.get(entry.ingredient_id);
             const li = document.createElement('li');
@@ -216,7 +269,7 @@
             name.textContent = ingredient ? ingredient.name : text.ingredientFallback(entry.ingredient_id);
             const amount = document.createElement('span');
             amount.className = 'line-ingredients__amount';
-            const unit = ingredient ? ` ${ingredient.unit}` : '';
+            const unit = ingredient ? ` ${ingredient.unit || (ukrainian ? 'шт.' : 'pcs')}` : '';
             amount.textContent = entry.quantity === 0 ? text.removed : `${Cart.formatQuantity(entry.quantity)}${unit}`;
             if (ingredient && entry.quantity !== Number(ingredient.default_quantity)) li.classList.add('is-changed');
             li.append(name, amount);
@@ -227,9 +280,11 @@
     }
 
     function renderLine(item) {
-        const product = details.get(item.product_id);
-        const fallback = fallbackProducts.get(item.product_id);
-        const name = (product && product.name) || (fallback && fallback.name) || text.donutFallback(item.product_id);
+        const product = item.custom_donut ? null : details.get(item.product_id);
+        const fallback = item.custom_donut ? null : fallbackProducts.get(item.product_id);
+        const name = item.custom_donut
+            ? text.customDonutName
+            : (product && product.name) || (fallback && fallback.name) || text.donutFallback(item.product_id);
         const image = (product && product.image_url) || (fallback && fallback.image_url) || '/static/assets/icons/donnie-donut-icon.png';
         const problem = lineProblem(item);
 
@@ -250,7 +305,9 @@
         const title = document.createElement('h3');
         title.className = 'cart-line__name';
         const link = document.createElement('a');
-        link.href = `/${ukrainian ? 'ua' : 'en'}/product/${item.product_id}`;
+        link.href = item.custom_donut
+            ? `/${ukrainian ? 'ua' : 'en'}/custom-donut`
+            : `/${ukrainian ? 'ua' : 'en'}/product/${item.product_id}`;
         link.textContent = name;
         title.appendChild(link);
 
@@ -283,7 +340,10 @@
 
         const price = document.createElement('p');
         price.className = 'cart-line__price';
-        if (product) {
+        if (item.custom_donut && customDonutDetails) {
+            const unit = Number(customDonutDetails.price);
+            price.innerHTML = `<strong>${Cart.formatPrice(unit * item.quantity)}</strong><span>${Cart.formatPrice(unit)} ${text.each}</span>`;
+        } else if (product) {
             const unit = Cart.estimateUnitPrice(product, item.ingredients);
             price.innerHTML = `<strong>${Cart.formatPrice(unit * item.quantity)}</strong><span>${Cart.formatPrice(unit)} ${text.each}</span>`;
         } else {
@@ -306,6 +366,11 @@
         let total = 0;
         let complete = true;
         cart.items.forEach(item => {
+            if (item.custom_donut) {
+                if (!customDonutDetails) { complete = false; return; }
+                total += Number(customDonutDetails.price) * item.quantity;
+                return;
+            }
             const product = details.get(item.product_id);
             if (!product) { complete = false; return; }
             total += Cart.estimateUnitPrice(product, item.ingredients) * item.quantity;
@@ -612,6 +677,10 @@
                     'Duplicate ingredient in order item': 'Інгредієнт указано в замовленні кілька разів.',
                     'Invalid ingredient quantity': 'Некоректна кількість інгредієнта.',
                     'Ingredient does not belong to this product': 'Цей інгредієнт не належить до обраного пончика.',
+                    'Invalid custom donut selections': 'Некоректний вибір інгредієнтів.',
+                    'Invalid custom donut ingredient': 'Некоректний інгредієнт.',
+                    'Select ingredients for your custom donut': 'Оберіть інгредієнти для власного пончика.',
+                    'Custom donut ingredients must have quantity one': 'Кількість кожного інгредієнта власного пончика має дорівнювати одиниці.',
                     'Could not create order': text.serverError,
                 };
                 if (translations[detail]) return translations[detail];
@@ -622,6 +691,10 @@
                 if (match) return `Кількість інгредієнта «${match[1]}» перевищує дозволений максимум.`;
                 match = detail.match(/^(.+) cannot be customised$/);
                 if (match) return `Інгредієнт «${match[1]}» не можна змінювати.`;
+                match = detail.match(/^(.+) requires a selection$/);
+                if (match) return `Оберіть варіант у групі «${match[1]}».`;
+                match = detail.match(/^(.+) allows at most (\d+) selections$/);
+                if (match) return `У групі «${match[1]}» можна обрати не більше ${match[2]} варіантів.`;
             }
             if (detail === 'Order must contain at least six donuts') return `Add at least ${Cart.MIN_ORDER_DONUTS} donuts in total to place an order.`;
             if (detail === 'Invalid Ukrainian phone number') return 'Please check your phone number — it must be a Ukrainian number.';
@@ -714,9 +787,9 @@
             body.set('scheduled_date', dateSelect.value);
             body.set('time_slot', slotSelect.value);
         }
-        // Per-donut ingredient quantities for every recipe ingredient (0 = removed). No prices are sent.
+        // Prices are never sent; the server validates ingredients and recalculates every line.
         body.set('items_json', JSON.stringify(cart.items.map(item => ({
-            product_id: item.product_id,
+            ...(item.custom_donut ? { custom_donut: true } : { product_id: item.product_id }),
             quantity: item.quantity,
             ingredients: item.ingredients.map(entry => ({
                 ingredient_id: entry.ingredient_id,
