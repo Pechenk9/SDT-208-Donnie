@@ -182,7 +182,8 @@
                                     {{ 'Mark unavailable' if item.association.is_available else 'Make available' }}
                                 </button>
                             </form>
-                            <form method="post" action="/en/manager/products/{{ item.product.id }}/remove">
+                            <form method="post" action="/en/manager/products/{{ item.product.id }}/remove"
+                                  onsubmit='return confirm({{ ("Remove " ~ localized(item.product, "name", language) ~ " from this branch?")|tojson }})'>
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button class="btn btn--danger btn--small" type="submit">Remove</button>
                             </form>
@@ -248,7 +249,8 @@
                                     {{ 'Mark unavailable' if item.association.is_available else 'Make available' }}
                                 </button>
                             </form>
-                            <form method="post" action="/en/manager/ingredients/{{ item.ingredient.id }}/remove">
+                            <form method="post" action="/en/manager/ingredients/{{ item.ingredient.id }}/remove"
+                                  onsubmit='return confirm({{ ("Remove " ~ localized(item.ingredient, "name", language) ~ " from this branch?")|tojson }})'>
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button class="btn btn--danger btn--small" type="submit">Remove</button>
                             </form>

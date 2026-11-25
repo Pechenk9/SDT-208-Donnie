@@ -9,9 +9,15 @@ from typing import Annotated
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from fastapi import BackgroundTasks, FastAPI, Depends, Form, HTTPException, Request
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -348,6 +354,59 @@ def _render_template(
         {**(context or {}), "language": language},
         **response_options,
     )
+
+
+_ERROR_TEXT = {
+    "en": {
+        401: ("Please log in", "Log in to open this page."),
+        403: ("No access", "Your account doesn't have access to this page."),
+        404: ("Page not found", "We couldn't find this page. The link may be old or mistyped."),
+        "default": ("Something went wrong", "We couldn't complete this request. Please try again."),
+    },
+    "ua": {
+        401: ("Потрібно увійти", "Увійдіть, щоб відкрити цю сторінку."),
+        403: ("Немає доступу", "Ваш обліковий запис не має доступу до цієї сторінки."),
+        404: ("Сторінку не знайдено", "Такої сторінки немає. Можливо, посилання застаріло або містить помилку."),
+        "default": ("Щось пішло не так", "Не вдалося виконати запит. Спробуйте ще раз."),
+    },
+}
+
+
+def _wants_html(request: Request) -> bool:
+    """A browser opening a page asks for text/html; fetch() calls, the JSON API
+    and the tests don't, so they keep getting FastAPI's JSON errors."""
+    return (
+        "text/html" in request.headers.get("accept", "")
+        and not request.url.path.startswith("/api/")
+    )
+
+
+def _error_page(request: Request, status_code: int, headers: dict | None = None):
+    language = getattr(request.state, "language", "en")
+    texts = _ERROR_TEXT.get(language, _ERROR_TEXT["en"])
+    heading, message = texts.get(status_code, texts["default"])
+    return _render_template(
+        request,
+        "error.html",
+        {"status_code": status_code, "heading": heading, "message": message},
+        status_code=status_code,
+        headers=headers,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def html_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code < 400 or not _wants_html(request):
+        return await http_exception_handler(request, exc)
+    return _error_page(request, exc.status_code, exc.headers)
+
+
+@app.exception_handler(RequestValidationError)
+async def html_validation_exception_handler(request: Request, exc: RequestValidationError):
+    if not _wants_html(request):
+        return await request_validation_exception_handler(request, exc)
+    # A malformed address such as /en/product/abc is just a missing page.
+    return _error_page(request, 404 if request.method == "GET" else 422)
 
 
 def _legacy_page_redirect(request: Request, destination: str) -> RedirectResponse:

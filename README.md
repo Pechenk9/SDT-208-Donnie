@@ -5,7 +5,7 @@ A web-based donut shop prototype built with **Python, FastAPI, and PostgreSQL**.
 ## Project Structure
 
 ```text
-Donnie-Donut-Market/
+SDT-208-Donnie/
 │
 ├── app/
 │   ├── main.py
@@ -16,13 +16,12 @@ Donnie-Donut-Market/
 │   └── static/
 │       ├── css/
 │       ├── js/
-│       └── images/
+│       └── assets/
 │
 ├── alembic/
 ├── .env.example
 ├── .gitignore
 ├── requirements.txt
-└── README.md
 └── README.md
 ```
 
@@ -44,7 +43,7 @@ Follow these steps to run the project locally.
 
 ```bash
 git clone <repository-url>
-cd Donnie-Donut-Market
+cd SDT-208-Donnie
 ```
 
 ### 2. Create and activate a virtual environment
@@ -147,7 +146,7 @@ Donnie aims to provide a convenient online ordering experience for a donut shop 
 
 Online orders are paid in Ukrainian hryvnia (UAH) through [LiqPay](https://www.liqpay.ua/en/doc). Donnie builds the checkout `data` (base64 JSON: amount in UAH, a unique `order_id` per attempt, `result_url`, `server_url`) and its `signature` (`base64(sha1(private_key + data + private_key))`), and the browser posts both to the LiqPay checkout. The result comes from the signed callback to `server_url` or from a `status` request when the guest returns. Managers refund with the `refund` action.
 
-Settings in `.env` (see `.env.exmple`):
+Settings in `.env` (see `.env.example`):
 
 - `PAYMENT_PROVIDER=demo` (default): a built-in emulator of the LiqPay checkout. No keys, no card details, no real money. The guest sees a demo checkout with LiqPay's sandbox test cards: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` is declined.
 - `PAYMENT_PROVIDER=liqpay` with `LIQPAY_PUBLIC_KEY` / `LIQPAY_PRIVATE_KEY`: the real LiqPay. Use the sandbox keys from your LiqPay account (prefix `sandbox_`); LiqPay's sandbox moves no money. Callbacks need a public address in `PUBLIC_BASE_URL`; on localhost the status is requested when the guest returns.

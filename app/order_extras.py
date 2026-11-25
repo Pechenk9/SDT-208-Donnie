@@ -197,6 +197,12 @@ _STATUS_FLOW = ("pending", "preparing", "ready", "completed")
 STATUS_ACTIONS = ("next", "back", "cancel")
 
 
+def awaiting_online_payment(order) -> bool:
+    """An online order whose payment hasn't gone through yet: the kitchen
+    must not start on it (the guest may have left the LiqPay page)."""
+    return order.payment_method == "online" and order.payment_status != "paid"
+
+
 def manager_status_view(order) -> dict:
     """What the manager panel shows for an order: its step name and which
     buttons make sense right now."""
@@ -209,7 +215,7 @@ def manager_status_view(order) -> dict:
     complete = progress["complete"]
     return {
         "label": steps[current],
-        "next": None if complete else steps[current + 1],
+        "next": None if complete or awaiting_online_payment(order) else steps[current + 1],
         "back": current > 0,
         "cancel": not complete,
     }
@@ -228,6 +234,8 @@ def new_status_after(order, action: str) -> str:
     if action == "next":
         if status == "completed":
             raise HTTPException(400, "This order is already done")
+        if awaiting_online_payment(order):
+            raise HTTPException(400, "Wait until the online payment is complete")
         return _STATUS_FLOW[index + 1]
     if action == "back":
         if index == 0:

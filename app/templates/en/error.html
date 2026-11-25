@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ heading }} - Donnie{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="state-message error-page__card">
+        <p class="error-page__code">{{ status_code }}</p>
+        <h1 class="state-message__title">{{ heading }}</h1>
+        <p>{{ message }}</p>
+        <div class="error-page__actions">
+            {% if status_code in (401, 403) and not request.state.current_user %}
+            <a class="btn btn--blue" href="/en/login">Log in</a>
+            {% endif %}
+            <a class="btn btn--ghost" href="/en/store">Back to the donuts</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

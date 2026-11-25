@@ -110,3 +110,28 @@ def test_status_endpoint_follows_manager_changes(client, database):
         app.dependency_overrides.pop(get_current_user, None)
 
     assert client.get("/orders/999999/status").status_code == 404
+
+
+def test_unpaid_online_order_cannot_go_to_the_kitchen(client, database):
+    from test_payments import pay_online
+
+    _, ids = database
+    place(client, ids, payment_method="online")
+    order = get_order(database)
+
+    _login_as(database, UserRole.MANAGER, ids["branch"])
+    try:
+        dashboard = client.get("/en/manager")
+        assert "Next: Baking" not in dashboard.text
+        assert move(client, ids, order.id, "next").status_code == 400
+        assert get_order(database).status == OrderStatus.PENDING
+
+        # Cancelling an abandoned online order is still allowed.
+        assert 'value="cancel"' in dashboard.text
+
+        pay_online(client, order.id)
+        assert "Next: Baking" in client.get("/en/manager").text
+        assert move(client, ids, order.id, "next").status_code == 303
+        assert get_order(database).status == OrderStatus.PREPARING
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

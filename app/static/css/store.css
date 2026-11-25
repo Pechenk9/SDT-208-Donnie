@@ -89,11 +89,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
   color: var(--ink);
   font-weight: 700;
 }
 
 .sort-control select {
+  /* A select is as wide as its longest option; let it shrink on phones
+     ("Ціна: від вищої до нижчої" is wider than the screen). */
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
   min-height: 50px;
   padding: 10px 42px 10px 20px;
   border: 2px solid var(--line);
@@ -433,6 +440,21 @@
 @media (max-width: 520px) {
   .tasting-box .btn {
     width: 100%;
+  }
+
+  /* Half-width cards: smaller badges so "Обмежена серія" fits the tile. */
+  .donut-img-container .badge-row {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+  }
+
+  .donut-img-container .limited-badge,
+  .donut-img-container .bestseller-badge {
+    max-width: 100%;
+    padding: 4px 8px;
+    font-size: 10px;
+    letter-spacing: 0.02em;
   }
 }
 
