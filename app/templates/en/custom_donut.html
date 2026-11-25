@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Build a Custom Donut - Donnie{% endblock %}
+
+{% block body_attrs %}data-branch-dependent{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/donut.css') }}">
+<link rel="stylesheet" href="{{ static_url('css/custom-donut.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "custom_donut_content.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/custom_donut.js') }}" defer></script>
+{% endblock %}

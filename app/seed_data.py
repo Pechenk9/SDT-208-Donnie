@@ -4,21 +4,25 @@ INGREDIENT_GROUPS = [
         "name": "Тісто",
         "name_en": "Dough",
         "max_selections": 1,
+        "is_mandatory": True,
     },
     {
         "name": "Начинка",
         "name_en": "Filling",
         "max_selections": 1,
+        "is_mandatory": False,
     },
     {
         "name": "Глазур",
         "name_en": "Glaze",
         "max_selections": 1,
+        "is_mandatory": True,
     },
     {
         "name": "Топінги",
         "name_en": "Toppings",
         "max_selections": 3,
+        "is_mandatory": False,
     },
 ]
 

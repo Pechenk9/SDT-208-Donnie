@@ -328,7 +328,9 @@
     const cartDetails = new Map();
 
     function loadCartDetails(cart) {
-        const wanted = new Set(cart.items.map(item => item.product_id));
+        const wanted = new Set(cart.items
+            .filter(item => !item.custom_donut)
+            .map(item => item.product_id));
         wanted.forEach(id => {
             if (cartDetails.has(id)) return;
             cartDetails.set(id, null);
@@ -345,6 +347,10 @@
         let total = 0;
         let known = true;
         cart.items.forEach(item => {
+            if (item.custom_donut) {
+                total += 150 * item.quantity;
+                return;
+            }
             const product = cartDetails.get(item.product_id) || productsById.get(item.product_id);
             if (!product) {
                 known = false;

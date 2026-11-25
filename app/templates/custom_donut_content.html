@@ -1,0 +1,56 @@
+<div class="custom-donut-page">
+    <nav class="breadcrumbs" aria-label="{{ 'Навігаційний ланцюжок' if language == 'ua' else 'Breadcrumb' }}">
+        <a href="/{{ 'ua' if language == 'ua' else 'en' }}/store">
+            {{ '← До пончиків' if language == 'ua' else '← Back to donuts' }}
+        </a>
+    </nav>
+
+    <header class="custom-donut-heading">
+        <span class="eyebrow">{{ 'Ваш рецепт' if language == 'ua' else 'Your recipe' }}</span>
+        <h1>{{ 'Створіть власний пончик' if language == 'ua' else 'Build your custom donut' }}</h1>
+        <p>{{ 'Оберіть інгредієнти для свого пончика. Ціна фіксована — ₴150.' if language == 'ua' else 'Choose the ingredients for your donut. The price is fixed at ₴150.' }}</p>
+    </header>
+
+    <section class="custom-donut-card" aria-labelledby="custom-donut-title">
+        <div class="custom-donut-branch">
+            <p id="custom-donut-title" data-branch-status>
+                {% if branch %}
+                {{ ('Філія: ' if language == 'ua' else 'Branch: ') ~ branch_name }}
+                {% else %}
+                {{ 'Оберіть філію, щоб переглянути доступні інгредієнти.' if language == 'ua' else 'Choose a branch to see available ingredients.' }}
+                {% endif %}
+            </p>
+            <button type="button" class="link-btn" data-open-branch>
+                {{ 'Змінити філію' if language == 'ua' else 'Choose or change branch' }}
+            </button>
+        </div>
+
+        <p id="custom-donut-message" class="custom-donut-message" role="status" aria-live="polite">
+            {{ 'Завантажуємо інгредієнти…' if language == 'ua' else 'Loading ingredients…' }}
+        </p>
+        <div id="custom-donut-groups" class="custom-donut-groups"></div>
+
+        <div class="custom-donut-purchase">
+            <div class="custom-donut-price">
+                <span>{{ 'Фіксована ціна' if language == 'ua' else 'Fixed price' }}</span>
+                <strong id="custom-donut-total" aria-live="polite">₴150.00</strong>
+                <small id="custom-donut-unit"></small>
+            </div>
+            <div class="custom-donut-quantity">
+                <label for="custom-donut-quantity">{{ 'Кількість' if language == 'ua' else 'Quantity' }}</label>
+                <div class="stepper" role="group" aria-label="{{ 'Кількість пончиків' if language == 'ua' else 'Donut quantity' }}">
+                    <button id="custom-donut-minus" class="stepper__btn" type="button" aria-label="{{ 'На один менше' if language == 'ua' else 'One less' }}">&minus;</button>
+                    <output id="custom-donut-quantity" class="stepper__value" aria-live="polite">1</output>
+                    <button id="custom-donut-plus" class="stepper__btn" type="button" aria-label="{{ 'На один більше' if language == 'ua' else 'One more' }}">+</button>
+                </div>
+            </div>
+            <button id="custom-donut-add" class="btn add-btn" type="button" disabled>
+                {{ 'Додати до кошика' if language == 'ua' else 'Add to cart' }}
+            </button>
+        </div>
+        <p class="custom-donut-footnote">
+            {{ 'Ціна пончика не змінюється залежно від обраних інгредієнтів. Під час оформлення діє мінімальне замовлення — 6 пончиків.' if language == 'ua' else 'Your ingredient choices do not change the donut price. Checkout requires a minimum order of 6 donuts.' }}
+        </p>
+        <p id="custom-donut-feedback" class="purchase-feedback" hidden></p>
+    </section>
+</div>

@@ -92,6 +92,7 @@ def seed_catalog(session):
                 group.name = data["name"]
             if not group.name_en:
                 group.name_en = data["name_en"]
+            group.is_mandatory = data["is_mandatory"]
 
         groups[data["name"]] = group
         groups[data["name_en"]] = group

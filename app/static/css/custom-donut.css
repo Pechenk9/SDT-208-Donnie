@@ -1,0 +1,228 @@
+.custom-donut-page {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 40px) clamp(16px, 4vw, 40px) 60px;
+}
+
+.custom-donut-heading {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.custom-donut-heading h1 {
+  color: var(--ink);
+  font: 800 clamp(38px, 6vw, 64px)/1 var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.custom-donut-heading p {
+  max-width: 60ch;
+  color: var(--ink-soft);
+  font-size: 17px;
+}
+
+.custom-donut-card {
+  display: grid;
+  gap: 22px;
+  padding: clamp(18px, 4vw, 36px);
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.custom-donut-branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: #eef6fb;
+  color: var(--ink-soft);
+}
+
+.custom-donut-branch p {
+  font-weight: 700;
+}
+
+.custom-donut-message {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.custom-donut-message.is-error,
+.custom-donut-group__error {
+  color: var(--danger);
+}
+
+.custom-donut-groups {
+  display: grid;
+  gap: 18px;
+}
+
+.custom-donut-group {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.custom-donut-group[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.custom-donut-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.custom-donut-group__head h2 {
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.custom-donut-group__rule {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.custom-donut-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.custom-donut-option {
+  position: relative;
+}
+
+.custom-donut-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.custom-donut-option label {
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  padding: 13px 15px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.custom-donut-option input:checked + label {
+  border-color: var(--pink-dark);
+  background: var(--pink-tint);
+}
+
+.custom-donut-option input:focus-visible + label {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.custom-donut-option input:disabled + label {
+  background: #f5f2f3;
+  color: var(--ink-soft);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.custom-donut-option__name {
+  font-weight: 800;
+}
+
+.custom-donut-option__description,
+.custom-donut-option__availability {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.custom-donut-option__availability.is-unavailable {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.custom-donut-group__error {
+  min-height: 1.2em;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.custom-donut-purchase {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto minmax(180px, 1fr);
+  align-items: end;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 2px solid var(--line);
+}
+
+.custom-donut-price,
+.custom-donut-quantity {
+  display: grid;
+  gap: 8px;
+}
+
+.custom-donut-price span,
+.custom-donut-quantity label {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.custom-donut-price strong {
+  color: var(--ink);
+  font: 800 36px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-donut-price small {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.custom-donut-purchase .add-btn {
+  min-height: 52px;
+}
+
+.custom-donut-footnote {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .custom-donut-purchase {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .custom-donut-purchase .add-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-donut-option label {
+    transition: none;
+  }
+}
