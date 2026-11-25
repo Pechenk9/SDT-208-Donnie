@@ -7,6 +7,34 @@
 
     const JUST_REGISTERED_KEY = 'donnie_just_registered';
     const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    const ukrainian = document.documentElement.lang === 'uk';
+    const text = ukrainian ? {
+        welcome: 'Ваш обліковий запис створено — вітаємо в Donnie!',
+        show: 'Показати',
+        hide: 'Приховати',
+        emailRequired: 'Введіть адресу електронної пошти.',
+        emailInvalid: 'Введіть коректну адресу електронної пошти, наприклад you@example.com.',
+        passwordRequired: 'Введіть пароль.',
+        passwordLength: 'Пароль має містити щонайменше 8 символів.',
+        firstNameRequired: 'Введіть ім’я.',
+        confirmPassword: 'Підтвердьте пароль.',
+        passwordMismatch: 'Паролі не збігаються.',
+        creatingAccount: 'Створення облікового запису…',
+        loggingIn: 'Вхід…',
+    } : {
+        welcome: 'Your account was created — welcome to Donnie!',
+        show: 'Show',
+        hide: 'Hide',
+        emailRequired: 'Please enter your email.',
+        emailInvalid: 'Enter a valid email address, e.g. you@example.com.',
+        passwordRequired: 'Please enter your password.',
+        passwordLength: 'Password must be at least 8 characters long.',
+        firstNameRequired: 'Please enter your first name.',
+        confirmPassword: 'Please confirm your password.',
+        passwordMismatch: 'Passwords do not match.',
+        creatingAccount: 'Creating account…',
+        loggingIn: 'Logging in…',
+    };
 
     function session(action, value) {
         try {
@@ -19,9 +47,9 @@
 
     /* ---------- profile: confirmation after successful registration ---------- */
 
-    if (location.pathname === '/profile' && session('get')) {
+    if ((location.pathname === '/en/profile' || location.pathname === '/ua/profile') && session('get')) {
         session('remove');
-        const run = () => window.DonnieCart && window.DonnieCart.toast('Your account was created — welcome to Donnie!');
+        const run = () => window.DonnieCart && window.DonnieCart.toast(text.welcome);
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
         else run();
     }
@@ -33,7 +61,7 @@
         button.addEventListener('click', () => {
             const show = input.type === 'password';
             input.type = show ? 'text' : 'password';
-            button.textContent = show ? 'Hide' : 'Show';
+            button.textContent = show ? text.hide : text.show;
             button.setAttribute('aria-pressed', String(show));
         });
     });
@@ -50,24 +78,24 @@
 
     const rules = {
         email(value) {
-            if (!value.trim()) return 'Please enter your email.';
-            if (!EMAIL_PATTERN.test(value.trim())) return 'Enter a valid email address, e.g. you@example.com.';
+            if (!value.trim()) return text.emailRequired;
+            if (!EMAIL_PATTERN.test(value.trim())) return text.emailInvalid;
             return '';
         },
         password(value) {
-            if (!value) return 'Please enter your password.';
-            if (isRegister && value.length < 8) return 'Password must be at least 8 characters long.';
+            if (!value) return text.passwordRequired;
+            if (isRegister && value.length < 8) return text.passwordLength;
             return '';
         },
         first_name(value) {
-            return value.trim() ? '' : 'Please enter your first name.';
+            return value.trim() ? '' : text.firstNameRequired;
         },
         last_name() {
             return '';
         },
         confirm_password(value) {
-            if (!value) return 'Please confirm your password.';
-            if (value !== field('password').value) return 'Passwords do not match.';
+            if (!value) return text.confirmPassword;
+            if (value !== field('password').value) return text.passwordMismatch;
             return '';
         },
     };
@@ -112,7 +140,7 @@
 
         const submit = form.querySelector('[type="submit"]');
         submit.setAttribute('aria-disabled', 'true');
-        submit.textContent = isRegister ? 'Creating account…' : 'Logging in…';
+        submit.textContent = isRegister ? text.creatingAccount : text.loggingIn;
         if (isRegister) session('set', '1');
     });
 })();

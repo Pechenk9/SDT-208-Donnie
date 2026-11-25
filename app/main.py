@@ -6,12 +6,13 @@ import re
 import secrets
 import socket
 from typing import Annotated
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from fastapi import BackgroundTasks, FastAPI, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.routing import Match
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -91,6 +92,10 @@ templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
 
+LANGUAGE_COOKIE = "donnie_language"
+SUPPORTED_LANGUAGES = frozenset({"en", "ua"})
+_LANGUAGE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
 
 def static_url(path: str) -> str:
     """URL of a static file with its modification time as a version, e.g.
@@ -105,13 +110,337 @@ def static_url(path: str) -> str:
 
 templates.env.globals["static_url"] = static_url
 
+
+def localized(
+    value,
+    field: str,
+    language: str = "en",
+    fallback: str | None = None,
+) -> str:
+    """Return a translated model field, falling back to the other language."""
+    alternate_field = f"{field}_en"
+    if isinstance(value, dict):
+        primary = value.get(alternate_field if language == "en" else field)
+        alternate = value.get(field if language == "en" else alternate_field)
+    else:
+        primary = getattr(value, alternate_field if language == "en" else field, None)
+        alternate = getattr(value, field if language == "en" else alternate_field, None)
+    return primary or alternate or fallback or ""
+
+
+templates.env.globals["localized"] = localized
+
+_UKRAINIAN_WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "нд")
+_UKRAINIAN_MONTHS = (
+    "січ", "лют", "бер", "квіт", "трав", "черв",
+    "лип", "серп", "вер", "жовт", "лист", "груд",
+)
+_UKRAINIAN_ENGLISH_MONTHS = dict(
+    zip(
+        ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+        _UKRAINIAN_MONTHS,
+    )
+)
+
+
+def short_date(value, language: str) -> str:
+    if language != "ua":
+        return value.strftime("%a, %d %b")
+    return (
+        f"{_UKRAINIAN_WEEKDAYS[value.weekday()]}, "
+        f"{value.day} {_UKRAINIAN_MONTHS[value.month - 1]}"
+    )
+
+
+def _localized_month_text(text: str | None, language: str) -> str | None:
+    if text is None or language != "ua":
+        return text
+    for english, ukrainian in _UKRAINIAN_ENGLISH_MONTHS.items():
+        text = re.sub(rf"\b{english}\b", ukrainian, text)
+    return text
+
+
+templates.env.globals["short_date"] = short_date
+
+
+def _route_match(path: str, method: str, scope: dict) -> Match:
+    candidate_scope = dict(scope)
+    candidate_scope["path"] = path
+    candidate_scope["raw_path"] = path.encode("utf-8")
+    candidate_scope["method"] = method
+    best_match = Match.NONE
+    for route in app.router.routes:
+        match, _ = route.matches(candidate_scope)
+        if match == Match.FULL:
+            return match
+        if match == Match.PARTIAL:
+            best_match = match
+    return best_match
+
+
+@app.middleware("http")
+async def language_middleware(request: Request, call_next):
+    original_path = request.scope["path"]
+    explicit_ukrainian = original_path == "/ua" or original_path.startswith("/ua/")
+    explicit_english = original_path == "/en" or original_path.startswith("/en/")
+    cookie_language = request.cookies.get(LANGUAGE_COOKIE)
+    language = (
+        "ua" if explicit_ukrainian
+        else "en" if explicit_english
+        else cookie_language if cookie_language in SUPPORTED_LANGUAGES
+        else "en"
+    )
+    request.state.language = language
+    request.state.original_path = original_path
+    request.state.current_user = None
+
+    if explicit_ukrainian or explicit_english:
+        prefix = "/ua" if explicit_ukrainian else "/en"
+        suffix = original_path[len(prefix):] or "/"
+        if not suffix.startswith("/"):
+            suffix = f"/{suffix}"
+        localized_candidate = f"/en{suffix}"
+        candidates = (localized_candidate, suffix)
+        destination = next(
+            (
+                path for path in candidates
+                if _route_match(path, request.method, request.scope) == Match.FULL
+            ),
+            localized_candidate,
+        )
+        request.scope["path"] = destination
+        request.scope["raw_path"] = destination.encode("utf-8")
+
+    response = await call_next(request)
+    location = response.headers.get("location")
+    if language == "ua" and location:
+        parsed_location = urlsplit(location)
+        if parsed_location.path == "/en" or parsed_location.path.startswith("/en/"):
+            localized_path = f"/ua{parsed_location.path[3:]}"
+            response.headers["location"] = urlunsplit(
+                parsed_location._replace(path=localized_path)
+            )
+    response.set_cookie(
+        LANGUAGE_COOKIE,
+        language,
+        max_age=_LANGUAGE_COOKIE_MAX_AGE,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+    )
+    return response
+
+
+def language_url(request: Request, language: str) -> str:
+    """Build the other language's equivalent page URL, retaining its query."""
+    original_path = request.state.original_path
+    if original_path == "/en" or original_path == "/ua":
+        suffix = "/"
+    elif original_path.startswith("/en/") or original_path.startswith("/ua/"):
+        suffix = original_path[3:]
+    else:
+        suffix = original_path
+    if not suffix.startswith("/"):
+        suffix = f"/{suffix}"
+
+    english_path = f"/en{suffix}"
+    if (
+        _route_match(english_path, "GET", request.scope) != Match.FULL
+        or not (BASE_DIR / "templates" / language / _template_for_path(suffix)).is_file()
+    ):
+        suffix = "/"
+    target = f"/{language}{suffix}"
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
+    return target
+
+
+def _template_for_path(suffix: str) -> str:
+    if suffix in ("/", ""):
+        return "home.html"
+    if suffix.startswith("/product/"):
+        return "product.html"
+    if suffix.startswith("/orders/") and suffix.endswith("/receipt"):
+        return "receipt.html"
+    if suffix.startswith("/orders/") and suffix.endswith("/pay"):
+        return "payment.html"
+    if suffix.startswith("/demo-liqpay/pay/"):
+        return "demo_liqpay.html"
+    template_names = {
+        "/login": "login.html",
+        "/register": "register.html",
+        "/profile": "profile.html",
+        "/manager": "manager_dashboard.html",
+        "/owner": "management_panel.html",
+        "/contacts": "contacts.html",
+        "/store": "store.html",
+        "/order": "order.html",
+        "/table": "table.html",
+    }
+    return template_names.get(suffix, "")
+
+
+templates.env.globals["language_url"] = language_url
+
+
+_UKRAINIAN_AUTH_MESSAGES = {
+    "Invalid email or password.": "Неправильна електронна пошта або пароль.",
+    "First name is required.": "Вкажіть ім’я.",
+    "First name must be 100 characters or fewer.": "Ім’я має містити не більше 100 символів.",
+    "Last name must be 100 characters or fewer.": "Прізвище має містити не більше 100 символів.",
+    "Email is required.": "Вкажіть електронну пошту.",
+    "Enter a valid email address.": "Вкажіть дійсну адресу електронної пошти.",
+    "Password must be at least 8 characters long.": "Пароль має містити щонайменше 8 символів.",
+    "Confirm password is required.": "Підтвердьте пароль.",
+    "Passwords do not match.": "Паролі не збігаються.",
+    "An account with this email is already registered.": "Обліковий запис із цією адресою вже зареєстровано.",
+}
+
+
+def _localized_auth_message(message: str, language: str) -> str:
+    if language == "ua":
+        return _UKRAINIAN_AUTH_MESSAGES.get(message, message)
+    return message
+
+
+def _localized_order_hint(progress: dict, order: Order, language: str) -> str:
+    if language != "ua":
+        return progress["hint"]
+    if progress["complete"]:
+        return "Смачного! Дякуємо, що обрали Donnie."
+    if progress["current"] == 2:
+        if order.table_number:
+            return f"Ваші пончики вже прямують до столика {order.table_number}."
+        if order.fulfillment_type == FulfillmentType.DELIVERY:
+            return "Кур’єр везе ваше замовлення."
+        branch_name = localized(order.branch, "name", "ua")
+        return f"Ваше замовлення чекає на вас у філії {branch_name}."
+    if progress["current"] == 1:
+        return "Ваші пончики випікаються та вкриваються глазур’ю."
+    if order.scheduled_date and order.time_slot:
+        date_text = short_date(order.scheduled_date, "ua")
+        time_text = order.time_slot.replace("-", " – ")
+        return f"Ми приготуємо ваше замовлення {date_text}, {time_text}."
+    return "Ми отримали ваше замовлення й скоро почнемо його готувати."
+
+
+def _render_template(
+    request: Request,
+    name: str,
+    context: dict | None = None,
+    **response_options,
+):
+    language = getattr(request.state, "language", "en")
+    template_name = name.split("/", 1)[-1]
+    localized_name = f"{language}/{template_name}"
+    if not (BASE_DIR / "templates" / localized_name).is_file():
+        localized_name = f"en/{template_name}"
+    return templates.TemplateResponse(
+        request,
+        localized_name,
+        {**(context or {}), "language": language},
+        **response_options,
+    )
+
+
+def _legacy_page_redirect(request: Request, destination: str) -> RedirectResponse:
+    query = request.url.query
+    if query:
+        destination = f"{destination}?{query}"
+    return RedirectResponse(url=destination, status_code=307)
+
+
+@app.get("/")
+def root_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/")
+
+
+@app.get("/login")
+def old_login_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/login")
+
+
+@app.post("/login")
+def old_login_post_redirect():
+    return RedirectResponse(url="/en/login", status_code=307)
+
+
+@app.get("/register")
+def old_register_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/register")
+
+
+@app.post("/register")
+def old_register_post_redirect():
+    return RedirectResponse(url="/en/register", status_code=307)
+
+
+@app.get("/profile")
+def old_profile_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/profile")
+
+
+@app.get("/manager")
+def old_manager_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/manager")
+
+
+@app.get("/owner")
+def old_owner_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/owner")
+
+
+@app.get("/contacts")
+def old_contacts_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/contacts")
+
+
+@app.get("/store")
+def old_store_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/store")
+
+
+@app.get("/product/{product_id}")
+def old_product_redirect(request: Request, product_id: int):
+    return _legacy_page_redirect(request, f"/en/product/{product_id}")
+
+
+@app.get("/order")
+def old_order_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/order")
+
+
+@app.get("/table")
+def old_table_redirect(request: Request):
+    return _legacy_page_redirect(request, "/en/table")
+
+
+@app.get("/orders/{order_id}/receipt")
+def old_receipt_redirect(request: Request, order_id: int):
+    return _legacy_page_redirect(request, f"/en/orders/{order_id}/receipt")
+
+
+@app.get("/orders/{order_id}/pay")
+def old_payment_redirect(request: Request, order_id: int):
+    return _legacy_page_redirect(request, f"/en/orders/{order_id}/pay")
+
+
+@app.get("/demo-liqpay/pay/{reference}")
+def old_demo_payment_redirect(request: Request, reference: str):
+    return _legacy_page_redirect(request, f"/en/demo-liqpay/pay/{reference}")
+
+
 # Seasonal donuts shown with a "Limited edition" badge and listed first in the
 # catalogue. Matched by product name.
 LIMITED_EDITION_PRODUCTS = frozenset({"Neon Sunset"})
 
 
 def is_limited_edition(product: Product) -> bool:
-    return product.name in LIMITED_EDITION_PRODUCTS
+    return (
+        product.name in LIMITED_EDITION_PRODUCTS
+        or product.name_en in LIMITED_EDITION_PRODUCTS
+    )
 
 
 def require_profile_user(
@@ -120,28 +449,28 @@ def require_profile_user(
     if user is None:
         raise HTTPException(
             status_code=303,
-            headers={"Location": "/login"},
+            headers={"Location": "/en/login"},
         )
 
     return login_required(user)
 
 
-@app.get("/login")
+@app.get("/en/login")
 def login_page(
     request: Request,
     user: User | None = Depends(get_current_user),
 ):
     if user is not None:
-        return RedirectResponse(url="/profile", status_code=303)
+        return RedirectResponse(url="/en/profile", status_code=303)
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "login.html",
+        "en/login.html",
         {"error": None, "email": ""},
     )
 
 
-@app.post("/login")
+@app.post("/en/login")
 def login(
     request: Request,
     email: str = Form(),
@@ -150,7 +479,7 @@ def login(
     session: Session = Depends(get_session),
 ):
     if user is not None:
-        return RedirectResponse(url="/profile", status_code=303)
+        return RedirectResponse(url="/en/profile", status_code=303)
 
     normalized_email = email.strip().lower()
     account = session.scalar(
@@ -158,33 +487,35 @@ def login(
     )
 
     if account is None or not verify_password(password, account.password_hash):
-        return templates.TemplateResponse(
+        return _render_template(
             request,
-            "login.html",
+            "en/login.html",
             {
-                "error": "Invalid email or password.",
+                "error": _localized_auth_message(
+                    "Invalid email or password.", request.state.language
+                ),
                 "email": normalized_email,
             },
             status_code=400,
         )
 
     invalidate_login_session(request, session)
-    response = RedirectResponse(url="/profile", status_code=303)
+    response = RedirectResponse(url="/en/profile", status_code=303)
     create_login_session(account, session, response)
     return response
 
 
-@app.get("/register")
+@app.get("/en/register")
 def registration_page(
     request: Request,
     user: User | None = Depends(get_current_user),
 ):
     if user is not None:
-        return RedirectResponse(url="/profile", status_code=303)
+        return RedirectResponse(url="/en/profile", status_code=303)
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "register.html",
+        "en/register.html",
         {
             "errors": [],
             "first_name": "",
@@ -194,7 +525,7 @@ def registration_page(
     )
 
 
-@app.post("/register")
+@app.post("/en/register")
 def register_user(
     request: Request,
     first_name: str = Form(default=""),
@@ -206,7 +537,7 @@ def register_user(
     session: Session = Depends(get_session),
 ):
     if user is not None:
-        return RedirectResponse(url="/profile", status_code=303)
+        return RedirectResponse(url="/en/profile", status_code=303)
 
     first_name = first_name.strip()
     last_name = last_name.strip()
@@ -245,6 +576,10 @@ def register_user(
         if existing_user is not None:
             errors.append("An account with this email is already registered.")
 
+    errors = [
+        _localized_auth_message(message, request.state.language)
+        for message in errors
+    ]
     form_values = {
         "errors": errors,
         "first_name": first_name,
@@ -252,9 +587,9 @@ def register_user(
         "email": email,
     }
     if errors:
-        return templates.TemplateResponse(
+        return _render_template(
             request,
-            "register.html",
+            "en/register.html",
             form_values,
             status_code=400,
         )
@@ -272,29 +607,34 @@ def register_user(
         session.flush()
     except IntegrityError:
         session.rollback()
-        return templates.TemplateResponse(
+        return _render_template(
             request,
-            "register.html",
+            "en/register.html",
             {
                 **form_values,
-                "errors": ["An account with this email is already registered."],
+                "errors": [
+                    _localized_auth_message(
+                        "An account with this email is already registered.",
+                        request.state.language,
+                    )
+                ],
             },
             status_code=400,
         )
 
-    response = RedirectResponse(url="/profile", status_code=303)
+    response = RedirectResponse(url="/en/profile", status_code=303)
     create_login_session(account, session, response)
     return response
 
 
-@app.get("/profile")
+@app.get("/en/profile")
 def profile_page(
     request: Request,
     user: User = Depends(require_profile_user),
 ):
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "profile.html",
+        "en/profile.html",
         {
             "user": user,
             "can_access_manager_panel": has_permission(
@@ -318,6 +658,17 @@ _MANAGER_NOTICES = {
     "ingredient-removed": "Ingredient removed from this branch.",
     "order-refunded": "Payment refunded. The order is marked as refunded.",
     "order-status": "Order status updated. The guest sees it on their receipt.",
+}
+
+_UKRAINIAN_MANAGER_NOTICES = {
+    "product-added": "Товар додано до цієї філії.",
+    "product-updated": "Доступність товару оновлено.",
+    "product-removed": "Товар вилучено з цієї філії.",
+    "ingredient-added": "Інгредієнт додано до цієї філії.",
+    "ingredient-updated": "Доступність інгредієнта оновлено.",
+    "ingredient-removed": "Інгредієнт вилучено з цієї філії.",
+    "order-refunded": "Платіж повернено. Замовлення позначено як повернене.",
+    "order-status": "Статус замовлення оновлено.",
 }
 
 
@@ -370,12 +721,12 @@ def _manager_redirect(branch_id: int, notice_code: str) -> RedirectResponse:
         }
     )
     return RedirectResponse(
-        url=f"/manager?{query}",
+        url=f"/en/manager?{query}",
         status_code=303,
     )
 
 
-@app.get("/manager")
+@app.get("/en/manager")
 def manager_panel(
     request: Request,
     branch_id: int | None = None,
@@ -446,9 +797,9 @@ def manager_panel(
         .limit(20)
     ).all()
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "manager_dashboard.html",
+        "en/manager_dashboard.html",
         {
             "recent_orders": recent_orders,
             "order_status_views": {
@@ -461,7 +812,11 @@ def manager_panel(
             "catalogue_products": catalogue_products,
             "branch_ingredients": branch_ingredients,
             "catalogue_ingredients": catalogue_ingredients,
-            "notice": _MANAGER_NOTICES.get(notice),
+            "notice": (
+                _UKRAINIAN_MANAGER_NOTICES.get(notice)
+                if request.state.language == "ua"
+                else _MANAGER_NOTICES.get(notice)
+            ),
         },
     )
 
@@ -662,6 +1017,27 @@ _OWNER_ERRORS = {
     "save-failed": "The change could not be saved. Please try again.",
 }
 
+_UKRAINIAN_OWNER_NOTICES = {
+    "manager-assigned": "Менеджера призначено до філії.",
+    "manager-removed": "Призначення менеджера скасовано.",
+    "product-created": "Товар додано до загального каталогу.",
+    "product-updated": "Дані товару в загальному каталозі оновлено.",
+    "ingredient-created": "Інгредієнт додано до загального каталогу.",
+    "ingredient-updated": "Дані інгредієнта в загальному каталозі оновлено.",
+}
+
+_UKRAINIAN_OWNER_ERRORS = {
+    "invalid-form": "Перевірте поля форми та спробуйте ще раз.",
+    "duplicate": "Елемент каталогу з такою назвою вже існує.",
+    "not-found": "Запис не знайдено.",
+    "invalid-assignment": "Виберіть наявного клієнта або менеджера та філію.",
+    "already-assigned": "Цього користувача вже призначено до цієї філії.",
+    "assignment-not-found": "Цього менеджера не призначено до цієї філії.",
+    "group-not-found": "Виберіть наявну групу інгредієнтів.",
+    "conflict": "Зміна конфліктує з наявними даними й не була збережена.",
+    "save-failed": "Не вдалося зберегти зміни. Спробуйте ще раз.",
+}
+
 
 def _require_owner(user: User) -> None:
     if not is_owner(user) or not has_permission(user, Permission.OWNER_PANEL):
@@ -735,8 +1111,12 @@ def _product_form_values(
     calories: str,
     image_url: str,
     is_active: bool,
+    name_en: str | None = None,
+    description_en: str | None = None,
 ) -> dict | None:
     name = name.strip()
+    if name_en is not None:
+        name_en = name_en.strip()
     price = _parse_owner_money(base_price)
     calories_text = calories.strip()
     parsed_calories = None
@@ -748,10 +1128,15 @@ def _product_form_values(
         if not 0 <= parsed_calories <= 2147483647:
             return None
 
-    if not name or len(name) > 150 or price is None:
+    if (
+        not name
+        or len(name) > 150
+        or (name_en is not None and len(name_en) > 150)
+        or price is None
+    ):
         return None
 
-    return {
+    values = {
         "name": name,
         "description": description.strip() or None,
         "base_price": price,
@@ -759,6 +1144,11 @@ def _product_form_values(
         "image_url": image_url.strip() or None,
         "is_active": is_active,
     }
+    if name_en is not None:
+        values["name_en"] = name_en or None
+    if description_en is not None:
+        values["description_en"] = description_en.strip() or None
+    return values
 
 
 def _ingredient_form_values(
@@ -767,26 +1157,38 @@ def _ingredient_form_values(
     extra_price: str,
     group_id: str,
     is_active: bool,
+    name_en: str | None = None,
+    description_en: str | None = None,
 ) -> tuple[dict | None, int | None]:
     name = name.strip()
+    if name_en is not None:
+        name_en = name_en.strip()
     price = _parse_owner_money(extra_price)
     parsed_group_id = _parse_owner_id(group_id)
-    if not name or len(name) > 150 or price is None or parsed_group_id is None:
+    if (
+        not name
+        or len(name) > 150
+        or (name_en is not None and len(name_en) > 150)
+        or price is None
+        or parsed_group_id is None
+    ):
         return None, None
 
-    return (
-        {
-            "name": name,
-            "description": description.strip() or None,
-            "extra_price": price,
-            "group_id": parsed_group_id,
-            "is_active": is_active,
-        },
-        parsed_group_id,
-    )
+    values = {
+        "name": name,
+        "description": description.strip() or None,
+        "extra_price": price,
+        "group_id": parsed_group_id,
+        "is_active": is_active,
+    }
+    if name_en is not None:
+        values["name_en"] = name_en or None
+    if description_en is not None:
+        values["description_en"] = description_en.strip() or None
+    return values, parsed_group_id
 
 
-@app.get("/owner")
+@app.get("/en/owner")
 def owner_panel(
     request: Request,
     notice: str | None = None,
@@ -842,9 +1244,9 @@ def owner_panel(
         .order_by(Ingredient.name, Ingredient.id)
     ).all()
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "management_panel.html",
+        "en/management_panel.html",
         {
             "user": user,
             "staff_branches": staff_branches,
@@ -853,8 +1255,16 @@ def owner_panel(
             "products": products,
             "ingredients": ingredients,
             "ingredient_groups": ingredient_groups,
-            "notice": _OWNER_NOTICES.get(notice),
-            "error": _OWNER_ERRORS.get(error),
+            "notice": (
+                _UKRAINIAN_OWNER_NOTICES.get(notice)
+                if request.state.language == "ua"
+                else _OWNER_NOTICES.get(notice)
+            ),
+            "error": (
+                _UKRAINIAN_OWNER_ERRORS.get(error)
+                if request.state.language == "ua"
+                else _OWNER_ERRORS.get(error)
+            ),
         },
     )
 
@@ -942,6 +1352,8 @@ def owner_remove_manager(
 def owner_create_product(
     name: str = Form(default=""),
     description: str = Form(default=""),
+    name_en: str | None = Form(default=None),
+    description_en: str | None = Form(default=None),
     base_price: str = Form(default=""),
     calories: str = Form(default=""),
     image_url: str = Form(default=""),
@@ -951,7 +1363,8 @@ def owner_create_product(
 ):
     _require_owner(user)
     values = _product_form_values(
-        name, description, base_price, calories, image_url, is_active
+        name, description, base_price, calories, image_url, is_active,
+        name_en, description_en,
     )
     if values is None:
         return _owner_redirect("products", error="invalid-form")
@@ -959,6 +1372,12 @@ def owner_create_product(
     duplicate = session.scalar(
         select(Product.id).where(func.lower(Product.name) == values["name"].lower())
     )
+    if duplicate is None and values.get("name_en"):
+        duplicate = session.scalar(
+            select(Product.id).where(
+                func.lower(Product.name_en) == values["name_en"].lower()
+            )
+        )
     if duplicate is not None:
         return _owner_redirect("products", error="duplicate")
 
@@ -971,6 +1390,8 @@ def owner_edit_product(
     product_id: int,
     name: str = Form(default=""),
     description: str = Form(default=""),
+    name_en: str | None = Form(default=None),
+    description_en: str | None = Form(default=None),
     base_price: str = Form(default=""),
     calories: str = Form(default=""),
     image_url: str = Form(default=""),
@@ -984,7 +1405,8 @@ def owner_edit_product(
         return _owner_redirect("products", error="not-found")
 
     values = _product_form_values(
-        name, description, base_price, calories, image_url, is_active
+        name, description, base_price, calories, image_url, is_active,
+        name_en, description_en,
     )
     if values is None:
         return _owner_redirect("products", error="invalid-form")
@@ -995,6 +1417,13 @@ def owner_edit_product(
             Product.id != product.id,
         )
     )
+    if duplicate is None and values.get("name_en"):
+        duplicate = session.scalar(
+            select(Product.id).where(
+                func.lower(Product.name_en) == values["name_en"].lower(),
+                Product.id != product.id,
+            )
+        )
     if duplicate is not None:
         return _owner_redirect("products", error="duplicate")
 
@@ -1007,6 +1436,8 @@ def owner_edit_product(
 def owner_create_ingredient(
     name: str = Form(default=""),
     description: str = Form(default=""),
+    name_en: str | None = Form(default=None),
+    description_en: str | None = Form(default=None),
     extra_price: str = Form(default=""),
     group_id: str = Form(default=""),
     is_active: bool = Form(default=False),
@@ -1015,7 +1446,8 @@ def owner_create_ingredient(
 ):
     _require_owner(user)
     values, parsed_group_id = _ingredient_form_values(
-        name, description, extra_price, group_id, is_active
+        name, description, extra_price, group_id, is_active,
+        name_en, description_en,
     )
     if values is None or parsed_group_id is None:
         return _owner_redirect("ingredients", error="invalid-form")
@@ -1029,6 +1461,12 @@ def owner_create_ingredient(
             func.lower(Ingredient.name) == values["name"].lower()
         )
     )
+    if duplicate is None and values.get("name_en"):
+        duplicate = session.scalar(
+            select(Ingredient.id).where(
+                func.lower(Ingredient.name_en) == values["name_en"].lower()
+            )
+        )
     if duplicate is not None:
         return _owner_redirect("ingredients", error="duplicate")
 
@@ -1041,6 +1479,8 @@ def owner_edit_ingredient(
     ingredient_id: int,
     name: str = Form(default=""),
     description: str = Form(default=""),
+    name_en: str | None = Form(default=None),
+    description_en: str | None = Form(default=None),
     extra_price: str = Form(default=""),
     group_id: str = Form(default=""),
     is_active: bool = Form(default=False),
@@ -1053,7 +1493,8 @@ def owner_edit_ingredient(
         return _owner_redirect("ingredients", error="not-found")
 
     values, parsed_group_id = _ingredient_form_values(
-        name, description, extra_price, group_id, is_active
+        name, description, extra_price, group_id, is_active,
+        name_en, description_en,
     )
     if values is None or parsed_group_id is None:
         return _owner_redirect("ingredients", error="invalid-form")
@@ -1068,6 +1509,13 @@ def owner_edit_ingredient(
             Ingredient.id != ingredient.id,
         )
     )
+    if duplicate is None and values.get("name_en"):
+        duplicate = session.scalar(
+            select(Ingredient.id).where(
+                func.lower(Ingredient.name_en) == values["name_en"].lower(),
+                Ingredient.id != ingredient.id,
+            )
+        )
     if duplicate is not None:
         return _owner_redirect("ingredients", error="duplicate")
 
@@ -1082,7 +1530,7 @@ def logout(
     session: Session = Depends(get_session),
 ):
     invalidate_login_session(request, session)
-    response = RedirectResponse(url="/store", status_code=303)
+    response = RedirectResponse(url="/en/store", status_code=303)
     response.delete_cookie(
         COOKIE_NAME,
         path="/",
@@ -1092,17 +1540,17 @@ def logout(
     )
     return response
 
-@app.get("/contacts")
+@app.get("/en/contacts")
 def contacts(
     request: Request,
     user: User | None = Depends(get_current_user),
 ):
-    return templates.TemplateResponse(
+    return _render_template(
         request=request,
-        name="contacts.html",
+        name="en/contacts.html",
     )
 
-@app.get("/")
+@app.get("/en/")
 def home(
     request: Request,
     session: Session = Depends(get_session),
@@ -1121,14 +1569,17 @@ def home(
         select(Product)
         .where(
             Product.is_active.is_(True),
-            Product.name.in_(LIMITED_EDITION_PRODUCTS),
+            (
+                Product.name.in_(LIMITED_EDITION_PRODUCTS)
+                | Product.name_en.in_(LIMITED_EDITION_PRODUCTS)
+            ),
         )
         .order_by(Product.id)
     ).all()
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "home.html",
+        "en/home.html",
         {
             "featured": featured,
             "branches": branches,
@@ -1137,7 +1588,7 @@ def home(
         },
     )
 
-@app.get("/store")
+@app.get("/en/store")
 def store(
     request: Request,
     session: Session = Depends(get_session),
@@ -1178,8 +1629,10 @@ def store(
         products.append(
             {
                 "id": product.id,
-                "name": product.name,
-                "description": product.description,
+                "name": localized(product, "name", request.state.language),
+                "description": localized(
+                    product, "description", request.state.language
+                ),
                 "image_url": product.image_url,
                 "is_limited": is_limited_edition(product),
                 "is_bestseller": product.id in bestsellers,
@@ -1197,23 +1650,23 @@ def store(
         {
             "id": branch.id,
             "code": branch.code,
-            "name": branch.name,
-            "city": branch.city,
+            "name": localized(branch, "name", request.state.language),
+            "city": localized(branch, "city", request.state.language),
         }
         if branch is not None
         else None
     )
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "store.html",
+        "en/store.html",
         {
             "products": products,
             "selected_branch": selected_branch,
         },
     )
 
-@app.get("/product/{product_id}")
+@app.get("/en/product/{product_id}")
 def product_detail(
     request: Request,
     product_id: int,
@@ -1277,8 +1730,10 @@ def product_detail(
         ingredients.append(
             {
                 "id": ingredient.id,
-                "name": ingredient.name,
-                "description": ingredient.description,
+                "name": localized(ingredient, "name", request.state.language),
+                "description": localized(
+                    ingredient, "description", request.state.language
+                ),
                 "default_quantity": float(recipe_item.default_quantity),
                 "min_quantity": 0,
                 "max_quantity": float(recipe_item.max_quantity),
@@ -1295,9 +1750,13 @@ def product_detail(
         )
 
     allergens = allergens_for(
-        recipe_item.ingredient.name
+        name
         for recipe_item in product.recipe
         if recipe_item.default_quantity > 0
+        for name in (
+            recipe_item.ingredient.name,
+            recipe_item.ingredient.name_en or "",
+        )
     )
 
     if branch is not None:
@@ -1322,7 +1781,7 @@ def product_detail(
     related_data = [
         {
             "id": item.id,
-            "name": item.name,
+            "name": localized(item, "name", request.state.language),
             "image_url": item.image_url,
             "is_limited": is_limited_edition(item),
             "price": float(
@@ -1337,8 +1796,8 @@ def product_detail(
 
     product_data = {
         "id": product.id,
-        "name": product.name,
-        "description": product.description,
+        "name": localized(product, "name", request.state.language),
+        "description": localized(product, "description", request.state.language),
         "image_url": product.image_url,
         "is_limited": is_limited_edition(product),
         "is_bestseller": product.id in bestseller_ids(session),
@@ -1357,8 +1816,8 @@ def product_detail(
             {
                 "id": branch.id,
                 "code": branch.code,
-                "name": branch.name,
-                "city": branch.city,
+                "name": localized(branch, "name", request.state.language),
+                "city": localized(branch, "city", request.state.language),
             }
             if branch is not None
             else None
@@ -1376,19 +1835,30 @@ def product_detail(
         "ingredients": ingredients,
     }
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "product.html",
+        "en/product.html",
         {
             "product": product_data,
             "product_data": product_data,
             "related": related_data,
-            "storage_note": STORAGE_NOTE,
-            "kitchen_note": KITCHEN_NOTE,
+            "storage_note": (
+                "Найкраще смакує в день випікання. Зберігайте до 24 годин у "
+                "холодильнику за температури +2…+6 °C. Щоб повернути м’якість, "
+                "підігрійте 10 секунд у мікрохвильовці."
+                if request.state.language == "ua"
+                else STORAGE_NOTE
+            ),
+            "kitchen_note": (
+                "Усі пончики готуються на одній кухні, де також працюють із горіхами, "
+                "глютеном, молоком, яйцями та соєю, тому можливі їхні сліди."
+                if request.state.language == "ua"
+                else KITCHEN_NOTE
+            ),
         },
     )
 
-@app.get("/order")
+@app.get("/en/order")
 def order_page(
     request: Request,
     session: Session = Depends(get_session),
@@ -1405,16 +1875,16 @@ def order_page(
     products_data = [
         {
             "id": product.id,
-            "name": product.name,
+            "name": localized(product, "name", request.state.language),
             "base_price": float(product.base_price),
             "image_url": product.image_url,
         }
         for product in products
     ]
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "order.html",
+        "en/order.html",
         {
             "branches": branches,
             "products_data": products_data,
@@ -1441,7 +1911,10 @@ def order_page(
     )
 
 @app.get("/api/branches")
-def list_branches(session: Session = Depends(get_session)):
+def list_branches(
+    request: Request,
+    session: Session = Depends(get_session),
+):
     branches = session.scalars(
         select(Branch).order_by(Branch.city, Branch.name)
     ).all()
@@ -1450,15 +1923,15 @@ def list_branches(session: Session = Depends(get_session)):
         {
             "id": branch.id,
             "code": branch.code,
-            "name": branch.name,
-            "city": branch.city,
-            "address": branch.address,
+            "name": localized(branch, "name", request.state.language),
+            "city": localized(branch, "city", request.state.language),
+            "address": localized(branch, "address", request.state.language),
         }
         for branch in branches
     ]
 
 
-@app.get("/orders/{order_id}/receipt")
+@app.get("/en/orders/{order_id}/receipt")
 def order_receipt(
     request: Request,
     order_id: int,
@@ -1473,7 +1946,7 @@ def order_receipt(
         select(Order)
         .options(
             joinedload(Order.branch),
-            selectinload(Order.items),
+            selectinload(Order.items).selectinload(OrderItem.product),
         )
         .where(Order.id == order_id)
     )
@@ -1487,19 +1960,30 @@ def order_receipt(
 
     # Retries a receipt email that failed earlier (no-op once it was sent).
     _queue_receipt_email(background_tasks, session, order, request)
+    progress = order_progress(order)
+    if progress is not None:
+        progress = {
+            **progress,
+            "hint": _localized_order_hint(
+                progress, order, request.state.language
+            ),
+        }
 
-    response = templates.TemplateResponse(
+    response = _render_template(
         request,
-        "receipt.html",
+        "en/receipt.html",
         {
             "order": order,
             # Opened by scanning the ticket's QR: lead with whether it's paid.
             "scanned": scan,
-            "paid_at_text": mailer.kyiv_time(order.paid_at),
+            "paid_at_text": _localized_month_text(
+                mailer.kyiv_time(order.paid_at), request.state.language
+            ),
             "just_paid": not scan and paid and order.payment_status == PaymentStatus.PAID,
-            "progress": order_progress(order),
+            "progress": progress,
             "qr_url": (
-                f"{_phone_base(request)}/orders/{order.id}/receipt"
+                f"{_phone_base(request)}/{request.state.language}"
+                f"/orders/{order.id}/receipt"
                 f"?t={order.access_token}&scan=1"
             ),
         },
@@ -1851,7 +2335,7 @@ async def create_order(
 
     next_page = "pay" if payment_method == PaymentMethod.ONLINE else "receipt"
     response = RedirectResponse(
-        url=f"/orders/{order_id}/{next_page}",
+        url=f"/en/orders/{order_id}/{next_page}",
         status_code=303,
     )
     # This browser placed the order, so it may open its receipt and pay.
@@ -1875,7 +2359,7 @@ def qr_entry(
 
     if table is None:
         return RedirectResponse(
-            url=f"/store?{urlencode({'branch': branch.code})}",
+            url=f"/en/store?{urlencode({'branch': branch.code})}",
             status_code=303,
         )
 
@@ -1884,21 +2368,24 @@ def qr_entry(
 
     # Table codes open the guest "table home": menu, bill and payment for this table.
     return RedirectResponse(
-        url=f"/table?{urlencode({'branch': branch.code, 'table': table})}",
+        url=f"/en/table?{urlencode({'branch': branch.code, 'table': table})}",
         status_code=303,
     )
 
 
-@app.get("/table")
+@app.get("/en/table")
 def table_home(request: Request, user: User | None = Depends(get_current_user)):
     """Mobile start screen after scanning a table QR code (filled in by branch.js / table.js)."""
-    return templates.TemplateResponse(request, "table.html")
+    return _render_template(request, "en/table.html")
 
 
 def _get_order(session: Session, order_id: int) -> Order:
     order = session.scalar(
         select(Order)
-        .options(joinedload(Order.branch), selectinload(Order.items))
+        .options(
+            joinedload(Order.branch),
+            selectinload(Order.items).selectinload(OrderItem.product),
+        )
         .where(Order.id == order_id)
     )
     if order is None:
@@ -1951,7 +2438,7 @@ def _remember_order(response, order: Order) -> None:
         key=_order_cookie_name(order.id),
         value=order.access_token,
         max_age=ORDER_COOKIE_MAX_AGE,
-        path=f"/orders/{order.id}",
+        path="/",
         httponly=True,
         samesite="lax",
         secure=COOKIE_SECURE,
@@ -1965,7 +2452,7 @@ def _tip_for(total: Decimal, percent: int) -> Decimal:
     return (total * percent / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-@app.get("/orders/{order_id}/pay")
+@app.get("/en/orders/{order_id}/pay")
 def order_payment_page(
     request: Request,
     order_id: int,
@@ -1980,7 +2467,7 @@ def order_payment_page(
         order.payment_method != PaymentMethod.ONLINE
         or order.payment_status not in _PAYABLE_STATUSES
     ):
-        return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
+        return RedirectResponse(url=f"/en/orders/{order.id}/receipt", status_code=303)
 
     current_tip = 0
     if order.total_price > 0:
@@ -1999,9 +2486,9 @@ def order_payment_page(
         for percent in TIP_PERCENTAGES
     ]
 
-    return templates.TemplateResponse(
+    return _render_template(
         request,
-        "payment.html",
+        "en/payment.html",
         {
             "order": order,
             "declined": declined,
@@ -2078,7 +2565,8 @@ def _queue_receipt_email(
             return
         message = mailer.build_receipt(
             order,
-            f"{_public_base(request)}/orders/{order.id}/receipt?t={order.access_token}",
+            f"{_public_base(request)}/{request.state.language}"
+            f"/orders/{order.id}/receipt?t={order.access_token}",
         )
     except Exception:
         mailer.log.exception("Could not prepare the receipt for order #%s", order.id)
@@ -2119,7 +2607,7 @@ def order_payment_submit(
     if order.payment_method != PaymentMethod.ONLINE:
         raise HTTPException(400, "This order is paid on receipt")
     if order.payment_status not in _PAYABLE_STATUSES:
-        return RedirectResponse(url=f"/orders/{order.id}/receipt", status_code=303)
+        return RedirectResponse(url=f"/en/orders/{order.id}/receipt", status_code=303)
 
     if tip_percent is not None:
         order.tip_amount = _tip_for(order.total_price, tip_percent)
@@ -2137,7 +2625,11 @@ def order_payment_submit(
         description=f"Donnie order #{order.id}, {order.branch.name}",
         # The token rides along so the guest's browser gets its receipt back
         # even if it dropped our cookie on the way through LiqPay.
-        result_url=f"{base}/orders/{order.id}/payment-return?t={order.access_token}",
+        result_url=(
+            f"{base}/ua/orders/{order.id}/payment-return?t={order.access_token}"
+            if request.state.language == "ua"
+            else f"{base}/orders/{order.id}/payment-return?t={order.access_token}"
+        ),
         server_url=_callback_url(request),
     )
     try:
@@ -2150,7 +2642,9 @@ def order_payment_submit(
     if "application/json" in request.headers.get("accept", ""):
         return {"checkout": {"url": checkout.url, "data": checkout.data,
                              "signature": checkout.signature}}
-    return templates.TemplateResponse(request, "liqpay_redirect.html", {"checkout": checkout})
+    return _render_template(
+        request, "en/liqpay_redirect.html", {"checkout": checkout}
+    )
 
 
 @app.api_route("/orders/{order_id}/payment-return", methods=["GET", "POST"])
@@ -2176,13 +2670,13 @@ def order_payment_return(
 
     if order.payment_status == PaymentStatus.PAID:
         _queue_receipt_email(background_tasks, session, order, request)
-        url = f"/orders/{order.id}/receipt?paid=1"
+        url = f"/en/orders/{order.id}/receipt?paid=1"
     elif order.payment_status == PaymentStatus.FAILED:
-        url = f"/orders/{order.id}/pay?declined=1"
+        url = f"/en/orders/{order.id}/pay?declined=1"
     elif order.payment_status == PaymentStatus.PENDING:
-        url = f"/orders/{order.id}/pay"
+        url = f"/en/orders/{order.id}/pay"
     else:
-        url = f"/orders/{order.id}/receipt"
+        url = f"/en/orders/{order.id}/receipt"
     response = RedirectResponse(url=url, status_code=303)
     if _token_ok(order, t):
         _remember_order(response, order)
@@ -2234,10 +2728,10 @@ def demo_liqpay_checkout(
         session.rollback()
         raise HTTPException(400, "Invalid LiqPay checkout data")
     session.commit()
-    return RedirectResponse(url=f"/demo-liqpay/pay/{payment.order_id}", status_code=303)
+    return RedirectResponse(url=f"/en/demo-liqpay/pay/{payment.order_id}", status_code=303)
 
 
-@app.get("/demo-liqpay/pay/{reference}")
+@app.get("/en/demo-liqpay/pay/{reference}")
 def demo_liqpay_page(
     request: Request,
     reference: str,
@@ -2247,7 +2741,9 @@ def demo_liqpay_page(
     payment = _demo_liqpay().get_payment(session, reference)
     if payment is None:
         raise HTTPException(404, "Payment not found")
-    return templates.TemplateResponse(request, "demo_liqpay.html", {"payment": payment})
+    return _render_template(
+        request, "en/demo_liqpay.html", {"payment": payment}
+    )
 
 
 @app.post("/demo-liqpay/pay/{reference}")
@@ -2308,7 +2804,7 @@ def change_order_status(
     order.status = OrderStatus(new_status_after(order, action))
     _commit_manager_change(session)
     return RedirectResponse(
-        url=f"/manager?branch_id={branch.id}&notice=order-status#order-{order.id}",
+        url=f"/en/manager?branch_id={branch.id}&notice=order-status#order-{order.id}",
         status_code=303,
     )
 
@@ -2345,6 +2841,6 @@ def refund_order(
     order.refunded_at = order.refunded_at or datetime.now(timezone.utc)
     _commit_manager_change(session)
     return RedirectResponse(
-        url=f"/manager?branch_id={branch.id}&notice=order-refunded#orders",
+        url=f"/en/manager?branch_id={branch.id}&notice=order-refunded#orders",
         status_code=303,
     )

@@ -14,6 +14,7 @@
 
     const root = document.getElementById('order-track');
     if (!root || !window.DonnieMotion) return;
+    const ukrainian = document.documentElement.lang === 'uk';
 
     const { spring, clamp, loop } = window.DonnieMotion;
 
@@ -25,6 +26,40 @@
     const statusText = document.querySelector('.receipt-info .status');
     let current = clamp(Number(root.dataset.current) || 0, 0, N - 1);
     let complete = root.dataset.complete === 'true';
+
+    function displayStatus(status) {
+        if (!ukrainian) return status.charAt(0).toUpperCase() + status.slice(1);
+        const labels = {
+            pending: 'Очікує підтвердження',
+            confirmed: 'Підтверджено',
+            preparing: 'Готується',
+            ready: 'Готове',
+            completed: 'Завершене',
+            cancelled: 'Скасоване',
+        };
+        return labels[status] || status;
+    }
+
+    function displayHint(hint) {
+        if (!ukrainian) return hint;
+        const fixed = {
+            'Enjoy your donuts! Thank you for choosing Donnie.': 'Смачного! Дякуємо, що обрали Donnie.',
+            'The courier is bringing your box.': 'Кур’єр уже везе ваше замовлення.',
+            'Your donuts are in the oven and getting their glaze.': 'Ваші пончики вже в печі, а глазур набирає смаку.',
+            "We've got your order and will start baking in a moment.": 'Ми отримали ваше замовлення й скоро почнемо його готувати.',
+        };
+        if (fixed[hint]) return fixed[hint];
+
+        let match = hint.match(/^Your donuts are on their way to table (.+)\.$/);
+        if (match) return `Ваші пончики вже прямують до столика ${match[1]}.`;
+        match = hint.match(/^Your box is waiting for you at (.+)\.$/);
+        if (match) return `Ваше замовлення чекає на вас у філії ${match[1]}.`;
+        match = hint.match(/^We'll bake your box for (.+)\.$/);
+        if (match) return `Ми приготуємо ваше замовлення до ${match[1]}.`;
+        return hint;
+    }
+
+    if (hint && ukrainian) hint.textContent = displayHint(hint.textContent);
 
     const L = spring(0, 160, 22); // the line, as a share of the track
     const steps = dots.map((dot, i) => ({
@@ -68,7 +103,9 @@
             else s.dot.removeAttribute('aria-current');
             const label = s.dot.querySelector('.visually-hidden');
             if (label) {
-                const state = k < i || allDone ? 'done' : (isCurrent ? 'in progress' : 'next');
+                let state;
+                if (ukrainian) state = k < i || allDone ? 'виконано' : (isCurrent ? 'у процесі' : 'далі');
+                else state = k < i || allDone ? 'done' : (isCurrent ? 'in progress' : 'next');
                 label.textContent = `${s.name.textContent}: ${state}`;
             }
         });
@@ -119,8 +156,8 @@
             return;
         }
 
-        if (statusText) statusText.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
-        if (hint) hint.textContent = data.progress.hint;
+        if (statusText) statusText.textContent = displayStatus(data.status);
+        if (hint) hint.textContent = displayHint(data.progress.hint);
 
         const nextCurrent = clamp(Number(data.progress.current) || 0, 0, N - 1);
         const nextComplete = Boolean(data.progress.complete);

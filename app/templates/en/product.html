@@ -13,7 +13,7 @@
 {% block content %}
 <div class="product-page">
     <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="/store">&larr; Back to donuts</a>
+        <a href="/en/store">&larr; Back to donuts</a>
     </nav>
 
     <article class="product-card{% if product.is_limited %} is-limited{% endif %}" data-product-id="{{ product.id }}">
@@ -114,7 +114,7 @@
                             {% elif not ingredient.is_changeable %}
                             <p class="recipe-note">Part of the base recipe.</p>
                             {% elif ingredient.extra_price > 0 and ingredient.max_quantity > ingredient.default_quantity %}
-                            <p class="recipe-note">Adding more than the recipe amount costs +{{ "$%.2f"|format(ingredient.extra_price) }}.</p>
+                            <p class="recipe-note">Adding more than the recipe amount costs +{{ "₴%.2f"|format(ingredient.extra_price) }}.</p>
                             {% endif %}
                         </div>
 
@@ -161,7 +161,7 @@
             <div class="purchase-panel">
                 <div class="purchase-price">
                     <span class="purchase-price__label">Estimated price</span>
-                    <span class="purchase-price__value" id="product-price" aria-live="polite">{{ "$%.2f"|format(product.price) }}</span>
+                    <span class="purchase-price__value" id="product-price" aria-live="polite">{{ "₴%.2f"|format(product.price) }}</span>
                     <span class="purchase-price__each" id="product-price-each"></span>
                 </div>
 
@@ -182,7 +182,7 @@
                     Estimated price. Adding more of an ingredient than the recipe has costs extra (once per ingredient); taking some away doesn't change the price. Donnie confirms the final price when you place the order.
                 </p>
                 <p class="purchase-feedback" id="add-feedback" hidden>
-                    Added to your cart. <a href="/order">Go to checkout</a> or <a href="/store">keep shopping</a>.
+                    Added to your cart. <a href="/en/order">Go to checkout</a> or <a href="/en/store">keep shopping</a>.
                 </p>
             </div>
         </div>
@@ -194,13 +194,13 @@
         <ul class="related-grid">
             {% for item in related %}
             <li class="related-card{% if item.is_limited %} is-limited{% endif %}" style="--tile: var(--tile-{{ (item.id % 6) + 1 }})">
-                <a href="/product/{{ item.id }}">
+                <a href="/en/product/{{ item.id }}">
                     <span class="related-card__tile">
                         <img src="{{ item.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
                              alt="" loading="lazy" decoding="async" width="160" height="160">
                     </span>
                     <span class="related-card__name">{{ item.name }}</span>
-                    <span class="related-card__price">{{ "$%.2f"|format(item.price) }}</span>
+                    <span class="related-card__price">{{ "₴%.2f"|format(item.price) }}</span>
                 </a>
             </li>
             {% endfor %}

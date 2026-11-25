@@ -90,7 +90,7 @@ def test_product_detail_availability(
             )
             session.commit()
 
-    response = client.get(f"/product/{product_id}")
+    response = client.get(f"/en/product/{product_id}")
 
     assert response.status_code == 200
     assert expected_status in response.text

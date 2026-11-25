@@ -1,0 +1,216 @@
+{% extends "ua/base.html" %}
+
+{% block title %}{{ product.name }} — Donnie{% endblock %}
+
+{% block description %}{{ product.description or ("Замовте пончик " ~ product.name ~ " у Donnie.") }}{% endblock %}
+
+{% block body_attrs %}data-branch-dependent{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/donut.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="product-page">
+    <nav class="breadcrumbs" aria-label="Навігаційний ланцюжок">
+        <a href="/ua/store">&larr; Назад до пончиків</a>
+    </nav>
+
+    <article class="product-card{% if product.is_limited %} is-limited{% endif %}" data-product-id="{{ product.id }}">
+        <div class="product-media">
+            <img
+                id="product-img"
+                src="{{ product.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                alt="Пончик {{ product.name }}"
+                width="480" height="480"
+            >
+        </div>
+
+        <div class="product-details">
+            <header class="product-header">
+                {% if product.is_limited or product.is_bestseller %}
+                <div class="badge-row">
+                    {% if product.is_limited %}<span class="limited-badge">Обмежена серія</span>{% endif %}
+                    {% if product.is_bestseller %}<span class="bestseller-badge">Хіт продажу</span>{% endif %}
+                </div>
+                {% endif %}
+                <h1 class="product-title">{{ product.name }}</h1>
+                {% if product.is_limited %}
+                <p class="limited-note">Доступний лише обмежений час. Спробуйте, поки він є.</p>
+                {% endif %}
+
+                <div class="product-meta">
+                    {% if product.is_available is none %}
+                    <span class="pill pill--unknown">Оберіть філію, щоб перевірити наявність</span>
+                    {% elif product.is_available %}
+                    <span class="pill pill--ok">Є в наявності у філії {{ product.branch.name }}</span>
+                    {% else %}
+                    <span class="pill pill--no">Немає в наявності у філії {{ product.branch.name }}</span>
+                    {% endif %}
+
+                    {% if product.calories is not none %}
+                    <span class="product-calories">{{ product.calories }} ккал</span>
+                    {% endif %}
+                </div>
+
+                {% if product.description %}
+                <p class="product-desc">{{ product.description }}</p>
+                {% endif %}
+            </header>
+
+            <dl class="product-facts">
+                <div class="product-facts__row">
+                    <dt>Алергени</dt>
+                    <dd>
+                        {% if product.allergens %}
+                        <ul class="allergen-list" aria-label="Алергени в оригінальному рецепті">
+                            {% for allergen in product.allergens %}<li>{{ {'Gluten': 'Глютен', 'Eggs': 'Яйця', 'Milk': 'Молоко', 'Soy': 'Соя', 'Tree nuts': 'Горіхи'}.get(allergen, allergen) }}</li>{% endfor %}
+                        </ul>
+                        {% else %}
+                        Основні алергени в оригінальному рецепті відсутні.
+                        {% endif %}
+                        <span>{{ kitchen_note }}</span>
+                    </dd>
+                </div>
+                <div class="product-facts__row">
+                    <dt>Свіжість і зберігання</dt>
+                    <dd>{{ storage_note }}</dd>
+                </div>
+            </dl>
+
+            <div class="product-branch">
+                {% if product.branch %}
+                <span>Ціни для філії <strong>{{ product.branch.name }}</strong>, {{ product.branch.city }}</span>
+                <button type="button" class="link-btn" data-open-branch>Змінити</button>
+                {% else %}
+                <span>Філію не обрано — показано стандартну ціну з меню.</span>
+                <button type="button" class="link-btn" data-open-branch>Оберіть філію</button>
+                {% endif %}
+            </div>
+
+            <section class="recipe-section" aria-labelledby="recipe-title">
+                <div class="recipe-heading">
+                    <h2 id="recipe-title">Створіть свій смак</h2>
+                    <button type="button" class="link-btn" id="reset-recipe" hidden>Скинути до рецепта</button>
+                </div>
+                <p class="recipe-intro">Кількість вказана на один пончик. Установіть 0, щоб прибрати інгредієнт.</p>
+
+                {% if product.ingredients %}
+                <ul class="recipe-list">
+                    {% for ingredient in product.ingredients %}
+                    {% set editable = ingredient.is_changeable and ingredient.is_available %}
+                    <li class="recipe-item{% if not editable %} is-locked{% endif %}" data-ingredient-id="{{ ingredient.id }}">
+                        <div class="recipe-copy">
+                            <h3 class="recipe-name" id="ingredient-name-{{ ingredient.id }}">{{ ingredient.name }}</h3>
+                            {% if ingredient.description %}
+                            <p class="recipe-desc">{{ ingredient.description }}</p>
+                            {% endif %}
+                            {% if ingredient.is_available is sameas false %}
+                            {% if ingredient.is_changeable %}
+                            <p class="recipe-note recipe-note--warn">Немає в наявності {% if ingredient.is_active %}у цій філії{% else %}зараз{% endif %}, тому інгредієнт не додано.</p>
+                            {% else %}
+                            <p class="recipe-note recipe-note--warn">Немає в наявності {% if ingredient.is_active %}у цій філії{% else %}зараз{% endif %}. Без цього інгредієнта пончик замовити не можна.</p>
+                            {% endif %}
+                            {% elif not ingredient.is_changeable %}
+                            <p class="recipe-note">Входить до основного рецепта.</p>
+                            {% elif ingredient.extra_price > 0 and ingredient.max_quantity > ingredient.default_quantity %}
+                            <p class="recipe-note">Додаткова кількість понад норму рецепта коштує +{{ "₴%.2f"|format(ingredient.extra_price) }}.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="recipe-quantity">
+                            {% if editable %}
+                            <div class="stepper" role="group" aria-labelledby="ingredient-name-{{ ingredient.id }}">
+                                <button type="button" class="stepper__btn" data-step="-1" aria-label="Менше: {{ ingredient.name }}">&minus;</button>
+                                <input
+                                    class="stepper__input"
+                                    type="number"
+                                    inputmode="decimal"
+                                    id="ingredient-{{ ingredient.id }}"
+                                    min="0"
+                                    max="{{ ingredient.max_quantity }}"
+                                    step="any"
+                                    value="{{ ingredient.default_quantity }}"
+                                    aria-labelledby="ingredient-name-{{ ingredient.id }}"
+                                    aria-describedby="ingredient-range-{{ ingredient.id }}"
+                                >
+                                <span class="stepper__unit">{{ ingredient.unit }}</span>
+                                <button type="button" class="stepper__btn" data-step="1" aria-label="Більше: {{ ingredient.name }}">+</button>
+                            </div>
+                            <span class="recipe-range" id="ingredient-range-{{ ingredient.id }}"></span>
+                            {% else %}
+                            <span class="recipe-fixed">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-7-2a2 2 0 0 1 4 0v2h-4Z"/></svg>
+                                {% if ingredient.is_available is sameas false and ingredient.is_changeable %}
+                                Не додано
+                                {% else %}
+                                {{ '%g'|format(ingredient.default_quantity) }} {{ ingredient.unit }}
+                                {% endif %}
+                                <span class="visually-hidden">(незмінний інгредієнт)</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="state-message">Інформація про склад цього пончика недоступна.</p>
+                {% endif %}
+            </section>
+
+            <div class="purchase-panel">
+                <div class="purchase-price">
+                    <span class="purchase-price__label">Орієнтовна ціна</span>
+                    <span class="purchase-price__value" id="product-price" aria-live="polite">{{ "₴%.2f"|format(product.price) }}</span>
+                    <span class="purchase-price__each" id="product-price-each"></span>
+                </div>
+
+                <div class="purchase-actions">
+                    <div class="stepper stepper--lg" role="group" aria-label="Кількість пончиків">
+                        <button id="minus-btn" class="stepper__btn" type="button" aria-label="На один пончик менше">&minus;</button>
+                        <output id="qty-count" class="stepper__value" aria-live="polite">1</output>
+                        <button id="plus-btn" class="stepper__btn" type="button" aria-label="На один пончик більше">+</button>
+                    </div>
+
+                    <button id="add-to-cart-btn" class="btn add-btn" type="button"
+                        {% if product.is_available is sameas false %}disabled{% endif %}>
+                        {% if product.is_available is sameas false %}Немає в наявності{% else %}Додати до кошика{% endif %}
+                    </button>
+                </div>
+
+                <p class="purchase-note">
+                    Ціна орієнтовна. Додаткова кількість інгредієнта понад норму рецепта оплачується (один раз за інгредієнт); зменшення кількості ціну не змінює. Остаточну ціну Donnie підтвердить під час оформлення замовлення.
+                </p>
+                <p class="purchase-feedback" id="add-feedback" hidden>
+                    Додано до кошика. <a href="/ua/order">Перейти до оформлення</a> або <a href="/ua/store">продовжити покупки</a>.
+                </p>
+            </div>
+        </div>
+    </article>
+
+    {% if related %}
+    <section class="related" aria-labelledby="related-title">
+        <h2 class="related__title" id="related-title">Вам також може сподобатися</h2>
+        <ul class="related-grid">
+            {% for item in related %}
+            <li class="related-card{% if item.is_limited %} is-limited{% endif %}" style="--tile: var(--tile-{{ (item.id % 6) + 1 }})">
+                <a href="/ua/product/{{ item.id }}">
+                    <span class="related-card__tile">
+                        <img src="{{ item.image_url or url_for('static', path='assets/icons/donnie-donut-icon.png') }}"
+                             alt="" loading="lazy" decoding="async" width="160" height="160">
+                    </span>
+                    <span class="related-card__name">{{ item.name }}</span>
+                    <span class="related-card__price">{{ "₴%.2f"|format(item.price) }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="product-data" type="application/json">{{ product_data|tojson }}</script>
+<script src="{{ static_url('js/product.js') }}" defer></script>
+{% endblock %}

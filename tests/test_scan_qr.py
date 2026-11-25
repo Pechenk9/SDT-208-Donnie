@@ -19,10 +19,10 @@ def test_qr_on_localhost_points_to_the_wifi_address(client, database, monkeypatc
     place(client, ids)
     order = get_order(database)
 
-    page = client.get(f"/orders/{order.id}/receipt", headers={"host": "127.0.0.1:8002"})
+    page = client.get(f"/en/orders/{order.id}/receipt", headers={"host": "127.0.0.1:8002"})
 
     assert qr_url(page.text) == (
-        f"http://192.168.0.170:8002/orders/{order.id}/receipt?t={order.access_token}&scan=1"
+        f"http://192.168.0.170:8002/en/orders/{order.id}/receipt?t={order.access_token}&scan=1"
     )
 
 
@@ -32,9 +32,9 @@ def test_public_base_url_wins(client, database, monkeypatch):
     place(client, ids)
     order = get_order(database)
 
-    page = client.get(f"/orders/{order.id}/receipt", headers={"host": "127.0.0.1:8002"})
+    page = client.get(f"/en/orders/{order.id}/receipt", headers={"host": "127.0.0.1:8002"})
 
-    assert qr_url(page.text).startswith(f"https://donnie.example.com/orders/{order.id}/receipt?t=")
+    assert qr_url(page.text).startswith(f"https://donnie.example.com/en/orders/{order.id}/receipt?t=")
 
 
 def test_real_host_is_kept(client, database, monkeypatch):
@@ -43,14 +43,14 @@ def test_real_host_is_kept(client, database, monkeypatch):
     place(client, ids)
     order = get_order(database)
 
-    page = client.get(f"/orders/{order.id}/receipt")  # host: testserver
+    page = client.get(f"/en/orders/{order.id}/receipt")  # host: testserver
 
-    assert qr_url(page.text).startswith("http://testserver/orders/")
+    assert qr_url(page.text).startswith("http://testserver/en/orders/")
 
 
 def scan(client, order):
     client.cookies.clear()  # a phone that never saw this order
-    return client.get(f"/orders/{order.id}/receipt?t={order.access_token}&scan=1")
+    return client.get(f"/en/orders/{order.id}/receipt?t={order.access_token}&scan=1")
 
 
 def test_scan_of_paid_order_says_paid(client, database):
@@ -65,7 +65,7 @@ def test_scan_of_paid_order_says_paid(client, database):
     assert page.status_code == 200
     assert "scan-check--ok" in page.text
     assert "Paid online with LiqPay" in page.text
-    assert "$18.00" in page.text
+    assert "₴18.00" in page.text
     assert "Thank you for your order!" not in page.text
 
 
@@ -110,11 +110,11 @@ def test_scan_without_token_is_still_404(client, database):
     place(client, ids)
     order = get_order(database)
     client.cookies.clear()
-    assert client.get(f"/orders/{order.id}/receipt?scan=1").status_code == 404
+    assert client.get(f"/en/orders/{order.id}/receipt?scan=1").status_code == 404
 
 
 def test_normal_receipt_has_no_scan_banner(client, database):
     _, ids = database
     place(client, ids)
-    page = client.get(f"/orders/{get_order(database).id}/receipt")
+    page = client.get(f"/en/orders/{get_order(database).id}/receipt")
     assert 'class="scan-check' not in page.text

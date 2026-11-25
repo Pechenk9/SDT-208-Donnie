@@ -113,6 +113,12 @@ The application will be available at:
 http://127.0.0.1:8000
 ```
 
+## Languages
+
+The application supports English and Ukrainian at `/en/` and `/ua/`; English is the default. The shared header switcher keeps the current page and query parameters when an equivalent route exists. A language preference cookie keeps unprefixed form and API requests in the selected language, while existing unprefixed URLs remain compatible and default to English when no preference is set.
+
+Catalogue translations use the existing localized database columns (for example, `description` / `description_en` and `name` / `name_en`). When a translation is missing, the available language value is shown instead. No extra translation schema or database migration is needed for language selection.
+
 Open `/login` to sign in. Successful login redirects to the Store; invalid credentials show a generic error. Submit a POST request to `/logout` to invalidate the server-side session and clear the cookie. The session cookie is HTTP-only, uses SameSite=Lax, and lasts 12 hours by default.
 
 Configure cookie behavior with `SESSION_LIFETIME_SECONDS` and `SESSION_COOKIE_SECURE`. By default, the cookie is secure when `ENVIRONMENT=production` (or `APP_ENV=production`) and not secure during local development. Set `SESSION_COOKIE_SECURE=true` explicitly when serving over production HTTPS.
@@ -138,7 +144,7 @@ Donnie aims to provide a convenient online ordering experience for a donut shop 
 
 ## Online payment (LiqPay)
 
-Online orders are paid through [LiqPay](https://www.liqpay.ua/en/doc). Donnie builds the checkout `data` (base64 JSON: amount in USD, a unique `order_id` per attempt, `result_url`, `server_url`) and its `signature` (`base64(sha1(private_key + data + private_key))`), and the browser posts both to the LiqPay checkout. The result comes from the signed callback to `server_url` or from a `status` request when the guest returns. Managers refund with the `refund` action.
+Online orders are paid in Ukrainian hryvnia (UAH) through [LiqPay](https://www.liqpay.ua/en/doc). Donnie builds the checkout `data` (base64 JSON: amount in UAH, a unique `order_id` per attempt, `result_url`, `server_url`) and its `signature` (`base64(sha1(private_key + data + private_key))`), and the browser posts both to the LiqPay checkout. The result comes from the signed callback to `server_url` or from a `status` request when the guest returns. Managers refund with the `refund` action.
 
 Settings in `.env` (see `.env.exmple`):
 

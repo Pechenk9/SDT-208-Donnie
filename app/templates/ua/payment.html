@@ -1,0 +1,111 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Оплата замовлення №{{ order.id }} — Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/payment.css') }}">
+{% endblock %}
+
+{% block site_footer %}{% endblock %}
+
+{% block content %}
+<form class="pay-screen" method="post" action="/ua/orders/{{ order.id }}/pay?t={{ order.access_token }}"
+      data-total="{{ '%.2f'|format(order.total_price) }}">
+    <header class="pay-top">
+        <span class="pay-top__logo" aria-hidden="true"></span>
+        <div>
+            <p class="pay-top__branch">{{ localized(order.branch, 'name', language) }}</p>
+            <p class="pay-top__meta">
+                Замовлення №{{ order.id }}{% if order.table_number %} · Столик {{ order.table_number }}{% endif %}
+            </p>
+        </div>
+        <span class="pay-test-badge">{{ {'LiqPay · demo': 'LiqPay · демо', 'LiqPay · sandbox': 'LiqPay · тестовий режим'}.get(provider_label, provider_label) }}</span>
+    </header>
+
+    <section class="pay-amount" aria-label="Сума до сплати">
+        <p class="pay-amount__label">До сплати</p>
+        <p class="pay-amount__value" id="pay-amount">₴{{ "%.2f"|format(order.amount_due) }}</p>
+    </section>
+
+    {% if declined %}
+    <div class="alert alert--error" role="alert">
+        LiqPay відхилив платіж. Кошти не списано — можете спробувати ще раз.
+    </div>
+    {% endif %}
+
+    <details class="pay-block pay-order">
+        <summary>
+            <span>Ваше замовлення</span>
+            <span class="pay-order__count">{{ order.items|sum(attribute='quantity') }} пончиків · ₴{{ "%.2f"|format(order.total_price) }}</span>
+        </summary>
+        <ul class="pay-items">
+            {% for item in order.items %}
+            <li>
+                <span>{{ localized(item.product, 'name', language, item.name_snapshot) if item.product else item.name_snapshot }} <span class="pay-items__qty">× {{ item.quantity }}</span></span>
+                <span>₴{{ "%.2f"|format(item.unit_price * item.quantity) }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+
+    <fieldset class="pay-block pay-tips">
+        <legend class="pay-tips__title">Чайові для команди</legend>
+        <p class="pay-tips__lead">Усі чайові отримають пекарі та працівники філії {{ localized(order.branch, 'name', language) }}.</p>
+        <div class="tip-chips">
+            {% for option in tip_options %}
+            <label class="tip-chip">
+                <input type="radio" name="tip_percent" value="{{ option.percent }}"
+                       data-amount="{{ '%.2f'|format(option.amount) }}"
+                       {% if option.percent == current_tip %}checked{% endif %}>
+                <span>
+                    <strong>{{ 'Без чайових' if option.percent == 0 else option.percent ~ '%' }}</strong>
+                    {% if option.percent %}<small>₴{{ "%.2f"|format(option.amount) }}</small>{% endif %}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <div class="pay-bar">
+        <div class="alert alert--error pay-bar__error" id="pay-error" role="alert" hidden></div>
+        <button type="submit" class="pay-bar__btn" id="pay-button">
+            <span class="pay-btn__label">Сплатити ₴{{ "%.2f"|format(order.amount_due) }}</span>
+            <span class="pay-btn__spin" aria-hidden="true"></span>
+            <span class="pay-btn__done" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path class="pay-btn__tick" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                Оплачено, дякуємо!
+            </span>
+        </button>
+        <span class="visually-hidden" id="pay-status" role="status" aria-live="polite"></span>
+        <p class="pay-bar__methods">Безпечна оплата через LiqPay · картка, Apple Pay, Google Pay, Privat24</p>
+    </div>
+
+    <p class="pay-note">
+        {% if provider_demo %}
+        Демо-режим: наступна сторінка — вбудований емулятор оплати Donnie через LiqPay.
+        Дані картки не потрібні, реальні кошти не списуються.
+        {% else %}
+        Оплата відбудеться на сторінці LiqPay. Магазин використовує тестові ключі LiqPay, тому реальні кошти не списуються: скористайтеся тестовою карткою 4242 4242 4242 4242.
+        {% endif %}
+    </p>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update the amount and the button when the guest changes the tip.
+    (() => {
+        const form = document.querySelector('.pay-screen');
+        const total = Number(form.dataset.total);
+        const amount = document.getElementById('pay-amount');
+        const format = value => `₴${value.toFixed(2)}`;
+        form.addEventListener('change', event => {
+            if (event.target.name !== 'tip_percent') return;
+            const due = total + Number(event.target.dataset.amount);
+            amount.textContent = format(due);
+        });
+    })();
+</script>
+<script src="{{ static_url('js/springs.js') }}" defer></script>
+<script src="{{ static_url('js/pay-button.js') }}" defer></script>
+{% endblock %}

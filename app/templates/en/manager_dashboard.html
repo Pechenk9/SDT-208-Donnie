@@ -15,21 +15,21 @@
             <p class="manager-eyebrow">DONNIE MANAGEMENT</p>
             <h1>Manager Dashboard</h1>
             <p class="manager-current-branch">
-                Currently managing <strong>{{ selected_branch.name }} - {{ selected_branch.city }}</strong>
+                Currently managing <strong>{{ localized(selected_branch, 'name', language) }} - {{ localized(selected_branch, 'city', language) }}</strong>
             </p>
             <p class="manager-branch-notice" role="status">
-                You are managing {{ selected_branch.name }}. Changes will apply to this branch.
+                You are managing {{ localized(selected_branch, 'name', language) }}. Changes will apply to this branch.
             </p>
         </header>
 
         {% if managed_branches|length > 1 %}
-        <form class="manager-branch-picker" method="get" action="/manager">
+        <form class="manager-branch-picker" method="get" action="/en/manager">
             <input type="hidden" name="notice" value="">
             <label for="managed-branch">Switch assigned branch</label>
             <select id="managed-branch" name="branch_id">
                 {% for branch in managed_branches %}
                 <option value="{{ branch.id }}"{% if branch.id == selected_branch.id %} selected{% endif %}>
-                {{ branch.name }} - {{ branch.city }}
+                {{ localized(branch, 'name', language) }} - {{ localized(branch, 'city', language) }}
                 </option>
                 {% endfor %}
             </select>
@@ -63,13 +63,13 @@
                 <li class="manager-item" id="order-{{ order.id }}">
                     <div class="manager-item-details">
                         <h3>
-                            <a href="/orders/{{ order.id }}/receipt">#{{ order.id }}</a>
+                            <a href="/en/orders/{{ order.id }}/receipt">#{{ order.id }}</a>
                             · {{ order.customer_name }}
                         </h3>
                         <span class="manager-order-meta">
                             {% if order.table_number %}Table {{ order.table_number }}{% else %}{{ order.fulfillment_type.value | title }}{% endif %}
-                            · ${{ "%.2f"|format(order.amount_due) }}
-                            {% if order.tip_amount > 0 %}(tip ${{ "%.2f"|format(order.tip_amount) }}){% endif %}
+                            · ₴{{ "%.2f"|format(order.amount_due) }}
+                            {% if order.tip_amount > 0 %}(tip ₴{{ "%.2f"|format(order.tip_amount) }}){% endif %}
                             {% if order.created_at %}· {{ order.created_at.strftime('%d.%m %H:%M') }}{% endif %}
                         </span>
                         {% if order.scheduled_date or order.has_extras %}
@@ -87,29 +87,29 @@
                     </div>
                     <div class="manager-item-actions">
                         {% if sv.back %}
-                        <form method="post" action="/manager/orders/{{ order.id }}/status">
+                        <form method="post" action="/en/manager/orders/{{ order.id }}/status">
                             <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                             <button class="btn btn--ghost btn--small" type="submit" name="action" value="back"
                                     aria-label="Move order #{{ order.id }} one step back">Back</button>
                         </form>
                         {% endif %}
                         {% if sv.next %}
-                        <form method="post" action="/manager/orders/{{ order.id }}/status">
+                        <form method="post" action="/en/manager/orders/{{ order.id }}/status">
                             <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                             <button class="btn btn--small" type="submit" name="action" value="next"
                                     aria-label="Move order #{{ order.id }} to {{ sv.next }}">Next: {{ sv.next }}</button>
                         </form>
                         {% endif %}
                         {% if sv.cancel %}
-                        <form method="post" action="/manager/orders/{{ order.id }}/status"
+                        <form method="post" action="/en/manager/orders/{{ order.id }}/status"
                               onsubmit="return confirm('Cancel order #{{ order.id }}?');">
                             <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                             <button class="btn btn--ghost btn--small manager-cancel-btn" type="submit" name="action" value="cancel">Cancel</button>
                         </form>
                         {% endif %}
                         {% if order.payment_method == 'online' and order.payment_status == 'paid' %}
-                        <form method="post" action="/manager/orders/{{ order.id }}/refund"
-                              onsubmit="return confirm('Refund ${{ "%.2f"|format(order.amount_due) }} for order #{{ order.id }}?');">
+                        <form method="post" action="/en/manager/orders/{{ order.id }}/refund"
+                              onsubmit="return confirm('Refund ₴{{ "%.2f"|format(order.amount_due) }} for order #{{ order.id }}?');">
                             <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                             <button class="btn btn--danger btn--small" type="submit">Refund</button>
                         </form>
@@ -125,7 +125,7 @@
 
         <section class="manager-card manager-card--wide qr-panel" id="qr-codes" aria-labelledby="qr-title"
                  data-qr-base="{{ qr_base_url }}" data-branch-code="{{ selected_branch.code }}"
-                 data-branch-name="{{ selected_branch.name }}">
+                 data-branch-name="{{ localized(selected_branch, 'name', language) }}">
             <header class="manager-card-header">
                 <div>
                     <p class="manager-card-eyebrow">PRINT AND PUT ON THE TABLES</p>
@@ -133,7 +133,7 @@
                 </div>
             </header>
             <p class="manager-empty">
-                Guests scan a code, the menu of {{ selected_branch.name }} opens with the branch already chosen.
+                Guests scan a code, the menu of {{ localized(selected_branch, 'name', language) }} opens with the branch already chosen.
                 Table codes also let them order to their table.
             </p>
             <form class="manager-add-form qr-controls" id="qr-form">
@@ -160,7 +160,7 @@
                     {% for item in branch_products %}
                     <li class="manager-item">
                         <div class="manager-item-details">
-                            <h3>{{ item.product.name }}</h3>
+                            <h3>{{ localized(item.product, 'name', language) }}</h3>
                             {% if not item.product.is_active %}
                             <span class="manager-owner-warning">
                                 Owner has deactivated this product globally.
@@ -171,7 +171,7 @@
                             </span>
                         </div>
                         <div class="manager-item-actions">
-                            <form method="post" action="/manager/products/{{ item.product.id }}/availability">
+                            <form method="post" action="/en/manager/products/{{ item.product.id }}/availability">
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button
                                     class="btn btn--blue btn--small"
@@ -182,7 +182,7 @@
                                     {{ 'Mark unavailable' if item.association.is_available else 'Make available' }}
                                 </button>
                             </form>
-                            <form method="post" action="/manager/products/{{ item.product.id }}/remove">
+                            <form method="post" action="/en/manager/products/{{ item.product.id }}/remove">
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button class="btn btn--danger btn--small" type="submit">Remove</button>
                             </form>
@@ -197,12 +197,12 @@
                 <div class="manager-add">
                     <h3>Add a catalogue product</h3>
                     {% if catalogue_products %}
-                    <form class="manager-add-form" method="post" action="/manager/products/add">
+                    <form class="manager-add-form" method="post" action="/en/manager/products/add">
                         <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                         <label class="visually-hidden" for="catalogue-product">Product</label>
                         <select id="catalogue-product" name="product_id" required>
                             {% for product in catalogue_products %}
-                            <option value="{{ product.id }}">{{ product.name }}{% if not product.is_active %} - Owner has deactivated this product globally.{% endif %}</option>
+                            <option value="{{ product.id }}">{{ localized(product, 'name', language) }}{% if not product.is_active %} - Owner has deactivated this product globally.{% endif %}</option>
                             {% endfor %}
                         </select>
                         <button class="btn btn--small" type="submit">Add product</button>
@@ -226,7 +226,7 @@
                     {% for item in branch_ingredients %}
                     <li class="manager-item">
                         <div class="manager-item-details">
-                            <h3>{{ item.ingredient.name }}</h3>
+                            <h3>{{ localized(item.ingredient, 'name', language) }}</h3>
                             {% if not item.ingredient.is_active %}
                             <span class="manager-owner-warning">
                                 Owner has deactivated this ingredient globally.
@@ -237,7 +237,7 @@
                             </span>
                         </div>
                         <div class="manager-item-actions">
-                            <form method="post" action="/manager/ingredients/{{ item.ingredient.id }}/availability">
+                            <form method="post" action="/en/manager/ingredients/{{ item.ingredient.id }}/availability">
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button
                                     class="btn btn--blue btn--small"
@@ -248,7 +248,7 @@
                                     {{ 'Mark unavailable' if item.association.is_available else 'Make available' }}
                                 </button>
                             </form>
-                            <form method="post" action="/manager/ingredients/{{ item.ingredient.id }}/remove">
+                            <form method="post" action="/en/manager/ingredients/{{ item.ingredient.id }}/remove">
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button class="btn btn--danger btn--small" type="submit">Remove</button>
                             </form>
@@ -263,12 +263,12 @@
                 <div class="manager-add">
                     <h3>Add a catalogue ingredient</h3>
                     {% if catalogue_ingredients %}
-                    <form class="manager-add-form" method="post" action="/manager/ingredients/add">
+                    <form class="manager-add-form" method="post" action="/en/manager/ingredients/add">
                         <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                         <label class="visually-hidden" for="catalogue-ingredient">Ingredient</label>
                         <select id="catalogue-ingredient" name="ingredient_id" required>
                             {% for ingredient in catalogue_ingredients %}
-                            <option value="{{ ingredient.id }}">{{ ingredient.name }}{% if not ingredient.is_active %} - Owner has deactivated this ingredient globally.{% endif %}</option>
+                            <option value="{{ ingredient.id }}">{{ localized(ingredient, 'name', language) }}{% if not ingredient.is_active %} - Owner has deactivated this ingredient globally.{% endif %}</option>
                             {% endfor %}
                         </select>
                         <button class="btn btn--small" type="submit">Add ingredient</button>

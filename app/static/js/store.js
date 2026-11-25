@@ -9,6 +9,90 @@
     const PRODUCTS = Object.freeze((data.products || []).map(product => Object.freeze({ ...product })));
     const productsById = new Map(PRODUCTS.map(product => [product.id, product]));
     const hasBranch = Boolean(data.selected_branch);
+    const ukrainian = document.documentElement.lang === 'uk';
+    const productPath = id => `/${ukrainian ? 'ua' : 'en'}/product/${id}`;
+    const orderPath = ukrainian ? '/ua/order' : '/en/order';
+
+    function donutWord(count) {
+        const lastTwo = count % 100;
+        const last = count % 10;
+        if (lastTwo >= 11 && lastTwo <= 14) return 'пончиків';
+        if (last === 1) return 'пончик';
+        if (last >= 2 && last <= 4) return 'пончики';
+        return 'пончиків';
+    }
+
+    const text = ukrainian ? {
+        available: 'Є в наявності',
+        unavailable: 'Тут немає в наявності',
+        selectBranch: 'Оберіть філію',
+        limited: 'Обмежена серія',
+        bestseller: 'Хіт продажу',
+        customize: 'Налаштувати',
+        add: 'Додати',
+        addToCart: name => `Додати ${name} до кошика`,
+        page: (number, total) => `Сторінка ${number} із ${total}`,
+        nothingOnMenu: 'Поки що в меню нічого немає',
+        branchEmpty: 'У цій філії зараз немає пончиків. Спробуйте обрати іншу філію.',
+        loadError: 'Не вдалося завантажити меню. Оновіть сторінку.',
+        noResults: 'Пончиків не знайдено',
+        noMatch: query => `За запитом «${query}» нічого не знайдено. Перевірте написання або спробуйте іншу назву.`,
+        showing: 'Показано',
+        pageSeparator: 'із',
+        minimumEmpty: count => `Мінімальне замовлення — ${count} ${donutWord(count)} загалом.`,
+        minimumAdd: count => `Додайте ще ${count} ${donutWord(count)}, щоб досягти мінімуму в ${Cart.MIN_ORDER_DONUTS} пончиків.`,
+        minimumReached: 'Мінімальне замовлення виконано — можна оформлювати!',
+        cartEmpty: 'Кошик порожній',
+        checkout: 'Перейти до оформлення',
+        mobileMore: count => `Ще ${count} до замовлення`,
+        mobileCheckout: 'Оформити замовлення →',
+        chooseBranchFirst: 'Спочатку оберіть філію — меню та ціни залежать від неї.',
+        unavailableAtBranch: name => `${name} немає в цій філії.`,
+        capped: `В одному рядку можна замовити не більше ${Cart.MAX_LINE_QUANTITY} пончиків.`,
+        addedToCart: (name, count) => `${name} додано · у кошику ${count} ${donutWord(count)}`,
+        viewCart: 'Переглянути кошик',
+        addError: 'Не вдалося додати цей пончик. Спробуйте ще раз.',
+        boxUnavailable: 'Зараз у цій філії немає пончиків для асорті.',
+        pickAdded: names => `Вибір Donnie додано: ${names.join(', ')}.`,
+        checkoutShort: 'Оформити',
+        boxError: 'Не вдалося зібрати коробку. Спробуйте ще раз.',
+        welcome: 'Вітаємо в Donnie! Оберіть найближчу філію, щоб переглянути меню та ціни.',
+    } : {
+        available: 'Available',
+        unavailable: 'Unavailable here',
+        selectBranch: 'Select a branch',
+        limited: 'Limited edition',
+        bestseller: 'Bestseller',
+        customize: 'Customize',
+        add: 'Add',
+        addToCart: name => `Add ${name} to cart`,
+        page: (number, total) => `Page ${number} of ${total}`,
+        nothingOnMenu: 'Nothing on the menu here yet',
+        branchEmpty: 'This branch has no donuts available right now. Try another branch.',
+        loadError: 'Our menu could not be loaded. Please refresh the page.',
+        noResults: 'No donuts found',
+        noMatch: query => `Nothing matches “${query}”. Check the spelling or try another name.`,
+        showing: 'Showing',
+        pageSeparator: 'of',
+        minimumEmpty: count => `Minimum order is ${count} donuts in total.`,
+        minimumAdd: count => `Add ${Cart.plural(count, 'more donut', 'more donuts')} to reach the ${Cart.MIN_ORDER_DONUTS}-donut minimum.`,
+        minimumReached: 'Minimum order reached — ready for checkout!',
+        cartEmpty: 'Cart is empty',
+        checkout: 'Go to checkout',
+        mobileMore: count => `${count} more to order`,
+        mobileCheckout: 'Checkout →',
+        chooseBranchFirst: 'Choose a branch first — the menu and prices depend on it.',
+        unavailableAtBranch: name => `${name} is not available at this branch.`,
+        capped: `You can order up to ${Cart.MAX_LINE_QUANTITY} of one donut per line.`,
+        addedToCart: (name, count) => `${name} added · ${Cart.plural(count, 'donut', 'donuts')} in cart`,
+        viewCart: 'View cart',
+        addError: 'Could not add this donut. Please try again.',
+        boxUnavailable: 'Nothing is available for a mixed box at this branch right now.',
+        pickAdded: names => `Donnie's pick added: ${names.join(', ')}.`,
+        checkoutShort: 'Checkout',
+        boxError: 'Could not put the box together. Please try again.',
+        welcome: 'Welcome to Donnie! Pick your nearest branch to see its menu and prices.',
+    };
 
     const grid = document.getElementById('catalogue-grid');
     const searchInput = document.getElementById('catalogue-search');
@@ -69,13 +153,13 @@
         pill.className = 'pill';
         if (product.is_available === true) {
             pill.classList.add('pill--ok');
-            pill.textContent = 'Available';
+            pill.textContent = text.available;
         } else if (product.is_available === false) {
             pill.classList.add('pill--no');
-            pill.textContent = 'Unavailable here';
+            pill.textContent = text.unavailable;
         } else {
             pill.classList.add('pill--unknown');
-            pill.textContent = 'Select a branch';
+            pill.textContent = text.selectBranch;
         }
         return pill;
     }
@@ -92,7 +176,7 @@
 
         const link = document.createElement('a');
         link.className = 'donut-product-link';
-        link.href = `/product/${product.id}`;
+        link.href = productPath(product.id);
 
         const imageBox = document.createElement('div');
         imageBox.className = 'donut-img-container';
@@ -111,13 +195,13 @@
             if (product.is_limited) {
                 const badge = document.createElement('span');
                 badge.className = 'limited-badge';
-                badge.textContent = 'Limited edition';
+                badge.textContent = text.limited;
                 badges.appendChild(badge);
             }
             if (product.is_bestseller) {
                 const badge = document.createElement('span');
                 badge.className = 'bestseller-badge';
-                badge.textContent = 'Bestseller';
+                badge.textContent = text.bestseller;
                 badges.appendChild(badge);
             }
             imageBox.appendChild(badges);
@@ -154,9 +238,9 @@
 
         const details = document.createElement('a');
         details.className = 'btn btn--ghost btn--small';
-        details.href = `/product/${product.id}`;
-        details.textContent = 'Customize';
-        details.setAttribute('aria-label', `Customize ${product.name}`);
+        details.href = productPath(product.id);
+        details.textContent = text.customize;
+        details.setAttribute('aria-label', `${text.customize} ${product.name}`);
         actions.appendChild(details);
 
         if (!unavailable) {
@@ -164,10 +248,10 @@
             add.type = 'button';
             add.className = 'btn btn--small add-to-basket';
             add.dataset.productId = String(product.id);
-            add.setAttribute('aria-label', `Add ${product.name} to cart`);
+            add.setAttribute('aria-label', text.addToCart(product.name));
             add.innerHTML =
                 '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>' +
-                '<span>Add</span>';
+                `<span>${text.add}</span>`;
             actions.appendChild(add);
         }
 
@@ -189,7 +273,7 @@
         button.className = 'pagination__page';
         button.dataset.page = String(page);
         button.textContent = String(page);
-        button.setAttribute('aria-label', `Page ${page} of ${totalPages}`);
+        button.setAttribute('aria-label', text.page(page, totalPages));
         if (page === state.page) button.setAttribute('aria-current', 'page');
         li.appendChild(button);
         return li;
@@ -210,9 +294,15 @@
             status.textContent = '';
             return;
         }
-        const range = resultCount > PAGE_SIZE ? `Showing ${start + 1}–${start + shown} of ` : '';
-        const page = totalPages > 1 ? ` · Page ${state.page} of ${totalPages}` : '';
-        status.textContent = `${range}${Cart.plural(resultCount, 'donut', 'donuts')}${page}`;
+        if (ukrainian) {
+            const range = resultCount > PAGE_SIZE ? `${text.showing} ${start + 1}–${start + shown} ${text.pageSeparator} ` : '';
+            const page = totalPages > 1 ? ` · ${text.page(state.page, totalPages)}` : '';
+            status.textContent = `${range}${resultCount} ${donutWord(resultCount)}${page}`;
+        } else {
+            const range = resultCount > PAGE_SIZE ? `Showing ${start + 1}–${start + shown} of ` : '';
+            const page = totalPages > 1 ? ` · Page ${state.page} of ${totalPages}` : '';
+            status.textContent = `${range}${Cart.plural(resultCount, 'donut', 'donuts')}${page}`;
+        }
     }
 
     function renderEmpty(resultCount) {
@@ -220,14 +310,14 @@
         if (resultCount > 0) return;
 
         if (PRODUCTS.length === 0) {
-            emptyTitle.textContent = 'Nothing on the menu here yet';
+            emptyTitle.textContent = text.nothingOnMenu;
             emptyText.textContent = hasBranch
-                ? 'This branch has no donuts available right now. Try another branch.'
-                : 'Our menu could not be loaded. Please refresh the page.';
+                ? text.branchEmpty
+                : text.loadError;
             clearSearchBtn.hidden = true;
         } else {
-            emptyTitle.textContent = 'No donuts found';
-            emptyText.textContent = `Nothing matches “${state.query.trim()}”. Check the spelling or try another name.`;
+            emptyTitle.textContent = text.noResults;
+            emptyText.textContent = text.noMatch(state.query.trim());
             clearSearchBtn.hidden = false;
         }
     }
@@ -283,19 +373,19 @@
         minOrder.classList.toggle('is-met', missing === 0);
         minFill.style.width = `${Math.min(100, (donuts / Cart.MIN_ORDER_DONUTS) * 100)}%`;
         minText.textContent = donuts === 0
-            ? `Minimum order is ${Cart.MIN_ORDER_DONUTS} donuts in total.`
+            ? text.minimumEmpty(Cart.MIN_ORDER_DONUTS)
             : missing > 0
-                ? `Add ${Cart.plural(missing, 'more donut', 'more donuts')} to reach the ${Cart.MIN_ORDER_DONUTS}-donut minimum.`
-                : 'Minimum order reached — ready for checkout!';
+                ? text.minimumAdd(missing)
+                : text.minimumReached;
 
         const checkout = document.querySelector('[data-summary="checkout"]');
-        checkout.textContent = donuts === 0 ? 'Cart is empty' : 'Go to checkout';
+        checkout.textContent = donuts === 0 ? text.cartEmpty : text.checkout;
         checkout.classList.toggle('btn--ghost', donuts === 0);
 
         const mobileBar = document.getElementById('mobile-cart-bar');
         mobileBar.hidden = donuts === 0;
         document.querySelector('[data-summary="mobile-cta"]').textContent =
-            missing > 0 ? `${missing} more to order` : 'Checkout →';
+            missing > 0 ? text.mobileMore(missing) : text.mobileCheckout;
     }
 
     /* ---------- add to cart ---------- */
@@ -306,7 +396,7 @@
         if (!product || product.is_available === false) return;
 
         if (!hasBranch) {
-            window.DonnieBranch.open('Choose a branch first — the menu and prices depend on it.');
+            window.DonnieBranch.open(text.chooseBranchFirst);
             return;
         }
 
@@ -316,7 +406,7 @@
             // Every line stores the full recipe; a quick add uses the default recipe.
             const details = await Cart.loadProduct(productId);
             if (details.is_available === false) {
-                Cart.toast(`${product.name} is not available at this branch.`, { type: 'error' });
+                Cart.toast(text.unavailableAtBranch(product.name), { type: 'error' });
                 return;
             }
             const result = Cart.addLine({
@@ -327,15 +417,15 @@
             const { donuts } = Cart.totals();
             Cart.toast(
                 result.capped
-                    ? `You can order up to ${Cart.MAX_LINE_QUANTITY} of one donut per line.`
-                    : `${product.name} added · ${Cart.plural(donuts, 'donut', 'donuts')} in cart`,
-                { type: result.capped ? 'error' : 'success', action: { href: '/order', label: 'View cart' } }
+                    ? text.capped
+                    : text.addedToCart(product.name, donuts),
+                { type: result.capped ? 'error' : 'success', action: { href: orderPath, label: text.viewCart } }
             );
             bumpBadge();
             button.classList.add('is-added');
             setTimeout(() => button.classList.remove('is-added'), 900);
         } catch (error) {
-            Cart.toast('Could not add this donut. Please try again.', { type: 'error' });
+            Cart.toast(text.addError, { type: 'error' });
         } finally {
             button.disabled = false;
             button.classList.remove('is-loading');
@@ -357,7 +447,9 @@
 
     async function addTastingBox() {
         if (!hasBranch) {
-            window.DonnieBranch.open('Choose a branch first — Donnie\'s pick depends on what it bakes today.');
+            window.DonnieBranch.open(ukrainian
+                ? 'Спочатку оберіть філію — вибір Donnie залежить від того, що сьогодні там готують.'
+                : 'Choose a branch first — Donnie\'s pick depends on what it bakes today.');
             return;
         }
 
@@ -381,7 +473,7 @@
                 .map(({ result, product }) => ({ product, details: result.value }));
 
             if (orderable.length === 0) {
-                Cart.toast('Nothing is available for a mixed box at this branch right now.', { type: 'error' });
+                Cart.toast(text.boxUnavailable, { type: 'error' });
                 return;
             }
 
@@ -393,10 +485,10 @@
             });
 
             const names = [...new Set(box.map(({ product }) => product.name))];
-            Cart.toast(`Donnie's pick added: ${names.join(', ')}.`, { action: { href: '/order', label: 'Checkout' } });
+            Cart.toast(text.pickAdded(names), { action: { href: orderPath, label: text.checkoutShort } });
             bumpBadge();
         } catch (error) {
-            Cart.toast('Could not put the box together. Please try again.', { type: 'error' });
+            Cart.toast(text.boxError, { type: 'error' });
         } finally {
             tastingBtn.disabled = false;
             tastingBtn.classList.remove('is-loading');
@@ -466,7 +558,7 @@
     if (!hasBranch) {
         // Branch sync may restore a branch from the cart and reload; only ask when there is none.
         window.DonnieBranch.ready.then(branch => {
-            if (!branch) window.DonnieBranch.open('Welcome to Donnie! Pick your nearest branch to see its menu and prices.');
+            if (!branch) window.DonnieBranch.open(text.welcome);
         });
     }
 })();

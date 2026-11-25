@@ -39,7 +39,7 @@ from app.models import DemoLiqpayPayment, Order, PaymentStatus
 CHECKOUT_URL = "https://www.liqpay.ua/api/3/checkout"
 REQUEST_URL = "https://www.liqpay.ua/api/request"
 API_VERSION = 3
-CURRENCY = "USD"  # LiqPay accepts USD, EUR and UAH; Donnie's menu is in dollars
+CURRENCY = "UAH"
 
 PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "demo").strip().lower()
 LIQPAY_PUBLIC_KEY = os.getenv("LIQPAY_PUBLIC_KEY", "").strip()
@@ -179,6 +179,8 @@ class DemoLiqpayClient(LiqpayClient):
         params = decode_data(data)
         if params.get("public_key") != self.public_key or params.get("action") != "pay":
             raise LiqpayError("Invalid checkout data")
+        if params.get("currency") != CURRENCY:
+            raise LiqpayError("Invalid checkout currency")
 
         payment = self.get_payment(session, params["order_id"])
         if payment is None:

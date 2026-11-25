@@ -200,7 +200,17 @@ class Branch(Base):
 
     city: Mapped[str] = mapped_column(String(100))
 
+    city_en: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
     address: Mapped[str] = mapped_column(Text)
+
+    address_en: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
 
     phones: Mapped[list[BranchPhone]] = relationship(
         back_populates="branch",
@@ -258,6 +268,11 @@ class IngredientGroup(Base):
         unique=True,
     )
 
+    name_en: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
     max_selections: Mapped[int] = mapped_column(Integer)
 
     __table_args__ = (
@@ -282,7 +297,17 @@ class Ingredient(Base):
         unique=True,
     )
 
+    name_en: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
     description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    description_en: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -331,7 +356,17 @@ class Product(Base):
         unique=True,
     )
 
+    name_en: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
     description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    description_en: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -653,17 +688,15 @@ class Order(Base):
     )
 
     # Secret that opens this order's receipt, payment and status pages for a
-    # guest: kept in a cookie by the browser that placed the order and put in
-    # the emailed receipt link (?t=...). Order ids are sequential, so the id
-    # alone must never be enough to see someone's name, phone and address.
+    # guest. Order ids are sequential, so an id alone must not expose customer
+    # details.
     access_token: Mapped[str] = mapped_column(
         String(64),
         default=lambda: secrets.token_urlsafe(24),
         nullable=False,
     )
 
-    # When the payment receipt went to customer_email. Set before sending,
-    # so a LiqPay callback and the guest's return never send it twice.
+    # Prevents duplicate receipt emails; cleared if delivery fails so it can retry.
     receipt_emailed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

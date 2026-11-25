@@ -1,0 +1,88 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Створити обліковий запис — Donnie{% endblock %}
+
+{% block description %}Створіть обліковий запис Donnie.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="login-page">
+    <div class="login-card">
+        <h1 class="login-title">Приєднуйтеся до Donnie!</h1>
+        <p class="login-intro">Створіть обліковий запис, щоб швидше оформлювати наступні замовлення.</p>
+
+        {% if errors %}
+        <div class="alert alert--error login-alert" role="alert" id="register-errors">
+            <p><strong>Виправте, будь ласка, такі помилки:</strong></p>
+            <ul>
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form class="login-form" method="post" action="/ua/register" novalidate data-auth-form data-register-form>
+            <div class="field-row">
+                <div class="field">
+                    <label class="field__label" for="first_name">Ім’я</label>
+                    <input class="field__input" id="first_name" name="first_name" type="text"
+                           autocomplete="given-name" maxlength="100" value="{{ first_name }}" required
+                           aria-invalid="false" data-error="first-name-error" autofocus>
+                    <span class="field__error" id="first-name-error"></span>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="last_name">Прізвище <span class="field__optional">(необов’язково)</span></label>
+                    <input class="field__input" id="last_name" name="last_name" type="text"
+                           autocomplete="family-name" maxlength="100" value="{{ last_name }}"
+                           aria-invalid="false" data-error="last-name-error">
+                    <span class="field__error" id="last-name-error"></span>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="email">Електронна пошта</label>
+                <input class="field__input" id="email" name="email" type="email"
+                       autocomplete="email" maxlength="255" value="{{ email }}" required
+                       aria-invalid="false" data-error="email-error">
+                <span class="field__error" id="email-error"></span>
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="password">Пароль</label>
+                <div class="password-field">
+                    <input class="field__input" id="password" name="password" type="password"
+                           autocomplete="new-password" minlength="8" required
+                           aria-invalid="false" data-error="password-error" aria-describedby="password-hint">
+                    <button type="button" class="password-toggle" data-password-toggle aria-controls="password" aria-pressed="false">Показати</button>
+                </div>
+                <span class="field__hint" id="password-hint">Щонайменше 8 символів.</span>
+                <span class="field__error" id="password-error"></span>
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="confirm_password">Підтвердьте пароль</label>
+                <input class="field__input" id="confirm_password" name="confirm_password" type="password"
+                       autocomplete="new-password" required
+                       aria-invalid="false" data-error="confirm-password-error">
+                <span class="field__error" id="confirm-password-error"></span>
+            </div>
+
+            <button class="btn btn--block login-submit" type="submit">Створити обліковий запис</button>
+        </form>
+
+        <p class="login-register-link">
+            Уже маєте обліковий запис? <a href="/ua/login">Увійти</a>
+        </p>
+        <a class="login-store-link" href="/ua/store">&larr; Повернутися до магазину</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/auth.js') }}" defer></script>
+{% endblock %}

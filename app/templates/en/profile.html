@@ -47,16 +47,16 @@
         </div>
 
         <footer class="profile-actions">
-            <a class="profile-store-link" href="/store">Continue shopping</a>
+            <a class="profile-store-link" href="/en/store">Continue shopping</a>
             {% if can_access_manager_panel %}
-            <a class="profile-management-link" href="/manager">Manager Panel</a>
+            <a class="profile-management-link" href="/en/manager">Manager Panel</a>
             {% elif can_access_owner_panel %}
-            <a class="profile-management-link" href="/owner">Owner Panel</a>
+            <a class="profile-management-link" href="/en/owner">Owner Panel</a>
             {% endif %}
             <form
                 class="profile-logout-form"
                 method="post"
-                action="/logout"
+                action="/en/logout"
                 onsubmit="return confirm('Are you sure you want to log out?');"
             >
                 <button class="profile-logout-button" type="submit">Log out</button>

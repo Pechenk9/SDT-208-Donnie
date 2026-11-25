@@ -173,7 +173,7 @@ def test_owner_can_view_all_panel_sections(owner_context):
     client, _, ids = owner_context
     authenticate(ids["owner"])
 
-    response = client.get("/owner")
+    response = client.get("/en/owner")
 
     assert response.status_code == 200
     assert "Overview" in response.text
@@ -183,6 +183,28 @@ def test_owner_can_view_all_panel_sections(owner_context):
     assert "Owner Branch A" in response.text
     assert "Existing Product" in response.text
     assert "Existing Ingredient" in response.text
+
+
+def test_owner_and_manager_panels_render_through_ukrainian_routes(owner_context):
+    client, _, ids = owner_context
+    authenticate(ids["owner"])
+
+    owner_response = client.get("/ua/owner?notice=product-updated")
+    assert owner_response.status_code == 200
+    assert '<html lang="uk">' in owner_response.text
+    assert "Дані товару в загальному каталозі оновлено." in owner_response.text
+    assert "/ua/owner/products/create" in owner_response.text
+
+    authenticate(ids["manager"])
+    manager_response = client.get("/ua/manager")
+    assert manager_response.status_code == 200
+    assert '<html lang="uk">' in manager_response.text
+    update = client.post(
+        f"/ua/manager/products/{ids['product']}/availability",
+        data={"branch_id": ids["branch_a"], "is_available": "true"},
+    )
+    assert update.status_code == 303
+    assert update.headers["location"].startswith("/ua/manager?")
 
 
 @pytest.mark.parametrize("role", ["customer", "manager"])
@@ -199,7 +221,7 @@ def test_non_owners_cannot_access_owner_panel_or_operations(owner_context, role)
     }
 
     responses = [
-        client.get("/owner"),
+        client.get("/en/owner"),
         client.post("/owner/staff/assign", data=form_data),
         client.post("/owner/staff/remove", data=form_data),
         client.post("/owner/products/create", data=form_data),
@@ -226,7 +248,7 @@ def test_unauthenticated_owner_posts_are_rejected(owner_context):
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/login"
+    assert response.headers["location"] == "/en/login"
 
 
 def test_manager_assignments_update_role_and_preserve_other_branches(owner_context):

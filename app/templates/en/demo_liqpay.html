@@ -9,7 +9,7 @@
 {% block site_footer %}{% endblock %}
 
 {% block content %}
-<form class="pay-screen demo-bank" method="post" action="/demo-liqpay/pay/{{ payment.order_id }}">
+<form class="pay-screen demo-bank" method="post" action="/en/demo-liqpay/pay/{{ payment.order_id }}">
     <header class="demo-bank__top">
         <span class="pay-test-badge">Demo emulator</span>
         <p class="demo-bank__title">LiqPay checkout</p>
@@ -18,8 +18,8 @@
 
     <section class="pay-amount" aria-label="Amount to pay">
         <p class="pay-amount__label">{{ payment.description }}</p>
-        <p class="pay-amount__value">${{ "%.2f"|format(payment.amount) }}</p>
-        <p class="pay-amount__label">{{ payment.currency }}</p>
+        <p class="pay-amount__value">₴{{ "%.2f"|format(payment.amount) }}</p>
+        <p class="pay-amount__label">UAH</p>
     </section>
 
     {% if payment.status == 'created' %}
@@ -50,7 +50,7 @@
     <div class="pay-bar">
         <div class="alert alert--error pay-bar__error" id="pay-error" role="alert" hidden></div>
         <button type="submit" class="pay-bar__btn" id="pay-button">
-            <span class="pay-btn__label">Pay ${{ "%.2f"|format(payment.amount) }}</span>
+            <span class="pay-btn__label">Pay ₴{{ "%.2f"|format(payment.amount) }}</span>
             <span class="pay-btn__spin" aria-hidden="true"></span>
             <span class="pay-btn__done" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path class="pay-btn__tick" d="M5 12.5l4.5 4.5L19 7.5"/></svg>

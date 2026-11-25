@@ -1,0 +1,219 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Оформлення замовлення — Donnie{% endblock %}
+
+{% block description %}Перевірте кошик і оформте замовлення в Donnie.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/order.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="checkout-page">
+    <div class="checkout-heading">
+        <h1 class="page-title">Оформлення замовлення</h1>
+        <a class="link-btn" href="/ua/store">&larr; Продовжити покупки</a>
+    </div>
+
+    <div id="checkout-loading" class="checkout-layout" aria-busy="true">
+        <div class="checkout-lines">
+            <div class="skeleton line-skeleton"></div>
+            <div class="skeleton line-skeleton"></div>
+        </div>
+        <div class="skeleton aside-skeleton"></div>
+    </div>
+
+    <div id="checkout-empty" class="state-message checkout-empty" hidden>
+        <img src="{{ url_for('static', path='assets/img/constructor-donut-store.png') }}" alt="" width="160" height="160">
+        <p class="state-message__title">Ваш кошик порожній</p>
+        <p>Додайте щонайменше {{ 6 }} пончиків, щоб оформити замовлення.</p>
+        <a class="btn" href="/ua/store">Переглянути пончики</a>
+    </div>
+
+    <div id="checkout-success" class="state-message checkout-success" hidden tabindex="-1">
+        <p class="state-message__title" id="checkout-success-title">Замовлення оформлено!</p>
+        <p id="checkout-success-text">Дякуємо! Перенаправляємо до квитанції…</p>
+        <a class="btn" id="checkout-success-link" href="/ua/store">Переглянути квитанцію</a>
+    </div>
+
+    <div id="checkout-content" class="checkout-layout" hidden>
+        <div class="checkout-main">
+        <section class="checkout-lines" aria-labelledby="cart-title">
+            <div class="section-head">
+                <h2 id="cart-title" class="section-title">Ваш кошик</h2>
+                <button type="button" class="link-btn link-btn--danger" id="clear-cart-btn">Видалити все</button>
+            </div>
+            <ul class="cart-lines" id="cart-lines"></ul>
+        </section>
+
+            <form id="order-form" class="checkout-form" method="post" action="/ua/orders" novalidate aria-labelledby="details-title">
+                <h2 class="section-title" id="details-title">Ваші дані</h2>
+
+                <div class="field">
+                    <label class="field__label" for="customer-name">Ім’я</label>
+                    <input class="field__input" type="text" id="customer-name" name="customer_name"
+                           autocomplete="name" maxlength="200" required
+                           value="{{ customer.name if customer else '' }}"
+                           data-error="customer-name-error" aria-invalid="false">
+                    <span class="field__error" id="customer-name-error"></span>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="customer-phone">Телефон</label>
+                    <input class="field__input" type="tel" id="customer-phone" name="customer_phone"
+                           autocomplete="tel" inputmode="tel" maxlength="30" required
+                           placeholder="+380 XX XXX XX XX"
+                           value="{{ customer.phone if customer else '' }}"
+                           data-error="customer-phone-error" aria-invalid="false"
+                           aria-describedby="customer-phone-hint">
+                    <span class="field__hint" id="customer-phone-hint">Український номер, наприклад 0671234567.</span>
+                    <span class="field__error" id="customer-phone-error"></span>
+                </div>
+
+                <div class="field field--wide">
+                    <label class="field__label" for="customer-email">Електронна пошта <span class="field__optional">(необов’язково)</span></label>
+                    <input class="field__input" type="email" id="customer-email" name="customer_email"
+                           autocomplete="email" maxlength="255"
+                           placeholder="you@example.com"
+                           value="{{ customer.email if customer else '' }}"
+                           data-error="customer-email-error" aria-invalid="false"
+                           aria-describedby="customer-email-hint">
+                    <span class="field__hint" id="customer-email-hint">Після онлайн-оплати ми надішлемо квитанцію на цю адресу.</span>
+                    <span class="field__error" id="customer-email-error"></span>
+                </div>
+
+                <fieldset class="field fulfillment">
+                    <legend class="field__label">Як бажаєте отримати замовлення?</legend>
+                    <div class="segmented">
+                        <label class="segmented__option">
+                            <input type="radio" name="fulfillment_type" value="pickup" checked>
+                            <span>Самовивіз</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="fulfillment_type" value="delivery">
+                            <span>Доставка</span>
+                        </label>
+                        <label class="segmented__option" id="table-option" hidden>
+                            <input type="radio" name="fulfillment_type" value="table">
+                            <span>Столик <strong id="table-number-label"></strong></span>
+                        </label>
+                    </div>
+                    <p class="field__hint" id="table-hint" hidden>Ви відсканували QR-код на столику, тож ми принесемо замовлення вам.</p>
+                </fieldset>
+
+                <fieldset class="field" id="schedule-group">
+                    <legend class="field__label">Коли?</legend>
+                    <div class="segmented">
+                        <label class="segmented__option">
+                            <input type="radio" name="schedule_mode" value="asap" checked>
+                            <span>Якнайшвидше</span>
+                        </label>
+                        <label class="segmented__option">
+                            <input type="radio" name="schedule_mode" value="later">
+                            <span>Передзамовлення</span>
+                        </label>
+                    </div>
+                    <div class="schedule-pickers" id="schedule-pickers" hidden>
+                        <div class="field">
+                            <label class="field__label" for="scheduled-date">День</label>
+                            <select class="field__input" id="scheduled-date" name="scheduled_date"></select>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="time-slot">Часовий проміжок</label>
+                            <select class="field__input" id="time-slot" name="time_slot"></select>
+                        </div>
+                    </div>
+                    <span class="field__hint" id="schedule-hint">Ми почнемо готувати замовлення одразу після оформлення.</span>
+                </fieldset>
+
+                <div class="field field--wide" id="address-group" hidden>
+                    <label class="field__label" for="delivery-address">Адреса доставки</label>
+                    <input class="field__input" type="text" id="delivery-address" name="delivery_address"
+                           autocomplete="street-address" maxlength="300"
+                           placeholder="Місто, вулиця, будинок, квартира"
+                           data-error="delivery-address-error" aria-invalid="false">
+                    <span class="field__error" id="delivery-address-error"></span>
+                </div>
+
+                <fieldset class="field field--wide">
+                    <legend class="field__label">Оплата</legend>
+                    <div class="pay-options">
+                        <label class="pay-option">
+                            <input type="radio" name="payment_method" value="online" checked>
+                            <span class="pay-option__body">
+                                <strong>Оплатити онлайн через LiqPay</strong>
+                                <span>Карткою, Apple Pay, Google Pay або Privat24 на захищеній сторінці LiqPay.</span>
+                            </span>
+                        </label>
+                        <label class="pay-option">
+                            <input type="radio" name="payment_method" value="on_receipt">
+                            <span class="pay-option__body">
+                                <strong id="pay-on-receipt-title">Оплатити під час отримання</strong>
+                                <span>Готівкою або карткою, коли заберете пончики.</span>
+                            </span>
+                        </label>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+
+        <aside class="checkout-aside">
+            <section class="cart-summary" aria-labelledby="order-summary-title">
+                <h2 class="cart-summary__title" id="order-summary-title">Підсумок замовлення</h2>
+
+                <div class="checkout-branch">
+                    <span class="checkout-branch__label">Філія</span>
+                    <strong id="checkout-branch-name">—</strong>
+                    <span id="checkout-branch-address"></span>
+                    <span class="checkout-branch__hint">Замовлення готують у цій філії. Якщо змінити філію, кошик очиститься.</span>
+                </div>
+
+                <dl class="cart-summary__rows">
+                    <div class="cart-summary__row"><dt>Пончики</dt><dd id="summary-donuts">0</dd></div>
+                    <div class="cart-summary__row"><dt>Позиції в кошику</dt><dd id="summary-lines">0</dd></div>
+                    <div class="cart-summary__row cart-summary__row--total"><dt id="summary-total-label">Орієнтовна сума</dt><dd id="summary-total">₴0.00</dd></div>
+                </dl>
+
+                <div class="min-order" id="min-order">
+                    <span id="min-order-text"></span>
+                    <span class="min-order__bar" aria-hidden="true"><span class="min-order__fill" id="min-order-fill"></span></span>
+                </div>
+
+                <p class="cart-summary__note">Ціни орієнтовні. Donnie підтвердить остаточну суму під час оформлення замовлення.</p>
+            </section>
+
+            <div class="checkout-actions">
+            {% if not customer %}
+            <p class="checkout-guest">
+                Ви оформлюєте замовлення як гість. <a href="/ua/login">Увійдіть</a>, щоб автоматично заповнити свої дані.
+            </p>
+            {% endif %}
+
+            <div class="alert alert--warning" id="checkout-blocker" hidden></div>
+            <div class="alert alert--error" id="checkout-error" role="alert" hidden></div>
+
+            <button type="submit" form="order-form" class="btn btn--block place-order-btn" id="place-order-btn">
+                Оформити замовлення
+            </button>
+            </div>
+
+        </aside>
+    </div>
+</div>
+
+<dialog id="clear-cart-dialog" class="modal" aria-labelledby="clear-cart-title" closedby="any">
+    <form method="dialog" class="modal__view">
+        <h2 id="clear-cart-title" class="modal__title">Очистити кошик?</h2>
+        <p class="modal__lead">Усі пончики та їхні налаштування буде видалено з кошика.</p>
+        <div class="modal__actions">
+            <button type="submit" class="btn btn--danger" value="clear">Видалити все</button>
+            <button type="submit" class="btn btn--ghost" value="cancel" autofocus>Залишити</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script id="checkout-data" type="application/json">{{ {"products": products_data, "extras": extras_config}|tojson }}</script>
+<script src="{{ static_url('js/order.js') }}" defer></script>
+{% endblock %}

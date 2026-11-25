@@ -22,7 +22,7 @@ def test_manager_walks_an_order_through_every_step(client, database):
 
     _login_as(database, UserRole.MANAGER, ids["branch"])
     try:
-        dashboard = client.get("/manager")
+        dashboard = client.get("/en/manager")
         assert "Next: Baking" in dashboard.text
 
         expected = [OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.COMPLETED]

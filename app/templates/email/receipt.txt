@@ -13,7 +13,7 @@ Branch: {{ order.branch.name }}, {{ order.branch.city }}
 {% endfor %}{% if order.extras_amount > 0 %}Extras    {{ money(order.extras_amount) }}
 {% endif %}{% if order.tip_amount > 0 %}Tip for the team    {{ money(order.tip_amount) }}
 {% endif %}
-Paid: {{ money(order.amount_due) }} (USD, LiqPay{% if order.payment_provider_id %}, payment {{ order.payment_provider_id }}{% endif %})
+Paid: {{ money(order.amount_due) }} (UAH, LiqPay{% if order.payment_provider_id %}, payment {{ order.payment_provider_id }}{% endif %})
 {% if paid_at %}Date: {{ paid_at }} (Kyiv time)
 {% endif %}
 Track your order: {{ receipt_url }}

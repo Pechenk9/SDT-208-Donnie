@@ -1,0 +1,83 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Оплата (демо LiqPay) — Donnie{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/payment.css') }}">
+{% endblock %}
+
+{% block site_footer %}{% endblock %}
+
+{% block content %}
+<form class="pay-screen demo-bank" method="post" action="/ua/demo-liqpay/pay/{{ payment.order_id }}">
+    <header class="demo-bank__top">
+        <span class="pay-test-badge">Демоемулятор</span>
+        <p class="demo-bank__title">Оплата через LiqPay</p>
+        <p class="demo-bank__lead">order_id <code>{{ payment.order_id }}</code></p>
+    </header>
+
+    <section class="pay-amount" aria-label="Сума до сплати">
+        <p class="pay-amount__label">{{ payment.description }}</p>
+        <p class="pay-amount__value">₴{{ "%.2f"|format(payment.amount) }}</p>
+        <p class="pay-amount__label">UAH</p>
+    </section>
+
+    {% if payment.status == 'created' %}
+    <fieldset class="demo-cards">
+        <legend class="field__label">Тестова картка (тестові картки LiqPay)</legend>
+        <label class="demo-cards__option">
+            <input type="radio" name="card" value="4242424242424242" checked>
+            <span class="demo-card">
+                <span class="demo-card__chip" aria-hidden="true"></span>
+                <span class="demo-card__number">4242 4242 4242 4242</span>
+                <span class="demo-card__meta"><span>12/30 · CVV 123</span><span>УСПІХ</span></span>
+            </span>
+        </label>
+        <label class="demo-cards__option">
+            <input type="radio" name="card" value="4000000000000002">
+            <span class="demo-card demo-card--decline">
+                <span class="demo-card__chip" aria-hidden="true"></span>
+                <span class="demo-card__number">4000 0000 0000 0002</span>
+                <span class="demo-card__meta"><span>12/30 · CVV 123</span><span>ВІДХИЛЕНО</span></span>
+            </span>
+        </label>
+    </fieldset>
+    <p class="demo-bank__hint">
+        Це опубліковані тестові картки LiqPay: перша проводить оплату, друга її відхиляє.
+        Нічого вводити не потрібно, кошти не списуються.
+    </p>
+
+    <div class="pay-bar">
+        <div class="alert alert--error pay-bar__error" id="pay-error" role="alert" hidden></div>
+        <button type="submit" class="pay-bar__btn" id="pay-button">
+            <span class="pay-btn__label">Сплатити ₴{{ "%.2f"|format(payment.amount) }}</span>
+            <span class="pay-btn__spin" aria-hidden="true"></span>
+            <span class="pay-btn__done" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path class="pay-btn__tick" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                Оплачено, дякуємо!
+            </span>
+        </button>
+        <span class="visually-hidden" id="pay-status" role="status" aria-live="polite"></span>
+        <button type="submit" name="card" value="cancel" class="link-btn demo-bank__cancel">
+            Скасувати й повернутися до Donnie
+        </button>
+    </div>
+    {% else %}
+    <div class="alert alert--warning" role="status">
+        Цей платіж уже має статус <strong>{{ {'created': 'очікує оплати', 'sandbox': 'оплачений у тестовому режимі', 'failure': 'відхилений'}.get(payment.status, payment.status) }}</strong>.
+    </div>
+    <a class="btn btn--block" href="{{ payment.result_url }}">Повернутися до Donnie</a>
+    {% endif %}
+
+    <p class="pay-note">
+        Університетське демо: ця сторінка замінює оплату через LiqPay. Вона перевіряє ті самі
+        дані й підпис та надсилає такий самий підписаний callback, як LiqPay. Якщо в <code>.env</code>
+        вказані тестові ключі LiqPay, магазин відкриє справжню сторінку оплати LiqPay.
+    </p>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/springs.js') }}" defer></script>
+<script src="{{ static_url('js/pay-button.js') }}" defer></script>
+{% endblock %}

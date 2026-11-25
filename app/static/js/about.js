@@ -2,6 +2,7 @@
     'use strict';
 
     const list = document.getElementById('about-branch-list');
+    const ukrainian = document.documentElement.lang === 'uk';
 
     window.DonnieBranch.ready.then(current => {
         const branches = window.DonnieBranch.list();
@@ -9,7 +10,9 @@
         if (!branches.length) {
             const item = document.createElement('li');
             item.className = 'state-message';
-            item.textContent = 'Branch information could not be loaded right now.';
+            item.textContent = ukrainian
+                ? 'Не вдалося завантажити інформацію про філії.'
+                : 'Branch information could not be loaded right now.';
             list.replaceChildren(item);
             return;
         }
@@ -31,7 +34,7 @@
             if (current && current.id === branch.id) {
                 const badge = document.createElement('span');
                 badge.className = 'pill pill--ok';
-                badge.textContent = 'Your branch';
+                badge.textContent = ukrainian ? 'Ваша філія' : 'Your branch';
                 item.appendChild(badge);
             }
             return item;

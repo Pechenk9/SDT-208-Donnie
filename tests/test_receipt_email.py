@@ -37,7 +37,7 @@ def test_paid_order_emails_one_receipt(client, database, email_outbox):
 
     # The demo callback and the return page both see the payment: one letter.
     assert pay_online(client, order.id, tip_percent=10).status_code == 303
-    client.get(f"/orders/{order.id}/receipt?paid=1")
+    client.get(f"/en/orders/{order.id}/receipt?paid=1")
 
     sent = letters(email_outbox)
     assert len(sent) == 1
@@ -46,12 +46,12 @@ def test_paid_order_emails_one_receipt(client, database, email_outbox):
     assert letter["Subject"] == f"Donnie: receipt for order #{order.id}"
     body = text_of(letter)
     assert "Test Donut × 6" in body
-    assert "$18.00" in body       # 6 × $3.00
-    assert "$1.80" in body        # 10% tip
-    assert "Paid: $19.80" in body
+    assert "₴18.00" in body       # 6 × ₴3.00
+    assert "₴1.80" in body        # 10% tip
+    assert "Paid: ₴19.80 (UAH," in body
     assert "(Kyiv time)" in body
     order = get_order(database)
-    link = f"http://testserver/orders/{order.id}/receipt?t={order.access_token}"
+    link = f"http://testserver/en/orders/{order.id}/receipt?t={order.access_token}"
     assert link in body
     assert f'href="{link}"' in html_of(letter)
     assert order.receipt_emailed_at is not None
@@ -107,7 +107,7 @@ def test_pay_on_receipt_order_sends_nothing(client, database, email_outbox):
     place(client, ids, customer_email="guest@example.com")
     order = get_order(database)
 
-    client.get(f"/orders/{order.id}/receipt")
+    client.get(f"/en/orders/{order.id}/receipt")
 
     assert letters(email_outbox) == []
 
@@ -137,7 +137,7 @@ def test_mail_error_keeps_the_payment_and_retries_later(client, database, email_
     monkeypatch.setattr(mailer, "send", broken)
     result = pay_online(client, order.id)
 
-    assert result.headers["location"] == f"/orders/{order.id}/receipt?paid=1"
+    assert result.headers["location"] == f"/en/orders/{order.id}/receipt?paid=1"
     order = get_order(database)
     assert order.payment_status == PaymentStatus.PAID
     assert order.receipt_emailed_at is None  # free to try again
@@ -145,7 +145,7 @@ def test_mail_error_keeps_the_payment_and_retries_later(client, database, email_
     monkeypatch.undo()
     monkeypatch.setattr(mailer, "EMAIL_PROVIDER", "console")
     monkeypatch.setattr(mailer, "OUTBOX_DIR", email_outbox)
-    client.get(f"/orders/{order.id}/receipt")
+    client.get(f"/en/orders/{order.id}/receipt")
 
     assert len(letters(email_outbox)) == 1
     assert get_order(database).receipt_emailed_at is not None

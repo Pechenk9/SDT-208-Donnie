@@ -4,6 +4,45 @@
     const Cart = window.DonnieCart;
     const product = JSON.parse(document.getElementById('product-data').textContent);
     const ingredients = product.ingredients || [];
+    const ukrainian = document.documentElement.lang === 'uk';
+    const orderPath = ukrainian ? '/ua/order' : '/en/order';
+
+    function donutWord(count) {
+        const lastTwo = count % 100;
+        const last = count % 10;
+        if (lastTwo >= 11 && lastTwo <= 14) return 'пончиків';
+        if (last === 1) return 'пончик';
+        if (last >= 2 && last <= 4) return 'пончики';
+        return 'пончиків';
+    }
+
+    const text = ukrainian ? {
+        removed: 'Вилучено',
+        recipe: 'У рецепті',
+        max: 'максимум',
+        each: 'за кожен',
+        perDonut: 'за один пончик',
+        chooseBranch: 'Спочатку оберіть філію — меню та ціни залежать від неї.',
+        capped: `Ліміт у рядку — ${Cart.MAX_LINE_QUANTITY} пончиків; кількість обмежено.`,
+        added: (quantity, total) => `Додано до кошика: ${quantity} ${donutWord(quantity)} «${product.name}». У кошику ${total} ${donutWord(total)}.`,
+        checkout: 'Перейти до оформлення',
+        addedButton: 'Додано ✓',
+        addAnother: 'Додати ще',
+        unavailable: 'Немає в наявності',
+    } : {
+        removed: 'Removed',
+        recipe: 'Recipe',
+        max: 'max',
+        each: 'each',
+        perDonut: 'per donut',
+        chooseBranch: 'Choose a branch first — the menu and prices depend on it.',
+        capped: `Line limit is ${Cart.MAX_LINE_QUANTITY} donuts — the quantity was capped.`,
+        added: (quantity, total) => `${Cart.plural(quantity, `${product.name} donut`, `${product.name} donuts`)} added · ${total} in cart`,
+        checkout: 'Checkout',
+        addedButton: 'Added ✓',
+        addAnother: 'Add another',
+        unavailable: 'Unavailable here',
+    };
 
     const priceEl = document.getElementById('product-price');
     const priceEachEl = document.getElementById('product-price-each');
@@ -83,8 +122,8 @@
         const unit = ingredient.unit;
         const surcharge = Cart.ingredientSurcharge(ingredient, value);
         range.textContent = value === 0
-            ? 'Removed'
-            : `Recipe ${Cart.formatQuantity(ingredient.default_quantity)} ${unit} · max ${Cart.formatQuantity(max)} ${unit}`
+            ? text.removed
+            : `${text.recipe} ${Cart.formatQuantity(ingredient.default_quantity)} ${unit} · ${text.max} ${Cart.formatQuantity(max)} ${unit}`
                 + (surcharge > 0 ? ` · +${Cart.formatPrice(surcharge)}` : '');
         row.classList.toggle('is-extra', surcharge > 0);
     }
@@ -108,7 +147,9 @@
     function renderPrice() {
         const unit = Cart.estimateUnitPrice(product, currentSelections());
         priceEl.textContent = Cart.formatPrice(unit * donuts);
-        priceEachEl.textContent = donuts > 1 ? `${Cart.formatPrice(unit)} each × ${donuts}` : 'per donut';
+        priceEachEl.textContent = donuts > 1
+            ? `${Cart.formatPrice(unit)} ${text.each} × ${donuts}`
+            : text.perDonut;
     }
 
     /* ---------- donut quantity ---------- */
@@ -163,7 +204,7 @@
         if (product.is_available === false || missingRequired.length) return;
 
         if (!product.branch) {
-            window.DonnieBranch.open('Choose a branch first — the menu and prices depend on it.');
+            window.DonnieBranch.open(text.chooseBranch);
             return;
         }
 
@@ -181,16 +222,16 @@
         const { donuts: total } = Cart.totals();
         Cart.toast(
             result.capped
-                ? `Line limit is ${Cart.MAX_LINE_QUANTITY} donuts — the quantity was capped.`
-                : `${Cart.plural(donuts, `${product.name} donut`, `${product.name} donuts`)} added · ${total} in cart`,
-            { type: result.capped ? 'error' : 'success', action: { href: '/order', label: 'Checkout' } }
+                ? text.capped
+                : text.added(donuts, total),
+            { type: result.capped ? 'error' : 'success', action: { href: orderPath, label: text.checkout } }
         );
 
         feedback.hidden = false;
-        addBtn.textContent = 'Added ✓';
+        addBtn.textContent = text.addedButton;
         addBtn.classList.add('is-added');
         setTimeout(() => {
-            addBtn.textContent = 'Add another';
+            addBtn.textContent = text.addAnother;
             addBtn.classList.remove('is-added');
         }, 1400);
 
@@ -203,7 +244,7 @@
 
     if (missingRequired.length && product.is_available !== false) {
         addBtn.disabled = true;
-        addBtn.textContent = 'Unavailable here';
+        addBtn.textContent = text.unavailable;
     }
 
     setDonuts(1);

@@ -11,6 +11,8 @@
     const tablesInput = document.getElementById('qr-tables');
     const sheet = document.getElementById('qr-sheet');
     const errorBox = document.getElementById('qr-error');
+    const ukrainian = document.documentElement.lang.toLowerCase().startsWith('uk');
+    const languagePrefix = ukrainian ? '/ua' : '/en';
 
     function qrSvg(url) {
         const qr = window.qrcode(0, 'M'); // 0 = pick the smallest size that fits
@@ -26,7 +28,7 @@
 
         const heading = document.createElement('p');
         heading.className = 'qr-card__heading';
-        heading.textContent = 'Menu & payment here';
+        heading.textContent = ukrainian ? 'Меню та оплата тут' : 'Menu & payment here';
 
         const box = document.createElement('div');
         box.className = 'qr-card__box';
@@ -42,7 +44,7 @@
 
         const pay = document.createElement('p');
         pay.className = 'qr-card__pay';
-        pay.textContent = 'Card · Apple Pay · Google Pay';
+        pay.textContent = ukrainian ? 'Картка · Apple Pay · Google Pay' : 'Card · Apple Pay · Google Pay';
 
         const brand = document.createElement('a');
         brand.className = 'qr-card__brand';
@@ -60,9 +62,9 @@
             return;
         }
         const tables = Math.max(0, Math.min(99, Math.floor(Number(tablesInput.value) || 0)));
-        const cards = [card('Menu', `${base}/qr/${encodeURIComponent(code)}`)];
+        const cards = [card(ukrainian ? 'Меню' : 'Menu', `${base}${languagePrefix}/qr/${encodeURIComponent(code)}`)];
         for (let table = 1; table <= tables; table += 1) {
-            cards.push(card(`Table №${table}`, `${base}/qr/${encodeURIComponent(code)}?table=${table}`));
+            cards.push(card(`${ukrainian ? 'Стіл' : 'Table'} №${table}`, `${base}${languagePrefix}/qr/${encodeURIComponent(code)}?table=${table}`));
         }
         sheet.replaceChildren(...cards);
     }

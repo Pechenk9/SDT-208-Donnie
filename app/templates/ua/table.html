@@ -1,0 +1,80 @@
+{% extends "ua/base.html" %}
+
+{% block title %}Ваш столик — Donnie{% endblock %}
+
+{% block description %}Меню, замовлення та оплата просто зі столика в Donnie.{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ static_url('css/table.css') }}">
+{% endblock %}
+
+{% block site_footer %}{% endblock %}
+
+{% block content %}
+<div class="guest">
+    <section class="guest-card" aria-labelledby="guest-title" id="guest-ready" hidden>
+        <div class="guest-head">
+            <span class="guest-logo" aria-hidden="true"></span>
+            <div>
+                <p class="guest-branch" id="guest-branch"></p>
+                <p class="guest-address" id="guest-address"></p>
+            </div>
+            <span class="guest-table" id="guest-table"></span>
+        </div>
+
+        <h1 id="guest-title" class="guest-title">Замовляйте та сплачуйте просто зі столика</h1>
+
+        <nav class="guest-actions" aria-label="Дії зі столиком">
+            <a class="guest-action" href="/ua/store">
+                <span class="guest-action__icon" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+                </span>
+                <span class="guest-action__text">
+                    <strong>Меню</strong>
+                    <span>Сьогоднішні пончики й ціни цього Donnie</span>
+                </span>
+                <span class="guest-action__chevron" aria-hidden="true">›</span>
+            </a>
+
+            <a class="guest-action" href="/ua/order">
+                <span class="guest-action__icon" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/></svg>
+                </span>
+                <span class="guest-action__text">
+                    <strong>Моє замовлення та оплата</strong>
+                    <span id="guest-cart">Ваш кошик порожній</span>
+                </span>
+                <span class="guest-action__chevron" aria-hidden="true">›</span>
+            </a>
+
+            <a class="guest-action" href="/ua/order#tip-options">
+                <span class="guest-action__icon" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>
+                </span>
+                <span class="guest-action__text">
+                    <strong>Подякуйте команді</strong>
+                    <span>Додайте чайові під час оплати</span>
+                </span>
+                <span class="guest-action__chevron" aria-hidden="true">›</span>
+            </a>
+        </nav>
+
+        <a class="btn btn--large btn--block" href="/ua/store">Відкрити меню</a>
+
+        <p class="guest-pay">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>
+            Картка, Apple Pay або Google Pay · безпечна онлайн-оплата
+        </p>
+    </section>
+
+    <section class="guest-card guest-card--empty" id="guest-missing" hidden>
+        <h1 class="guest-title">Відскануйте код на столі</h1>
+        <p class="guest-address">QR-код на столі відкриває меню та оплату саме для цього столика.</p>
+        <a class="btn btn--large btn--block" href="/ua/store">Натомість переглянути пончики</a>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/table.js') }}" defer></script>
+{% endblock %}

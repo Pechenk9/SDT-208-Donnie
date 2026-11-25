@@ -243,7 +243,10 @@
     function loadProduct(productId) {
         const id = Number(productId);
         if (!productCache.has(id)) {
-            const request = fetch(`/product/${id}`, { headers: { Accept: 'text/html' }, credentials: 'same-origin' })
+            const languagePrefix = document.documentElement.lang.toLowerCase().startsWith('uk')
+                ? '/ua'
+                : '/en';
+            const request = fetch(`${languagePrefix}/product/${id}`, { headers: { Accept: 'text/html' }, credentials: 'same-origin' })
                 .then(response => {
                     if (!response.ok) throw new Error(`Product ${id} could not be loaded (${response.status}).`);
                     return response.text();
@@ -289,7 +292,7 @@
     /* ---------- small shared UI helpers ---------- */
 
     function formatPrice(value) {
-        return `$${(Number(value) || 0).toFixed(2)}`;
+        return `₴${(Number(value) || 0).toFixed(2)}`;
     }
 
     function formatQuantity(value) {
@@ -343,7 +346,11 @@
             node.hidden = donuts === 0;
         });
         document.querySelectorAll('[data-cart-link]').forEach(link => {
-            link.setAttribute('aria-label', `Cart, ${plural(donuts, 'donut', 'donuts')}`);
+            if (document.documentElement.lang === 'uk') {
+                link.setAttribute('aria-label', `Кошик — кількість пончиків: ${donuts}`);
+            } else {
+                link.setAttribute('aria-label', `Cart, ${plural(donuts, 'donut', 'donuts')}`);
+            }
         });
     }
 

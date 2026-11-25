@@ -9,12 +9,12 @@
 {% block site_footer %}{% endblock %}
 
 {% block content %}
-<form class="pay-screen" method="post" action="/orders/{{ order.id }}/pay?t={{ order.access_token }}"
+<form class="pay-screen" method="post" action="/en/orders/{{ order.id }}/pay?t={{ order.access_token }}"
       data-total="{{ '%.2f'|format(order.total_price) }}">
     <header class="pay-top">
         <span class="pay-top__logo" aria-hidden="true"></span>
         <div>
-            <p class="pay-top__branch">{{ order.branch.name }}</p>
+            <p class="pay-top__branch">{{ localized(order.branch, 'name', language) }}</p>
             <p class="pay-top__meta">
                 Order #{{ order.id }}{% if order.table_number %} · Table {{ order.table_number }}{% endif %}
             </p>
@@ -24,7 +24,7 @@
 
     <section class="pay-amount" aria-label="Amount to pay">
         <p class="pay-amount__label">To pay</p>
-        <p class="pay-amount__value" id="pay-amount">${{ "%.2f"|format(order.amount_due) }}</p>
+        <p class="pay-amount__value" id="pay-amount">₴{{ "%.2f"|format(order.amount_due) }}</p>
     </section>
 
     {% if declined %}
@@ -36,13 +36,13 @@
     <details class="pay-block pay-order">
         <summary>
             <span>Your order</span>
-            <span class="pay-order__count">{{ order.items|sum(attribute='quantity') }} donuts · ${{ "%.2f"|format(order.total_price) }}</span>
+            <span class="pay-order__count">{{ order.items|sum(attribute='quantity') }} donuts · ₴{{ "%.2f"|format(order.total_price) }}</span>
         </summary>
         <ul class="pay-items">
             {% for item in order.items %}
             <li>
-                <span>{{ item.name_snapshot }} <span class="pay-items__qty">× {{ item.quantity }}</span></span>
-                <span>${{ "%.2f"|format(item.unit_price * item.quantity) }}</span>
+                <span>{{ localized(item.product, 'name', language, item.name_snapshot) if item.product else item.name_snapshot }} <span class="pay-items__qty">× {{ item.quantity }}</span></span>
+                <span>₴{{ "%.2f"|format(item.unit_price * item.quantity) }}</span>
             </li>
             {% endfor %}
         </ul>
@@ -50,7 +50,7 @@
 
     <fieldset class="pay-block pay-tips">
         <legend class="pay-tips__title">Tip for the team</legend>
-        <p class="pay-tips__lead">100% goes to the bakers and staff of {{ order.branch.name }}.</p>
+        <p class="pay-tips__lead">100% goes to the bakers and staff of {{ localized(order.branch, 'name', language) }}.</p>
         <div class="tip-chips">
             {% for option in tip_options %}
             <label class="tip-chip">
@@ -59,7 +59,7 @@
                        {% if option.percent == current_tip %}checked{% endif %}>
                 <span>
                     <strong>{{ 'No tip' if option.percent == 0 else option.percent ~ '%' }}</strong>
-                    {% if option.percent %}<small>${{ "%.2f"|format(option.amount) }}</small>{% endif %}
+                    {% if option.percent %}<small>₴{{ "%.2f"|format(option.amount) }}</small>{% endif %}
                 </span>
             </label>
             {% endfor %}
@@ -69,7 +69,7 @@
     <div class="pay-bar">
         <div class="alert alert--error pay-bar__error" id="pay-error" role="alert" hidden></div>
         <button type="submit" class="pay-bar__btn" id="pay-button">
-            <span class="pay-btn__label">Pay ${{ "%.2f"|format(order.amount_due) }}</span>
+            <span class="pay-btn__label">Pay ₴{{ "%.2f"|format(order.amount_due) }}</span>
             <span class="pay-btn__spin" aria-hidden="true"></span>
             <span class="pay-btn__done" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path class="pay-btn__tick" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -99,7 +99,7 @@
         const form = document.querySelector('.pay-screen');
         const total = Number(form.dataset.total);
         const amount = document.getElementById('pay-amount');
-        const format = value => `$${value.toFixed(2)}`;
+        const format = value => `₴${value.toFixed(2)}`;
         form.addEventListener('change', event => {
             if (event.target.name !== 'tip_percent') return;
             const due = total + Number(event.target.dataset.amount);

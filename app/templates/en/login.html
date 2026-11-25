@@ -18,7 +18,7 @@
         <p class="alert alert--error login-alert" role="alert" id="login-error">{{ error }}</p>
         {% endif %}
 
-        <form class="login-form" method="post" action="/login" novalidate data-auth-form>
+        <form class="login-form" method="post" action="/en/login" novalidate data-auth-form>
             <div class="field">
                 <label class="field__label" for="email">Email</label>
                 <input class="field__input" id="email" name="email" type="email"
@@ -43,10 +43,10 @@
         </form>
 
         <p class="login-register-link">
-            New to Donnie? <a href="/register">Create an account</a>
+            New to Donnie? <a href="/en/register">Create an account</a>
         </p>
         <p class="login-guest-note">You can also order as a guest — your cart is kept either way.</p>
-        <a class="login-store-link" href="/store">&larr; Back to the store</a>
+        <a class="login-store-link" href="/en/store">&larr; Back to the store</a>
     </div>
 </section>
 {% endblock %}
