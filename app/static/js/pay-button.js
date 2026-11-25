@@ -220,6 +220,8 @@
         checkout.action = url;
         checkout.acceptCharset = 'utf-8';
         checkout.hidden = true;
+        // No Referer for LiqPay: see the referrer meta tag in payment.html.
+        checkout.setAttribute('rel', 'noreferrer');
         [['data', data], ['signature', signature]].forEach(([name, value]) => {
             const input = document.createElement('input');
             input.type = 'hidden';

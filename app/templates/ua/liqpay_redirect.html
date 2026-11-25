@@ -2,6 +2,12 @@
 
 {% block title %}Відкриваємо LiqPay — Donnie{% endblock %}
 
+{% block styles %}
+{# LiqPay's firewall answers 403 when its own analytics cookie holds a
+   localhost/127.0.0.1 referrer, so we never send our address to LiqPay. #}
+<meta name="referrer" content="no-referrer">
+{% endblock %}
+
 {% block site_footer %}{% endblock %}
 
 {% block content %}

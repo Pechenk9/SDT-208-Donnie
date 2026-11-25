@@ -738,3 +738,30 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* Error pages (404, 403, ...) rendered for browsers instead of raw JSON */
+.error-page {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  padding: 48px 16px;
+}
+
+.error-page__card {
+  width: min(100%, 480px);
+  padding: 48px 24px;
+}
+
+.error-page__code {
+  margin: 0;
+  color: var(--pink);
+  font: 800 64px/1 var(--font-display);
+}
+
+.error-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}

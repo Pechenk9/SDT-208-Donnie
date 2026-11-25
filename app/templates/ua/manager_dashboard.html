@@ -202,7 +202,8 @@
                                     {{ 'Позначити недоступним' if item.association.is_available else 'Зробити доступним' }}
                                 </button>
                             </form>
-                            <form method="post" action="/ua/manager/products/{{ item.product.id }}/remove">
+                            <form method="post" action="/ua/manager/products/{{ item.product.id }}/remove"
+                                  onsubmit='return confirm({{ ("Прибрати «" ~ localized(item.product, "name", language) ~ "» з цієї філії?")|tojson }})'>
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button class="btn btn--danger btn--small" type="submit">Видалити</button>
                             </form>
@@ -268,7 +269,8 @@
                                     {{ 'Позначити недоступним' if item.association.is_available else 'Зробити доступним' }}
                                 </button>
                             </form>
-                            <form method="post" action="/ua/manager/ingredients/{{ item.ingredient.id }}/remove">
+                            <form method="post" action="/ua/manager/ingredients/{{ item.ingredient.id }}/remove"
+                                  onsubmit='return confirm({{ ("Прибрати «" ~ localized(item.ingredient, "name", language) ~ "» з цієї філії?")|tojson }})'>
                                 <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
                                 <button class="btn btn--danger btn--small" type="submit">Видалити</button>
                             </form>

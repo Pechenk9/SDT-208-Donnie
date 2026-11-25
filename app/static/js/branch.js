@@ -54,18 +54,20 @@
     /* ---------- branch list ---------- */
 
     async function loadBranches() {
-        try {
-            const cached = sessionStorage.getItem(LIST_CACHE_KEY);
-            if (cached) return JSON.parse(cached);
-        } catch (error) { /* ignore */ }
-
         const languagePrefix = document.documentElement.lang.toLowerCase().startsWith('uk')
             ? '/ua'
             : '/en';
+        // One cache per language: city and address names differ between EN and UA.
+        const cacheKey = `${LIST_CACHE_KEY}${languagePrefix}`;
+        try {
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) return JSON.parse(cached);
+        } catch (error) { /* ignore */ }
+
         const response = await fetch(`${languagePrefix}/api/branches`, { headers: { Accept: 'application/json' } });
         if (!response.ok) throw new Error('Branches could not be loaded.');
         const list = await response.json();
-        try { sessionStorage.setItem(LIST_CACHE_KEY, JSON.stringify(list)); } catch (error) { /* ignore */ }
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(list)); } catch (error) { /* ignore */ }
         return list;
     }
 
